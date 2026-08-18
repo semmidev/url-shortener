@@ -3,6 +3,8 @@ package url
 import (
 	"crypto/rand"
 	"math/big"
+	"net/url"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -10,6 +12,27 @@ import (
 	"github.com/semmidev/url-shortener/server/internal/platform/validator"
 	"github.com/semmidev/url-shortener/server/internal/platform/web"
 )
+
+// blockedURLSchemes lists dangerous URI schemes that must never be shortened.
+var blockedURLSchemes = map[string]bool{
+	"javascript": true,
+	"data":       true,
+	"vbscript":   true,
+	"file":       true,
+	"blob":       true,
+}
+
+// validateURLScheme returns an error if the URL uses a dangerous scheme.
+func validateURLScheme(raw string) error {
+	u, err := url.Parse(raw)
+	if err != nil {
+		return apperr.Invalid("original_url is not a valid URL")
+	}
+	if blockedURLSchemes[strings.ToLower(u.Scheme)] {
+		return apperr.Invalid("original_url scheme '" + u.Scheme + "' is not allowed")
+	}
+	return nil
+}
 
 // GenerateRandomCode generates a random Base62 string of specified length.
 func GenerateRandomCode(length int) (string, error) {
@@ -35,6 +58,9 @@ type CreateURLRequest struct {
 
 func (r *CreateURLRequest) Validate() error {
 	if err := validator.Check(r); err != nil {
+		return err
+	}
+	if err := validateURLScheme(r.OriginalURL); err != nil {
 		return err
 	}
 	if r.ExpiresAt != nil && r.ExpiresAt.Before(time.Now()) {
@@ -67,7 +93,15 @@ type UpdateURLRequest struct {
 }
 
 func (r *UpdateURLRequest) Validate() error {
-	return validator.Check(r)
+	if err := validator.Check(r); err != nil {
+		return err
+	}
+	if r.OriginalURL != nil {
+		if err := validateURLScheme(*r.OriginalURL); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 type DeleteURLRequest struct {

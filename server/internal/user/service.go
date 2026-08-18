@@ -24,19 +24,33 @@ import (
 	"github.com/semmidev/url-shortener/server/internal/platform/token"
 )
 
-type Service struct {
-	store        db.Store
-	tokenMaker   *token.JWTMaker
-	cfg          config.Config
-	oneTimeCodes sync.Map
-	httpClient   *http.Client
+// emailAttemptEntry tracks failed login attempts for a specific email.
+type emailAttemptEntry struct {
+	count     int
+	firstSeen time.Time
 }
 
-func NewService(store db.Store, tokenMaker *token.JWTMaker, cfg config.Config) *Service {
+const (
+	maxEmailLoginAttempts = 10            // max failed attempts before lockout
+	emailLockoutWindow    = 15 * time.Minute // lockout window duration
+)
+
+type Service struct {
+	store         db.Store
+	tokenMaker    *token.JWTMaker
+	cfg           config.Config
+	appLogger     *logger.Logger
+	oneTimeCodes  sync.Map // map[string]oneTimeCodeEntry
+	emailAttempts sync.Map // map[string]emailAttemptEntry
+	httpClient    *http.Client
+}
+
+func NewService(store db.Store, tokenMaker *token.JWTMaker, cfg config.Config, appLogger *logger.Logger) *Service {
 	s := &Service{
 		store:      store,
 		tokenMaker: tokenMaker,
 		cfg:        cfg,
+		appLogger:  appLogger,
 		httpClient: &http.Client{Timeout: 10 * time.Second},
 	}
 	go s.cleanupExpiredOneTimeCodes()
@@ -55,7 +69,37 @@ func (s *Service) cleanupExpiredOneTimeCodes() {
 			}
 			return true
 		})
+		// Also clean up stale email attempt entries outside the lockout window
+		s.emailAttempts.Range(func(key, value any) bool {
+			if entry, ok := value.(emailAttemptEntry); ok {
+				if now.After(entry.firstSeen.Add(emailLockoutWindow)) {
+					s.emailAttempts.Delete(key)
+				}
+			}
+			return true
+		})
 	}
+}
+
+// recordFailedLogin increments the per-email failed attempt counter.
+// Returns true if the account should be locked out.
+func (s *Service) recordFailedLogin(email string) bool {
+	now := time.Now()
+	val, _ := s.emailAttempts.LoadOrStore(email, emailAttemptEntry{count: 0, firstSeen: now})
+	entry := val.(emailAttemptEntry)
+
+	// Reset window if expired
+	if now.After(entry.firstSeen.Add(emailLockoutWindow)) {
+		entry = emailAttemptEntry{count: 0, firstSeen: now}
+	}
+	entry.count++
+	s.emailAttempts.Store(email, entry)
+	return entry.count >= maxEmailLoginAttempts
+}
+
+// resetEmailAttempts clears the failed attempt counter for an email on successful login.
+func (s *Service) resetEmailAttempts(email string) {
+	s.emailAttempts.Delete(email)
 }
 
 func toUserResponse(u db.User) UserResponse {
@@ -117,6 +161,10 @@ func (s *Service) Register(ctx context.Context, req RegisterRequest) (*LoginResp
 		return nil, apperr.MapDBError(err, "failed to register user", "email is already registered")
 	}
 
+	s.appLogger.Audit(ctx, logger.AuditActionUserRegister,
+		"user.id", user.ID.String(),
+		"user.email", user.Email,
+	)
 	return loginResp, nil
 }
 
@@ -125,8 +173,22 @@ func (s *Service) Login(ctx context.Context, req LoginRequest) (*LoginResponse, 
 		return nil, err
 	}
 
+	// Per-email brute-force protection: check if email is locked out
+	if val, loaded := s.emailAttempts.Load(req.Email); loaded {
+		entry := val.(emailAttemptEntry)
+		if entry.count >= maxEmailLoginAttempts && time.Now().Before(entry.firstSeen.Add(emailLockoutWindow)) {
+			s.appLogger.Audit(ctx, logger.AuditActionUserLoginFailed,
+				"user.email", req.Email,
+				"reason", "account_locked_out",
+			)
+			return nil, apperr.Unauthorized("too many failed login attempts, please try again later")
+		}
+	}
+
 	user, err := s.store.GetUserByEmail(ctx, req.Email)
 	if err != nil {
+		s.recordFailedLogin(req.Email)
+		s.appLogger.Audit(ctx, logger.AuditActionUserLoginFailed, "user.email", req.Email, "reason", "user_not_found")
 		return nil, apperr.MapDBError(err, "invalid email or password", "")
 	}
 
@@ -135,10 +197,29 @@ func (s *Service) Login(ctx context.Context, req LoginRequest) (*LoginResponse, 
 	}
 
 	if err := crypto.CheckPassword(req.Password, user.PasswordHash.String); err != nil {
+		locked := s.recordFailedLogin(req.Email)
+		reason := "wrong_password"
+		if locked {
+			reason = "account_now_locked"
+		}
+		s.appLogger.Audit(ctx, logger.AuditActionUserLoginFailed,
+			"user.id", user.ID.String(),
+			"user.email", req.Email,
+			"reason", reason,
+		)
 		return nil, apperr.Unauthorized("invalid email or password")
 	}
 
-	return s.createSessionAndTokensWithQuerier(ctx, s.store, user, req.UserAgent, req.ClientIP)
+	s.resetEmailAttempts(req.Email)
+	resp, err := s.createSessionAndTokensWithQuerier(ctx, s.store, user, req.UserAgent, req.ClientIP)
+	if err != nil {
+		return nil, err
+	}
+	s.appLogger.Audit(ctx, logger.AuditActionUserLogin,
+		"user.id", user.ID.String(),
+		"user.email", user.Email,
+	)
+	return resp, nil
 }
 
 // GetGoogleLoginURL returns the Google OAuth authorization URL.
@@ -378,4 +459,16 @@ func (s *Service) GetProfile(ctx context.Context, req GetProfileRequest) (*UserR
 
 	res := toUserResponse(user)
 	return &res, nil
+}
+
+// Logout revokes the active session associated with the user's session ID.
+func (s *Service) Logout(ctx context.Context, req LogoutRequest) error {
+	if err := s.store.RevokeSession(ctx, req.SessionID); err != nil {
+		return apperr.MapDBError(err, "session not found", "")
+	}
+	s.appLogger.Audit(ctx, logger.AuditActionUserLogout,
+		"user.id", req.UserID.String(),
+		"session.id", req.SessionID.String(),
+	)
+	return nil
 }

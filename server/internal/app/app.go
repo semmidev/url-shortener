@@ -140,7 +140,7 @@ func BuildRouter(cfg config.Config, pool *pgxpool.Pool, appLogger *logger.Logger
 	}
 
 	// Initialize Services
-	userSvc := user.NewService(store, tokenMaker, cfg)
+	userSvc := user.NewService(store, tokenMaker, cfg, appLogger)
 	urlSvc := url.NewService(store, cfg)
 	analyticsSvc := analytics.NewService(store)
 
@@ -153,16 +153,17 @@ func BuildRouter(cfg config.Config, pool *pgxpool.Pool, appLogger *logger.Logger
 	// Setup Router & Middleware
 	r := chi.NewRouter()
 
-	// CORS Middleware to handle browser preflight OPTIONS requests (e.g. from Swagger UI, Scalar UI, or Frontend)
+	// Global Middlewares
 	r.Use(cors.Handler(cors.Options{
 		AllowedOrigins:   []string{"https://*", "http://*"},
 		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
-		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token"},
-		ExposedHeaders:   []string{"Link"},
+		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token", "traceparent", "tracestate"},
+		ExposedHeaders:   []string{"Link", "X-Request-ID"},
 		AllowCredentials: true,
 		MaxAge:           300,
 	}))
 
+	r.Use(customMw.SecureHeaders)
 	r.Use(chimw.RealIP)
 	r.Use(chimw.Recoverer)
 	r.Use(customMw.WideEventLogging(appLogger))
@@ -183,13 +184,44 @@ func BuildRouter(cfg config.Config, pool *pgxpool.Pool, appLogger *logger.Logger
 		httpSwagger.URL("/swagger/doc.json"),
 	))
 
-	// Public Health check endpoint
-	r.Get("/health", func(w http.ResponseWriter, r *http.Request) {
+	// Public Health check endpoints
+	// GET /health/live — Liveness: is the process alive? (no deps checked)
+	r.Get("/health/live", func(w http.ResponseWriter, r *http.Request) {
 		web.JSON(w, http.StatusOK, map[string]any{
 			"status":  "ok",
 			"service": "url-shortener-api",
-			"version": config.Version,
-			"uptime":  config.GetBuildInfo(cfg.Environment).Uptime,
+		})
+	})
+
+	// GET /health/ready — Readiness: is the service ready to handle traffic? (pings DB)
+	r.Get("/health/ready", func(w http.ResponseWriter, r *http.Request) {
+		if err := pool.Ping(r.Context()); err != nil {
+			web.JSON(w, http.StatusServiceUnavailable, map[string]any{
+				"status":   "unavailable",
+				"service":  "url-shortener-api",
+				"database": "unreachable",
+			})
+			return
+		}
+		web.JSON(w, http.StatusOK, map[string]any{
+			"status":   "ok",
+			"service":  "url-shortener-api",
+			"database": "reachable",
+		})
+	})
+
+	// GET /health — Legacy health check (pings DB, backward compatible)
+	r.Get("/health", func(w http.ResponseWriter, r *http.Request) {
+		dbStatus := "reachable"
+		if err := pool.Ping(r.Context()); err != nil {
+			dbStatus = "unreachable"
+		}
+		web.JSON(w, http.StatusOK, map[string]any{
+			"status":   "ok",
+			"service":  "url-shortener-api",
+			"version":  config.Version,
+			"uptime":   config.GetBuildInfo(cfg.Environment).Uptime,
+			"database": dbStatus,
 		})
 	})
 
@@ -199,9 +231,12 @@ func BuildRouter(cfg config.Config, pool *pgxpool.Pool, appLogger *logger.Logger
 		web.Success(w, http.StatusOK, "Application version and build info", info, nil)
 	})
 
-	// Public Redirection Endpoint (GET /{code}) with Public Rate Limiter
+	// Public Redirection Endpoint with sampling middleware for high-throughput logging control
 	publicRateLimitMw := customMw.RateLimiter(cfg.RateLimitPublicRequests, cfg.RateLimitPublicWindow)
-	r.With(publicRateLimitMw).Get("/{code}", redirectH.Redirect)
+	redirectRouter := chi.NewRouter()
+	redirectRouter.Use(customMw.WideEventLoggingWithSampling(appLogger, cfg.LogRedirectSampleRate))
+	redirectRouter.With(publicRateLimitMw).Get("/{code}", redirectH.Redirect)
+	r.Mount("/", redirectRouter)
 
 	// Rate Limiters for API routes
 	authRateLimitMw := customMw.RateLimiter(cfg.RateLimitAuthRequests, cfg.RateLimitAuthWindow)

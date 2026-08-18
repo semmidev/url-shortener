@@ -15,9 +15,10 @@ type Config struct {
 	AppLocale    string `mapstructure:"APP_LOCALE"` // id, en
 
 	// Logging Settings
-	LogLevel     string `mapstructure:"LOG_LEVEL"`      // debug, info, warn, error
-	LogFormat    string `mapstructure:"LOG_FORMAT"`     // text, json
-	LogAddSource bool   `mapstructure:"LOG_ADD_SOURCE"` // true, false
+	LogLevel              string  `mapstructure:"LOG_LEVEL"`               // debug, info, warn, error
+	LogFormat             string  `mapstructure:"LOG_FORMAT"`              // text, json
+	LogAddSource          bool    `mapstructure:"LOG_ADD_SOURCE"`          // true, false
+	LogRedirectSampleRate float64 `mapstructure:"LOG_REDIRECT_SAMPLE_RATE"` // 0.0–1.0, default 1.0
 
 	// HTTP Server Settings
 	ServerAddress         string        `mapstructure:"SERVER_ADDRESS"`
@@ -75,6 +76,7 @@ func LoadConfig(path string) (config Config, err error) {
 	viper.SetDefault("LOG_LEVEL", "debug")
 	viper.SetDefault("LOG_FORMAT", "text")
 	viper.SetDefault("LOG_ADD_SOURCE", true)
+	viper.SetDefault("LOG_REDIRECT_SAMPLE_RATE", 1.0)
 
 	viper.SetDefault("SERVER_ADDRESS", "0.0.0.0:8080")
 	viper.SetDefault("SERVER_READ_TIMEOUT", "15s")

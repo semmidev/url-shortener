@@ -31,6 +31,7 @@ func (h *Handler) Mount(r chi.Router, authMw func(http.Handler) http.Handler) {
 	r.Group(func(r chi.Router) {
 		r.Use(authMw)
 		r.Get("/me", h.me)
+		r.Post("/logout", h.logout)
 	})
 }
 
@@ -212,4 +213,32 @@ func (h *Handler) me(w http.ResponseWriter, r *http.Request) {
 	}
 
 	web.JSON(w, http.StatusOK, resp)
+}
+
+// logout revokes the current user session
+// @Summary Logout and revoke session
+// @Tags Auth
+// @Security BearerAuth
+// @Produce json
+// @Success 200 {object} map[string]string
+// @Failure 401 {object} apperr.Error
+// @Router /api/v1/auth/logout [post]
+func (h *Handler) logout(w http.ResponseWriter, r *http.Request) {
+	userID, ok := web.UserID(r.Context())
+	if !ok {
+		web.Error(w, r, apperr.Unauthorized("unauthenticated"))
+		return
+	}
+	sessionID, ok := web.SessionID(r.Context())
+	if !ok {
+		web.Error(w, r, apperr.Unauthorized("unauthenticated"))
+		return
+	}
+
+	if err := h.svc.Logout(r.Context(), LogoutRequest{UserID: userID, SessionID: sessionID}); err != nil {
+		web.Error(w, r, err)
+		return
+	}
+
+	web.JSON(w, http.StatusOK, map[string]string{"message": "logged out successfully"})
 }

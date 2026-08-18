@@ -3,6 +3,7 @@ package middleware
 import (
 	"bytes"
 	"io"
+	"math/rand/v2"
 	"net/http"
 	"time"
 
@@ -31,7 +32,15 @@ func (rw *responseWriter) Write(b []byte) (int, error) {
 }
 
 // WideEventLogging returns a chi HTTP middleware that captures request lifecycle into a single Wide Event log line.
+// It also extracts trace_id and span_id from the W3C traceparent header (if present) and injects them into the log.
 func WideEventLogging(appLogger *logger.Logger) func(http.Handler) http.Handler {
+	return WideEventLoggingWithSampling(appLogger, 1.0)
+}
+
+// WideEventLoggingWithSampling is the same as WideEventLogging but with a configurable sample rate (0.0–1.0).
+// A sampleRate of 1.0 logs every request; 0.1 logs approximately 10% of requests for successful responses.
+// Errors (4xx/5xx) are always logged regardless of sample rate.
+func WideEventLoggingWithSampling(appLogger *logger.Logger, sampleRate float64) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			reqID := r.Header.Get("X-Request-ID")
@@ -50,6 +59,15 @@ func WideEventLogging(appLogger *logger.Logger) func(http.Handler) http.Handler 
 			ev.Set("http.query", r.URL.RawQuery)
 			ev.Set("http.client_ip", r.RemoteAddr)
 			ev.Set("http.user_agent", r.UserAgent())
+
+			// Extract W3C traceparent header and inject trace_id / span_id into the Wide Event
+			if traceparent := r.Header.Get("traceparent"); traceparent != "" {
+				traceID, spanID := parseTraceparent(traceparent)
+				if traceID != "" {
+					ev.Set("trace_id", traceID)
+					ev.Set("span_id", spanID)
+				}
+			}
 
 			// Capture and redact request body for methods that typically send payloads
 			if r.Body != nil && (r.Method == http.MethodPost || r.Method == http.MethodPut || r.Method == http.MethodPatch || r.Method == http.MethodDelete) {
@@ -73,13 +91,16 @@ func WideEventLogging(appLogger *logger.Logger) func(http.Handler) http.Handler 
 			ev.Set("http.response_bytes", rw.bytesWritten)
 			ev.Set("latency_ms", latencyMs)
 
-			args := ev.Args()
-			if rw.statusCode >= 500 {
-				appLogger.Error(ctx, "http_request", args...)
-			} else if rw.statusCode >= 400 {
-				appLogger.Warn(ctx, "http_request", args...)
-			} else {
-				appLogger.Info(ctx, "http_request", args...)
+			// Sampling: always log errors (4xx/5xx), apply sample rate only to successful responses.
+			if rw.statusCode >= 400 || sampleRate >= 1.0 || rand.Float64() < sampleRate {
+				args := ev.Args()
+				if rw.statusCode >= 500 {
+					appLogger.Error(ctx, "http_request", args...)
+				} else if rw.statusCode >= 400 {
+					appLogger.Warn(ctx, "http_request", args...)
+				} else {
+					appLogger.Info(ctx, "http_request", args...)
+				}
 			}
 		})
 	}

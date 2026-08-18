@@ -103,3 +103,8 @@ type LoginResponse struct {
 	RefreshTokenExpiresAt time.Time    `json:"refresh_token_expires_at"`
 	User                  UserResponse `json:"user"`
 }
+
+type LogoutRequest struct {
+	UserID    uuid.UUID `json:"-"`
+	SessionID uuid.UUID `json:"-"`
+}

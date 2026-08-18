@@ -53,7 +53,7 @@ tp := otel.GetTracerProvider()
 
 ---
 
-### ⚠️ Structured Logging (Partial)
+### ✅ Structured Logging
 **Status**: Wide Event logging with `log/slog` is implemented and redaction works.
 
 **Missing**:
@@ -63,7 +63,7 @@ tp := otel.GetTracerProvider()
 
 ---
 
-### ❌ Health Check Enhancements
+### ✅ Health Check Enhancements
 **Status**: `/health` returns basic `{"status":"ok"}`.
 
 **Missing**:
@@ -75,7 +75,7 @@ tp := otel.GetTracerProvider()
 
 ## 🔒 Security
 
-### ❌ CSRF Protection
+### ⏭️ CSRF Protection (skipped — Bearer token API is not vulnerable to CSRF)
 **Status**: Not implemented.
 
 **Missing**:
@@ -85,7 +85,7 @@ tp := otel.GetTracerProvider()
 
 ---
 
-### ❌ Security Headers (HTTP Hardening)
+### ✅ Security Headers (HTTP Hardening)
 **Status**: Only CORS headers are set.
 
 **Missing**:
@@ -100,7 +100,7 @@ tp := otel.GetTracerProvider()
 
 ---
 
-### ❌ Input Sanitization (XSS / Injection Prevention)
+### ✅ Input Sanitization (XSS / Injection Prevention)
 **Status**: Validator checks format/required but does not sanitize HTML.
 
 **Missing**:
@@ -109,7 +109,7 @@ tp := otel.GetTracerProvider()
 
 ---
 
-### ❌ Token Blacklisting / Session Revocation
+### ✅ Token Blacklisting / Session Revocation (Logout endpoint)
 **Status**: Sessions can be blocked in DB (`is_blocked` column) but there is **no active enforcement on access tokens**.
 
 **Missing**:
@@ -119,7 +119,7 @@ tp := otel.GetTracerProvider()
 
 ---
 
-### ❌ Brute-Force / Credential Stuffing Protection
+### ✅ Brute-Force / Credential Stuffing Protection
 **Status**: Rate limiting on auth endpoints (10 req/min globally) exists but is IP-based only.
 
 **Missing**:
@@ -149,7 +149,7 @@ tp := otel.GetTracerProvider()
 
 ---
 
-### ⚠️ Audit Logging
+### ✅ Audit Logging
 **Status**: Wide Event logs capture HTTP requests but at an operational level only.
 
 **Missing**:
