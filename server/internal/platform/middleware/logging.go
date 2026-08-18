@@ -1,6 +1,8 @@
 package middleware
 
 import (
+	"bytes"
+	"io"
 	"net/http"
 	"time"
 
@@ -48,6 +50,18 @@ func WideEventLogging(appLogger *logger.Logger) func(http.Handler) http.Handler 
 			ev.Set("http.query", r.URL.RawQuery)
 			ev.Set("http.client_ip", r.RemoteAddr)
 			ev.Set("http.user_agent", r.UserAgent())
+
+			// Capture and redact request body for methods that typically send payloads
+			if r.Body != nil && (r.Method == http.MethodPost || r.Method == http.MethodPut || r.Method == http.MethodPatch || r.Method == http.MethodDelete) {
+				bodyBytes, err := io.ReadAll(r.Body)
+				if err == nil {
+					_ = r.Body.Close()
+					r.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
+					if redacted := logger.RedactJSONBody(bodyBytes); redacted != nil {
+						ev.Set("http.request_body", redacted)
+					}
+				}
+			}
 
 			rw := &responseWriter{ResponseWriter: w, statusCode: http.StatusOK}
 			start := time.Now()
