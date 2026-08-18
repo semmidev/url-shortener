@@ -16,7 +16,7 @@ import (
 // @contact.url https://github.com/semmidev/url-shortener
 
 // @license.name MIT
-// @license.url https://opensource.org/licenses/MIT
+// @license.url https://github.com/semmidev/url-shortener/blob/main/LICENSE
 
 // @host localhost:8080
 // @BasePath /

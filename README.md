@@ -1,10 +1,106 @@
 # URL Shortener API
 
-A clean, modern, high-performance URL Shortener REST API backend written in Go using **Modular Monolith** architecture, **Go-Chi**, and **PostgreSQL**. Features interactive Swagger UI documentation, automatic database migrations, structured wide-event logging, multi-language input validation, and containerized testing support.
+A clean, modern, high-performance URL Shortener REST API backend written in Go using **Modular Monolith** architecture, **Go-Chi**, and **PostgreSQL 18**. Features interactive Scalar API Reference UI & Swagger documentation, automatic database migrations, structured wide-event logging, multi-language input validation, tiered rate limiting, and containerized testing support.
 
 ---
 
-## Architectural & Code Style Decisions
+## 📋 Table of Contents
+- [🚀 Quick Start & Setup Guide](#-quick-start--setup-guide)
+- [🛠️ Makefile Commands](#️-makefile-commands)
+- [⚙️ Environment Variables Reference](#️-environment-variables-reference)
+- [🏗️ Architectural & Code Style Decisions](#-architectural--code-style-decisions)
+- [🛠️ Implementing a New Feature (Workflow Guide)](#️-implementing-a-new-feature-workflow-guide)
+- [🧪 Testing Guide](#-testing-guide)
+
+---
+
+## 🚀 Quick Start & Setup Guide
+
+### 1. Prerequisites
+- **Go**: `v1.22+` (or latest `v1.26`)
+- **Docker** / **Podman**: Required for local PostgreSQL database container and Testcontainers E2E testing.
+- **Make**: Executing build, test, and container scripts.
+
+### 2. Run Application Locally
+
+```bash
+# 1. Start local PostgreSQL container (via compose.dev.yml)
+make up-dev
+
+# 2. Run backend API server (runs database migrations automatically on startup)
+make run
+
+# 3. Stop local PostgreSQL container
+make down-dev
+```
+
+### 3. Access Interactive API References
+Once the server is running (`http://localhost:8080`):
+- **Modern Scalar API Reference UI**: [http://localhost:8080/docs](http://localhost:8080/docs)
+- **Interactive Swagger UI**: [http://localhost:8080/swagger/index.html](http://localhost:8080/swagger/index.html)
+
+---
+
+## 🛠️ Makefile Commands
+
+```bash
+make run               # Run backend API server locally
+make build             # Build production static binary in bin/api
+make lint              # Run golangci-lint code analysis (0 issues requirement)
+make up-dev            # Start local development infrastructure (PostgreSQL) via compose.dev.yml
+make down-dev          # Stop local development infrastructure via compose.dev.yml
+make logs-dev          # Stream local development infrastructure logs
+make docker-up         # Start full stack production containers via compose.yml
+make docker-down       # Stop full stack production containers via compose.yml
+make test              # Run unit tests only (go test ./...)
+make test-integration  # Run E2E integration tests (-tags=integration)
+make test-all          # Run all unit and integration tests
+make swagger           # Generate Swagger OpenAPI documentation schemas
+make sqlc              # Generate SQLC database code
+make new_migration name=add_user_index # Create a new SQL migration pair (up & down)
+make migrateup         # Apply all pending database migrations up
+make migrateup1        # Apply 1 step of database migration up
+make migratedown       # Rollback all database migrations down
+make migratedown1      # Rollback 1 step of database migration down
+make createdb          # Create urlshortener database via container
+make dropdb            # Drop urlshortener database via container
+make clean             # Clean build artifacts
+```
+
+---
+
+## ⚙️ Environment Variables Reference
+
+| Variable | Type | Default | Description |
+| :--- | :--- | :--- | :--- |
+| `APP_ENV` | `string` | `development` | Application environment (`development`, `production`, `test`). |
+| `APP_BASE_URL` | `string` | `http://localhost:8080` | Public base URL of the service. |
+| `MIGRATION_URL` | `string` | `file://server/db/migration` | Migration files directory location. |
+| `APP_LOCALE` | `string` | `id` | Locale for validation messages (`id`, `en`). |
+| `LOG_LEVEL` | `string` | `debug` | Slog log level threshold (`debug`, `info`, `warn`, `error`). |
+| `LOG_FORMAT` | `string` | `text` | Slog output format (`text`, `json`). |
+| `LOG_ADD_SOURCE` | `bool` | `true` | Include caller `file:line` in log records (`true`, `false`). |
+| `SERVER_ADDRESS` | `string` | `0.0.0.0:8080` | HTTP server listening address. |
+| `SERVER_READ_TIMEOUT` | `duration` | `15s` | HTTP server read timeout. |
+| `SERVER_WRITE_TIMEOUT` | `duration` | `15s` | HTTP server write timeout. |
+| `SERVER_IDLE_TIMEOUT` | `duration` | `60s` | HTTP server keep-alive idle timeout. |
+| `SERVER_SHUTDOWN_TIMEOUT` | `duration` | `10s` | Graceful shutdown timeout window. |
+| `RATE_LIMIT_AUTH_REQUESTS` | `int` | `10` | Auth endpoints request limit per window. |
+| `RATE_LIMIT_AUTH_WINDOW` | `duration` | `1m` | Auth endpoints rate limit window. |
+| `RATE_LIMIT_API_REQUESTS` | `int` | `100` | General API endpoints request limit per window. |
+| `RATE_LIMIT_API_WINDOW` | `duration` | `1m` | General API endpoints rate limit window. |
+| `RATE_LIMIT_PUBLIC_REQUESTS` | `int` | `300` | Public redirection request limit per window. |
+| `RATE_LIMIT_PUBLIC_WINDOW` | `duration` | `1m` | Public redirection rate limit window. |
+| `DB_SOURCE` | `string` | `postgres://postgres:postgres@127.0.0.1:5432/urlshortener?sslmode=disable` | PostgreSQL connection string DSN. |
+| `DB_MAX_CONNS` | `int32` | `25` | Maximum database pool connections. |
+| `DB_MIN_CONNS` | `int32` | `5` | Minimum idle database pool connections. |
+| `JWT_SECRET` | `string` | `super-secret-32-byte-key-for-jwt-signing!` | Secret key for signing JWT tokens. |
+| `JWT_ACCESS_TOKEN_DURATION` | `duration` | `15m` | Access token expiration duration. |
+| `JWT_REFRESH_TOKEN_DURATION` | `duration` | `168h` | Refresh token expiration duration (7 days). |
+
+---
+
+## 🏗️ Architectural & Code Style Decisions
 
 ### 1. **Modular Monolith Architecture**
 - **Domain Boundaries**: Divided into focused domain feature modules (`user`, `url`, `analytics`) and technical platform infrastructure (`platform/logger`, `platform/middleware`, `platform/token`, `platform/validator`, `platform/apperr`, `platform/web`).
@@ -39,7 +135,6 @@ $$\text{func (s *Service) MethodName(ctx context.Context, req RequestStruct) (*R
   ```json
   {
     "success": true,
-    "code": "SUCCESS",
     "message": "Operation completed successfully",
     "data": { ... },
     "meta": { "page": 1, "limit": 20, "total": 100 }
@@ -57,7 +152,7 @@ $$\text{func (s *Service) MethodName(ctx context.Context, req RequestStruct) (*R
     }
   }
   ```
-- **Unique Error Codes**: `VALIDATION_ERROR`, `INVALID_INPUT`, `UNAUTHORIZED`, `FORBIDDEN`, `NOT_FOUND`, `CONFLICT`, `INTERNAL_SERVER_ERROR`.
+- **Unique Error Codes**: `VALIDATION_ERROR`, `INVALID_INPUT`, `UNAUTHORIZED`, `FORBIDDEN`, `NOT_FOUND`, `CONFLICT`, `TOO_MANY_REQUESTS`, `INTERNAL_SERVER_ERROR`.
 
 ---
 
@@ -68,15 +163,16 @@ $$\text{func (s *Service) MethodName(ctx context.Context, req RequestStruct) (*R
 
 ---
 
-### 7. **Interactive OpenAPI / Swagger Documentation (`swaggo`)**
-- Integrated with `github.com/swaggo/http-swagger/v2`.
-- Interactive Swagger UI endpoint available at `http://localhost:8080/swagger/index.html`.
+### 7. **Modern Scalar API Reference UI & Swagger (`@scalar/api-reference`)**
+- Integrated with ultra-modern **Scalar API Reference UI** rendering live from `/swagger/doc.json`.
+- Interactive Scalar UI endpoint: `http://localhost:8080/docs`.
+- Legacy Swagger UI endpoint: `http://localhost:8080/swagger/index.html`.
 - Run `make swagger` to regenerate Open API documentation schemas (`server/docs/`).
 
 ---
 
 ### 8. **CORS Preflight & Cross-Origin Support (`github.com/go-chi/cors`)**
-- Configured with `cors.Handler` to support cross-origin preflight `OPTIONS` requests from Swagger UI and external frontend clients.
+- Configured with `cors.Handler` to support cross-origin preflight `OPTIONS` requests from Scalar UI, Swagger UI, and external frontend clients.
 
 ---
 
@@ -101,35 +197,13 @@ $$\text{func (s *Service) MethodName(ctx context.Context, req RequestStruct) (*R
 
 ---
 
-### 12. **Integration Testing & Build Tags (`//go:build integration`)**
-- E2E integration tests in `server/internal/e2e/e2e_test.go` are tagged with `//go:build integration`.
-- Running standard `go test ./...` runs unit tests only.
-- Running `go test -tags=integration ./...` executes Testcontainers-Go integration tests against PostgreSQL 18.
-
----
-
-## ⚙️ Environment Variables Reference
-
-| Variable | Type | Default | Description |
-| :--- | :--- | :--- | :--- |
-| `APP_ENV` | `string` | `development` | Application environment (`development`, `production`, `test`). |
-| `APP_BASE_URL` | `string` | `http://localhost:8080` | Public base URL of the service. |
-| `MIGRATION_URL` | `string` | `file://server/db/migration` | Migration files directory location. |
-| `APP_LOCALE` | `string` | `id` | Locale for validation messages (`id`, `en`). |
-| `LOG_LEVEL` | `string` | `debug` | Slog log level threshold (`debug`, `info`, `warn`, `error`). |
-| `LOG_FORMAT` | `string` | `text` | Slog output format (`text`, `json`). |
-| `LOG_ADD_SOURCE` | `bool` | `true` | Include caller `file:line` in log records (`true`, `false`). |
-| `SERVER_ADDRESS` | `string` | `0.0.0.0:8080` | HTTP server listening address. |
-| `SERVER_READ_TIMEOUT` | `duration` | `15s` | HTTP server read timeout. |
-| `SERVER_WRITE_TIMEOUT` | `duration` | `15s` | HTTP server write timeout. |
-| `SERVER_IDLE_TIMEOUT` | `duration` | `60s` | HTTP server keep-alive idle timeout. |
-| `SERVER_SHUTDOWN_TIMEOUT` | `duration` | `10s` | Graceful shutdown timeout window. |
-| `DB_SOURCE` | `string` | `postgres://postgres:postgres@127.0.0.1:5432/urlshortener?sslmode=disable` | PostgreSQL connection string DSN. |
-| `DB_MAX_CONNS` | `int32` | `25` | Maximum database pool connections. |
-| `DB_MIN_CONNS` | `int32` | `5` | Minimum idle database pool connections. |
-| `JWT_SECRET` | `string` | `super-secret-32-byte-key-for-jwt-signing!` | Secret key for signing JWT tokens. |
-| `JWT_ACCESS_TOKEN_DURATION` | `duration` | `15m` | Access token expiration duration. |
-| `JWT_REFRESH_TOKEN_DURATION` | `duration` | `168h` | Refresh token expiration duration (7 days). |
+### 12. **Differentiated Rate Limiting (`github.com/go-chi/httprate`)**
+- Uses safe client IP canonicalization (`httprate.LimitBy` with `httprate.CanonicalizeIP`).
+- Returns standardized `web.Error` JSON responses with HTTP `429 Too Many Requests` (`TOO_MANY_REQUESTS`).
+- Distinct rate limits applied per route tier:
+  - **Auth Tier (`/api/v1/auth/*`)**: Strict limit (Default: 10 requests / 1 minute).
+  - **API Tier (`/api/v1/urls`, `/api/v1/analytics`)**: General limit (Default: 100 requests / 1 minute).
+  - **Public Redirection Tier (`/{code}`)**: High throughput limit (Default: 300 requests / 1 minute).
 
 ---
 
@@ -138,8 +212,11 @@ $$\text{func (s *Service) MethodName(ctx context.Context, req RequestStruct) (*R
 When adding a new feature or domain module to the backend API, follow these standard steps:
 
 ### Step 1: Database Migration
-1. Create new `.up.sql` and `.down.sql` files in `server/db/migration/` (e.g. `000002_add_feature.up.sql` & `000002_add_feature.down.sql`).
-2. Write clean SQL DDL statements for schema changes.
+1. Generate new migration files in `server/db/migration/`:
+   ```bash
+   make new_migration name=add_feature_table
+   ```
+2. Write clean DDL SQL statements inside generated `.up.sql` and `.down.sql` files.
 
 ### Step 2: SQL Query Definition & SQLC Generation
 1. Add type-safe SQL queries to `server/db/query/` (e.g. `server/db/query/feature.sql`).
@@ -151,7 +228,8 @@ When adding a new feature or domain module to the backend API, follow these stan
 
 ### Step 3: Domain Module & Service Implementation
 1. Create or update domain files under `server/internal/<module>/`:
-   - `domain.go`: Define DTO Request & Response structs with `go-playground/validator` tags (`validate:"required"`). Implement `Validate() error` using `validator.Check(r)`.
+   - `dto.go`: Define DTO Request & Response structs with `go-playground/validator` tags (`validate:"required"`). Implement `Validate() error` using `validator.Check(r)`.
+   - `domain.go`: Define core domain entities, custom domain types, and constants.
    - `service.go`: Implement business logic following the uniform signature pattern:
      $$\text{func (s *Service) FeatureName(ctx context.Context, req RequestStruct) (*ResponseStruct, error)}$$
      - Wrap DB calls using `apperr.MapDBError(err, "not found message", "conflict message")`.
@@ -176,44 +254,7 @@ When adding a new feature or domain module to the backend API, follow these stan
 
 ---
 
-## 🛠️ Makefile Commands
-
-```bash
-make run               # Run backend API locally
-make build             # Build production static binary in bin/api
-make up-dev            # Start local development infrastructure (PostgreSQL) via compose.dev.yml
-make down-dev          # Stop local development infrastructure via compose.dev.yml
-make logs-dev          # Stream local development infrastructure logs
-make docker-up         # Start full stack production containers via compose.yml
-make docker-down       # Stop full stack production containers via compose.yml
-make test              # Run unit tests only (go test ./...)
-make test-integration  # Run E2E integration tests (-tags=integration)
-make test-all          # Run all unit and integration tests
-make swagger           # Generate Swagger OpenAPI documentation schemas
-make sqlc              # Generate SQLC database code
-make clean             # Clean build artifacts
-```
-
----
-
-## 🚀 Quick Start (Local Development)
-
-```bash
-# 1. Start local PostgreSQL development database
-make up-dev
-
-# 2. Run backend API server
-make run
-
-# 3. Stop local development database
-make down-dev
-```
-
-Access Swagger UI documentation at: `http://localhost:8080/swagger/index.html`
-
----
-
-## 🧪 Testing
+## 🧪 Testing Guide
 
 ```bash
 # Run unit tests only (ignores integration build tags automatically)
@@ -222,6 +263,6 @@ make test
 # Run integration tests using Testcontainers
 make test-integration
 
-# Run all tests
+# Run all unit and integration tests
 make test-all
 ```

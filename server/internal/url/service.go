@@ -72,8 +72,8 @@ func (s *Service) Create(ctx context.Context, req CreateURLRequest) (*URLRespons
 		shortCode = req.CustomCode
 	} else {
 		// Generate random Base62 short code
-		for i := 0; i < 5; i++ {
-			code, err := GenerateRandomCode(7)
+		for i := 0; i < MaxGenerateAttempts; i++ {
+			code, err := GenerateRandomCode(DefaultCodeLength)
 			if err != nil {
 				return nil, apperr.Internal("failed to generate short code", err)
 			}
@@ -84,7 +84,7 @@ func (s *Service) Create(ctx context.Context, req CreateURLRequest) (*URLRespons
 			}
 		}
 		if shortCode == "" {
-			return nil, apperr.Internal("failed to generate unique short code after 5 attempts", nil)
+			return nil, apperr.Internal(fmt.Sprintf("failed to generate unique short code after %d attempts", MaxGenerateAttempts), nil)
 		}
 	}
 

@@ -21,15 +21,6 @@ type GetAnalyticsSummaryRequest struct {
 	URLID uuid.UUID `json:"url_id"`
 }
 
-type ClickEvent struct {
-	URLID      uuid.UUID `json:"url_id"`
-	IPAddress  string    `json:"ip_address"`
-	UserAgent  string    `json:"user_agent"`
-	Referrer   string    `json:"referrer"`
-	DeviceType string    `json:"device_type"`
-	Country    string    `json:"country"`
-}
-
 type AnalyticsSummaryResponse struct {
 	URLID          uuid.UUID       `json:"url_id"`
 	TotalClicks    int64           `json:"total_clicks"`

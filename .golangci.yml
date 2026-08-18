@@ -60,13 +60,14 @@ linters:
         domain:
           files:
             - "**/internal/*/domain.go"
+            - "**/internal/*/dto.go"
           deny:
             - pkg: "github.com/jackc/pgx"
-              desc: "domain models must not import pgx; database calls belong in SQLC store"
+              desc: "domain models and DTOs must not import pgx; database calls belong in SQLC store"
             - pkg: "net/http"
-              desc: "domain models must not import net/http; HTTP handling belongs in http.go"
+              desc: "domain models and DTOs must not import net/http; HTTP handling belongs in http.go"
             - pkg: "github.com/go-chi/chi"
-              desc: "domain models must not import chi"
+              desc: "domain models and DTOs must not import chi"
 
 exclusions:
   rules:

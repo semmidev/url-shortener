@@ -3,10 +3,12 @@ BUILD_TIME ?= $(shell date -u +'%Y-%m-%dT%H:%M:%SZ')
 GIT_COMMIT ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
 LDFLAGS = -ldflags "-X 'github.com/semmidev/url-shortener/server/internal/config.Version=$(VERSION)' -X 'github.com/semmidev/url-shortener/server/internal/config.BuildTime=$(BUILD_TIME)' -X 'github.com/semmidev/url-shortener/server/internal/config.GitCommit=$(GIT_COMMIT)'"
 
+DB_URL ?= postgres://postgres:postgres@127.0.0.1:5432/urlshortener?sslmode=disable
 DOCKER_CMD ?= $(shell command -v docker 2>/dev/null || command -v podman 2>/dev/null || echo "docker")
 GOLANGCI_LINT_CMD ?= $(shell command -v golangci-lint 2>/dev/null || echo "go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest")
+MIGRATE_CMD ?= $(shell command -v migrate 2>/dev/null || echo "go run github.com/golang-migrate/migrate/v4/cmd/migrate@latest")
 
-.PHONY: run build test test-integration test-all lint swagger sqlc docker-up docker-down up-dev down-dev logs-dev clean
+.PHONY: run build test test-integration test-all lint swagger sqlc new_migration migrateup migrateup1 migratedown migratedown1 createdb dropdb docker-up docker-down up-dev down-dev logs-dev clean
 
 # Run backend API locally
 run:
@@ -39,6 +41,34 @@ swagger:
 # Generate SQLC type-safe database code
 sqlc:
 	cd server && sqlc generate
+
+# Create a new SQL migration file (usage: make new_migration name=add_user_index)
+new_migration:
+	$(MIGRATE_CMD) create -ext sql -dir server/db/migration -seq $(name)
+
+# Apply all database migrations up
+migrateup:
+	$(MIGRATE_CMD) -path server/db/migration -database "$(DB_URL)" -verbose up
+
+# Apply 1 step of database migration up
+migrateup1:
+	$(MIGRATE_CMD) -path server/db/migration -database "$(DB_URL)" -verbose up 1
+
+# Rollback all database migrations down
+migratedown:
+	$(MIGRATE_CMD) -path server/db/migration -database "$(DB_URL)" -verbose down
+
+# Rollback 1 step of database migration down
+migratedown1:
+	$(MIGRATE_CMD) -path server/db/migration -database "$(DB_URL)" -verbose down 1
+
+# Create database via docker container exec
+createdb:
+	$(DOCKER_CMD) exec -it url-shortener-db createdb --username=postgres --owner=postgres urlshortener
+
+# Drop database via docker container exec
+dropdb:
+	$(DOCKER_CMD) exec -it url-shortener-db dropdb --username=postgres urlshortener
 
 # Start local development infrastructure (PostgreSQL) using compose.dev.yml
 up-dev:

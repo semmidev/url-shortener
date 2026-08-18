@@ -21,14 +21,14 @@ const (
 
 type Response struct {
 	Success bool              `json:"success"`
-	Code    string            `json:"code"`
+	Code    string            `json:"code,omitempty"`
 	Message string            `json:"message"`
 	Data    any               `json:"data,omitempty"`
 	Meta    any               `json:"meta,omitempty"`
 	Errors  map[string]string `json:"errors,omitempty"`
 }
 
-// Success writes a standardized JSON success response.
+// Success writes a standardized JSON success response (omitting redundant success code).
 func Success(w http.ResponseWriter, status int, message string, data any, meta any) {
 	if message == "" {
 		message = "Operation completed successfully"
@@ -37,7 +37,6 @@ func Success(w http.ResponseWriter, status int, message string, data any, meta a
 	w.WriteHeader(status)
 	_ = json.NewEncoder(w).Encode(Response{
 		Success: true,
-		Code:    "SUCCESS",
 		Message: message,
 		Data:    data,
 		Meta:    meta,
@@ -61,7 +60,6 @@ func JSON(w http.ResponseWriter, status int, data any) {
 			}
 			_ = json.NewEncoder(w).Encode(Response{
 				Success: true,
-				Code:    "SUCCESS",
 				Message: msg,
 				Data:    d,
 				Meta:    meta,
@@ -72,7 +70,6 @@ func JSON(w http.ResponseWriter, status int, data any) {
 
 	_ = json.NewEncoder(w).Encode(Response{
 		Success: true,
-		Code:    "SUCCESS",
 		Message: "Operation completed successfully",
 		Data:    data,
 	})

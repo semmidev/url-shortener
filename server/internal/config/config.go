@@ -26,6 +26,14 @@ type Config struct {
 	ServerIdleTimeout     time.Duration `mapstructure:"SERVER_IDLE_TIMEOUT"`
 	ServerShutdownTimeout time.Duration `mapstructure:"SERVER_SHUTDOWN_TIMEOUT"`
 
+	// Rate Limiting Settings
+	RateLimitAuthRequests   int           `mapstructure:"RATE_LIMIT_AUTH_REQUESTS"`
+	RateLimitAuthWindow     time.Duration `mapstructure:"RATE_LIMIT_AUTH_WINDOW"`
+	RateLimitAPIRequests    int           `mapstructure:"RATE_LIMIT_API_REQUESTS"`
+	RateLimitAPIWindow      time.Duration `mapstructure:"RATE_LIMIT_API_WINDOW"`
+	RateLimitPublicRequests int           `mapstructure:"RATE_LIMIT_PUBLIC_REQUESTS"`
+	RateLimitPublicWindow   time.Duration `mapstructure:"RATE_LIMIT_PUBLIC_WINDOW"`
+
 	// Database Settings
 	DBSource          string        `mapstructure:"DB_SOURCE"`
 	DBMaxConns        int32         `mapstructure:"DB_MAX_CONNS"`
@@ -46,9 +54,12 @@ type Config struct {
 
 // LoadConfig reads configuration from file or environment variables.
 func LoadConfig(path string) (config Config, err error) {
-	viper.AddConfigPath(path)
-	viper.SetConfigName("app")
-	viper.SetConfigType("env")
+	if path != "" {
+		viper.AddConfigPath(path)
+	}
+	viper.AddConfigPath("./server")
+	viper.AddConfigPath("server")
+	viper.AddConfigPath(".")
 
 	// Set aliases for backwards compatibility with legacy environment variable names
 	viper.RegisterAlias("ENVIRONMENT", "APP_ENV")
@@ -71,6 +82,13 @@ func LoadConfig(path string) (config Config, err error) {
 	viper.SetDefault("SERVER_IDLE_TIMEOUT", "60s")
 	viper.SetDefault("SERVER_SHUTDOWN_TIMEOUT", "10s")
 
+	viper.SetDefault("RATE_LIMIT_AUTH_REQUESTS", 10)
+	viper.SetDefault("RATE_LIMIT_AUTH_WINDOW", "1m")
+	viper.SetDefault("RATE_LIMIT_API_REQUESTS", 100)
+	viper.SetDefault("RATE_LIMIT_API_WINDOW", "1m")
+	viper.SetDefault("RATE_LIMIT_PUBLIC_REQUESTS", 300)
+	viper.SetDefault("RATE_LIMIT_PUBLIC_WINDOW", "1m")
+
 	viper.SetDefault("DB_SOURCE", "postgres://postgres:postgres@127.0.0.1:5432/urlshortener?sslmode=disable")
 	viper.SetDefault("DB_MAX_CONNS", 25)
 	viper.SetDefault("DB_MIN_CONNS", 5)
@@ -87,8 +105,15 @@ func LoadConfig(path string) (config Config, err error) {
 
 	viper.AutomaticEnv()
 
-	// Ignore file not found error to allow environment variables override
-	_ = viper.ReadInConfig()
+	// Try reading "app.env" first
+	viper.SetConfigName("app")
+	viper.SetConfigType("env")
+	if err := viper.ReadInConfig(); err != nil {
+		// Fallback to ".env" if "app.env" is not found
+		viper.SetConfigName(".env")
+		viper.SetConfigType("env")
+		_ = viper.ReadInConfig()
+	}
 
 	err = viper.Unmarshal(&config)
 	return

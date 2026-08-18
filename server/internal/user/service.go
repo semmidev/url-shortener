@@ -24,11 +24,6 @@ import (
 	"github.com/semmidev/url-shortener/server/internal/platform/token"
 )
 
-type oneTimeCodeEntry struct {
-	loginResp *LoginResponse
-	expiresAt time.Time
-}
-
 type Service struct {
 	store        db.Store
 	tokenMaker   *token.JWTMaker
@@ -109,7 +104,7 @@ func (s *Service) Register(ctx context.Context, req RegisterRequest) (*LoginResp
 			Email:        req.Email,
 			PasswordHash: pgtype.Text{String: hashedPassword, Valid: true},
 			FullName:     req.FullName,
-			Role:         "user",
+			Role:         string(RoleUser),
 		})
 		if txErr != nil {
 			return txErr
@@ -161,26 +156,13 @@ func (s *Service) GetGoogleLoginURL(ctx context.Context, req GetGoogleLoginURLRe
 	return &GoogleAuthURLResponse{URL: u}, nil
 }
 
-type googleTokenResponse struct {
-	AccessToken string `json:"access_token"`
-	TokenType   string `json:"token_type"`
-	ExpiresIn   int    `json:"expires_in"`
-}
-
-type googleUserInfo struct {
-	ID      string `json:"id"`
-	Email   string `json:"email"`
-	Name    string `json:"name"`
-	Picture string `json:"picture"`
-}
-
 // HandleGoogleCallback exchanges authorization code for user profile, upserts user, and returns tokens atomically.
 func (s *Service) HandleGoogleCallback(ctx context.Context, req HandleGoogleCallbackRequest) (*LoginResponse, error) {
 	if s.cfg.GoogleClientID == "" || s.cfg.GoogleClientSecret == "" {
 		return nil, apperr.Internal("Google OAuth is not configured properly", nil)
 	}
 
-	// 1. Exchange code for Google Access Token
+	// Exchange code for Google Access Token
 	data := url.Values{}
 	data.Set("code", req.Code)
 	data.Set("client_id", s.cfg.GoogleClientID)
@@ -211,7 +193,7 @@ func (s *Service) HandleGoogleCallback(ctx context.Context, req HandleGoogleCall
 		return nil, apperr.Internal("failed to parse Google token response", err)
 	}
 
-	// 2. Fetch User Info from Google
+	// Fetch User Info from Google
 	userReq, err := http.NewRequestWithContext(ctx, http.MethodGet, "https://www.googleapis.com/oauth2/v2/userinfo", nil)
 	if err != nil {
 		return nil, apperr.Internal("failed to create Google userinfo request", err)
@@ -241,7 +223,7 @@ func (s *Service) HandleGoogleCallback(ctx context.Context, req HandleGoogleCall
 	var user db.User
 	var loginResp *LoginResponse
 
-	// 3. Upsert user & create session atomically in a transaction
+	// Upsert user & create session atomically in a transaction
 	err = s.store.ExecTx(ctx, func(q *db.Queries) error {
 		var txErr error
 		user, txErr = q.UpsertGoogleUser(ctx, db.UpsertGoogleUserParams{
@@ -249,7 +231,7 @@ func (s *Service) HandleGoogleCallback(ctx context.Context, req HandleGoogleCall
 			GoogleID:  pgtype.Text{String: gUser.ID, Valid: true},
 			AvatarUrl: gUser.Picture,
 			FullName:  gUser.Name,
-			Role:      "user",
+			Role:      string(RoleUser),
 		})
 		if txErr != nil {
 			return txErr

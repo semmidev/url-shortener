@@ -8,11 +8,11 @@ import (
 )
 
 func TestGenerateRandomCode(t *testing.T) {
-	code1, err := GenerateRandomCode(7)
+	code1, err := GenerateRandomCode(DefaultCodeLength)
 	require.NoError(t, err)
-	assert.Len(t, code1, 7)
+	assert.Len(t, code1, DefaultCodeLength)
 
-	code2, err := GenerateRandomCode(7)
+	code2, err := GenerateRandomCode(DefaultCodeLength)
 	require.NoError(t, err)
 
 	assert.NotEqual(t, code1, code2)

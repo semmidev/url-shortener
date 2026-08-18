@@ -92,6 +92,14 @@ func Conflict(msg string) *Error {
 	}
 }
 
+func TooManyRequests(msg string) *Error {
+	return &Error{
+		Code:    "TOO_MANY_REQUESTS",
+		Message: msg,
+		Status:  http.StatusTooManyRequests,
+	}
+}
+
 // MapDBError converts raw PostgreSQL & pgx database errors into clean domain apperr.Errors.
 func MapDBError(err error, notFoundMsg, conflictMsg string) *Error {
 	if err == nil {
