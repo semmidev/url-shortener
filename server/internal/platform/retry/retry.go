@@ -38,15 +38,14 @@ func IsTransientError(err error) bool {
 
 	// 1. Check for standard network errors
 	var netErr net.Error
-	if errors.As(err, &netErr) && (netErr.Timeout() || netErr.Temporary()) {
+	if errors.As(err, &netErr) && netErr.Timeout() {
 		return true
 	}
 
 	// 2. Check for syscall connection errors
 	var errno syscall.Errno
 	if errors.As(err, &errno) {
-		switch errno {
-		case syscall.ECONNREFUSED, syscall.ECONNRESET, syscall.ETIMEDOUT, syscall.EPIPE:
+		if errno == syscall.ECONNREFUSED || errno == syscall.ECONNRESET || errno == syscall.ETIMEDOUT || errno == syscall.EPIPE {
 			return true
 		}
 	}
@@ -92,6 +91,7 @@ func Do(ctx context.Context, cfg Config, fn func() error) error {
 		sleepDur := wait
 		if cfg.Jitter {
 			// Add full jitter (0 to sleepDur)
+			//nolint:gosec
 			sleepDur = time.Duration(rand.Int64N(int64(sleepDur)))
 		}
 

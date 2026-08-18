@@ -92,6 +92,7 @@ func WideEventLoggingWithSampling(appLogger *logger.Logger, sampleRate float64) 
 			ev.Set("latency_ms", latencyMs)
 
 			// Sampling: always log errors (4xx/5xx), apply sample rate only to successful responses.
+			//nolint:gosec
 			if rw.statusCode >= 400 || sampleRate >= 1.0 || rand.Float64() < sampleRate {
 				args := ev.Args()
 				if rw.statusCode >= 500 {

@@ -32,7 +32,7 @@ type emailAttemptEntry struct {
 }
 
 const (
-	maxEmailLoginAttempts = 10            // max failed attempts before lockout
+	maxEmailLoginAttempts = 10               // max failed attempts before lockout
 	emailLockoutWindow    = 15 * time.Minute // lockout window duration
 )
 
@@ -87,7 +87,10 @@ func (s *Service) cleanupExpiredOneTimeCodes() {
 func (s *Service) recordFailedLogin(email string) bool {
 	now := time.Now()
 	val, _ := s.emailAttempts.LoadOrStore(email, emailAttemptEntry{count: 0, firstSeen: now})
-	entry := val.(emailAttemptEntry)
+	entry, ok := val.(emailAttemptEntry)
+	if !ok {
+		entry = emailAttemptEntry{count: 0, firstSeen: now}
+	}
 
 	// Reset window if expired
 	if now.After(entry.firstSeen.Add(emailLockoutWindow)) {
@@ -176,13 +179,14 @@ func (s *Service) Login(ctx context.Context, req LoginRequest) (*LoginResponse, 
 
 	// Per-email brute-force protection: check if email is locked out
 	if val, loaded := s.emailAttempts.Load(req.Email); loaded {
-		entry := val.(emailAttemptEntry)
-		if entry.count >= maxEmailLoginAttempts && time.Now().Before(entry.firstSeen.Add(emailLockoutWindow)) {
-			s.appLogger.Audit(ctx, logger.AuditActionUserLoginFailed,
-				"user.email", req.Email,
-				"reason", "account_locked_out",
-			)
-			return nil, apperr.Unauthorized("too many failed login attempts, please try again later")
+		if entry, ok := val.(emailAttemptEntry); ok {
+			if entry.count >= maxEmailLoginAttempts && time.Now().Before(entry.firstSeen.Add(emailLockoutWindow)) {
+				s.appLogger.Audit(ctx, logger.AuditActionUserLoginFailed,
+					"user.email", req.Email,
+					"reason", "account_locked_out",
+				)
+				return nil, apperr.Unauthorized("too many failed login attempts, please try again later")
+			}
 		}
 	}
 
@@ -277,8 +281,9 @@ func (s *Service) HandleGoogleCallback(ctx context.Context, req HandleGoogleCall
 		return json.NewDecoder(tokenResp.Body).Decode(&gToken)
 	})
 	if err != nil {
-		if errors.As(err, &apperr.Error{}) {
-			return nil, err
+		var appErr *apperr.Error
+		if errors.As(err, &appErr) {
+			return nil, appErr
 		}
 		return nil, apperr.Internal("failed to contact Google token endpoint", err)
 	}
@@ -306,8 +311,9 @@ func (s *Service) HandleGoogleCallback(ctx context.Context, req HandleGoogleCall
 		return json.NewDecoder(userResp.Body).Decode(&gUser)
 	})
 	if err != nil {
-		if errors.As(err, &apperr.Error{}) {
-			return nil, err
+		var appErr *apperr.Error
+		if errors.As(err, &appErr) {
+			return nil, appErr
 		}
 		return nil, apperr.Internal("failed to fetch Google user profile", err)
 	}

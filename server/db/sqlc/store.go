@@ -49,4 +49,3 @@ func (s *SQLStore) ExecTx(ctx context.Context, fn func(*Queries) error) error {
 		return tx.Commit(ctx)
 	})
 }
-

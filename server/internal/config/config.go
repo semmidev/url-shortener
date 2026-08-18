@@ -15,9 +15,9 @@ type Config struct {
 	AppLocale    string `mapstructure:"APP_LOCALE"` // id, en
 
 	// Logging Settings
-	LogLevel              string  `mapstructure:"LOG_LEVEL"`               // debug, info, warn, error
-	LogFormat             string  `mapstructure:"LOG_FORMAT"`              // text, json
-	LogAddSource          bool    `mapstructure:"LOG_ADD_SOURCE"`          // true, false
+	LogLevel              string  `mapstructure:"LOG_LEVEL"`                // debug, info, warn, error
+	LogFormat             string  `mapstructure:"LOG_FORMAT"`               // text, json
+	LogAddSource          bool    `mapstructure:"LOG_ADD_SOURCE"`           // true, false
 	LogRedirectSampleRate float64 `mapstructure:"LOG_REDIRECT_SAMPLE_RATE"` // 0.0–1.0, default 1.0
 
 	// HTTP Server Settings
