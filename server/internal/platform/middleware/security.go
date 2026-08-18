@@ -7,8 +7,8 @@ import (
 )
 
 // SecureHeaders adds security-hardening HTTP response headers to every response.
-// These headers protect against common web vulnerabilities like XSS, clickjacking,
-// MIME sniffing, and information leakage.
+// It applies a strict Content-Security-Policy for API routes and a relaxed one
+// for documentation UIs (/docs, /swagger) which load external scripts and inline styles.
 func SecureHeaders(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Prevent MIME type sniffing
@@ -23,17 +23,33 @@ func SecureHeaders(next http.Handler) http.Handler {
 		// Disable browser features not needed by the API
 		w.Header().Set("Permissions-Policy", "geolocation=(), microphone=(), camera=()")
 
-		// Content Security Policy — strict for API responses
-		w.Header().Set("Content-Security-Policy", "default-src 'none'; frame-ancestors 'none'")
-
 		// Remove server identification header
 		w.Header().Del("Server")
 
 		// HTTP Strict Transport Security — force HTTPS (1 year)
-		// Only set in production; will break local HTTP dev if set unconditionally.
-		// Reverse proxies / CDNs should set this on their side for production.
-		// We set it here so it's present when served directly over TLS.
+		// Reverse proxies / CDNs should also set this for production TLS termination.
 		w.Header().Set("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
+
+		// Content Security Policy:
+		// Docs pages (/docs, /swagger) load external CDN scripts and use inline styles —
+		// apply a relaxed CSP limited to those paths only.
+		// All other routes (API endpoints) get the strict deny-all policy.
+		path := r.URL.Path
+		if strings.HasPrefix(path, "/docs") || strings.HasPrefix(path, "/swagger") {
+			// Scalar UI loads from cdn.jsdelivr.net; Swagger UI uses inline scripts and styles
+			w.Header().Set("Content-Security-Policy",
+				"default-src 'self'; "+
+					"script-src 'self' cdn.jsdelivr.net 'unsafe-inline'; "+
+					"style-src 'self' 'unsafe-inline'; "+
+					"img-src 'self' data: https:; "+
+					"font-src 'self' data:; "+
+					"connect-src 'self' https:; "+
+					"frame-ancestors 'none'",
+			)
+		} else {
+			// Strict CSP for all API and redirect endpoints
+			w.Header().Set("Content-Security-Policy", "default-src 'none'; frame-ancestors 'none'")
+		}
 
 		next.ServeHTTP(w, r)
 	})
