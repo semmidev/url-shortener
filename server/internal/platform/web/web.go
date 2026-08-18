@@ -52,7 +52,7 @@ func JSON(w http.ResponseWriter, status int, data any) {
 	// Check if data is already wrapped in a response map
 	if m, ok := data.(map[string]any); ok {
 		d, dataOk := m["data"]
-		meta, _ := m["meta"]
+		meta := m["meta"]
 		msg, _ := m["message"].(string)
 
 		if dataOk {
@@ -112,7 +112,9 @@ func Decode(r *http.Request, dst any) error {
 	if r.Body == nil {
 		return apperr.Invalid("request body cannot be empty")
 	}
-	defer r.Body.Close()
+	defer func() {
+		_ = r.Body.Close()
+	}()
 
 	decoder := json.NewDecoder(r.Body)
 	decoder.DisallowUnknownFields()

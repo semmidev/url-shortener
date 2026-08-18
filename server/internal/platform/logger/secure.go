@@ -35,13 +35,13 @@ func NewSafeError(publicMsg string, internalErr error) *SafeError {
 }
 
 var sensitiveKeys = map[string]bool{
-	"password":              true,
-	"password_hash":         true,
-	"token":                 true,
-	"access_token":          true,
-	"refresh_token":         true,
-	"jwt_secret":            true,
-	"secret":                true,
+	"password":             true,
+	"password_hash":        true,
+	"token":                true,
+	"access_token":         true,
+	"refresh_token":        true,
+	"jwt_secret":           true,
+	"secret":               true,
 	"google_client_secret": true,
 }
 

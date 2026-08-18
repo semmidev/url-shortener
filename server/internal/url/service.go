@@ -146,10 +146,11 @@ func (s *Service) List(ctx context.Context, req ListUserShortURLsRequest) (*List
 	}
 
 	var isActiveVal *bool
-	if filter.Active == 1 {
+	switch filter.Active {
+	case 1:
 		b := true
 		isActiveVal = &b
-	} else if filter.Active == 0 {
+	case 0:
 		b := false
 		isActiveVal = &b
 	}
@@ -232,7 +233,7 @@ func (s *Service) Update(ctx context.Context, req UpdateURLRequest) (*URLRespons
 
 func (s *Service) Delete(ctx context.Context, req DeleteURLRequest) (*DeleteURLResponse, error) {
 	// Verify ownership first
-	_, err := s.GetByID(ctx, GetURLByIDRequest{ID: req.ID, UserID: req.UserID})
+	_, err := s.GetByID(ctx, GetURLByIDRequest(req))
 	if err != nil {
 		return nil, err
 	}

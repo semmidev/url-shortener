@@ -198,7 +198,9 @@ func (s *Service) HandleGoogleCallback(ctx context.Context, req HandleGoogleCall
 	if err != nil {
 		return nil, apperr.Internal("failed to contact Google token endpoint", err)
 	}
-	defer tokenResp.Body.Close()
+	defer func() {
+		_ = tokenResp.Body.Close()
+	}()
 
 	if tokenResp.StatusCode != http.StatusOK {
 		return nil, apperr.Unauthorized("invalid or expired Google authorization code")
@@ -220,7 +222,9 @@ func (s *Service) HandleGoogleCallback(ctx context.Context, req HandleGoogleCall
 	if err != nil {
 		return nil, apperr.Internal("failed to fetch Google user profile", err)
 	}
-	defer userResp.Body.Close()
+	defer func() {
+		_ = userResp.Body.Close()
+	}()
 
 	if userResp.StatusCode != http.StatusOK {
 		return nil, apperr.Unauthorized("failed to retrieve Google user profile")
@@ -285,7 +289,10 @@ func (s *Service) ExchangeOneTimeCode(ctx context.Context, req GoogleExchangeTok
 		return nil, apperr.Unauthorized("invalid or expired one-time code")
 	}
 
-	entry := val.(oneTimeCodeEntry)
+	entry, ok := val.(oneTimeCodeEntry)
+	if !ok {
+		return nil, apperr.Unauthorized("invalid one-time code entry")
+	}
 	if time.Now().After(entry.expiresAt) {
 		return nil, apperr.Unauthorized("one-time code has expired")
 	}

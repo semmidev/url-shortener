@@ -52,6 +52,7 @@ func (h *RedirectHandler) Redirect(w http.ResponseWriter, r *http.Request) {
 	logger.Enrich(r.Context(), "target_url", res.OriginalURL)
 
 	// Asynchronously record click metrics and increment counter
+	// #nosec G118 -- background click logging outlives request context intentionally
 	go func(urlID uuid.UUID, ip, userAgent, referrer string) {
 		ctx := context.Background()
 		_ = h.svc.IncrementClickCount(ctx, IncrementClickCountRequest{ID: urlID})

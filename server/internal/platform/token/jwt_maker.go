@@ -10,8 +10,8 @@ import (
 )
 
 var (
-	ErrInvalidToken = errors.New("token is invalid")
-	ErrExpiredToken = errors.New("token has expired")
+	ErrInvalidToken  = errors.New("token is invalid")
+	ErrExpiredToken  = errors.New("token has expired")
 	ErrSecretKeySize = errors.New("secret key must be at least 32 characters")
 )
 

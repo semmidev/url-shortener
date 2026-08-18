@@ -4,8 +4,9 @@ GIT_COMMIT ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
 LDFLAGS = -ldflags "-X 'github.com/semmidev/url-shortener/server/internal/config.Version=$(VERSION)' -X 'github.com/semmidev/url-shortener/server/internal/config.BuildTime=$(BUILD_TIME)' -X 'github.com/semmidev/url-shortener/server/internal/config.GitCommit=$(GIT_COMMIT)'"
 
 DOCKER_CMD ?= $(shell command -v docker 2>/dev/null || command -v podman 2>/dev/null || echo "docker")
+GOLANGCI_LINT_CMD ?= $(shell command -v golangci-lint 2>/dev/null || echo "go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest")
 
-.PHONY: run build test test-integration test-all swagger sqlc docker-up docker-down up-dev down-dev logs-dev clean
+.PHONY: run build test test-integration test-all lint swagger sqlc docker-up docker-down up-dev down-dev logs-dev clean
 
 # Run backend API locally
 run:
@@ -26,6 +27,10 @@ test-integration:
 # Run all unit and integration tests
 test-all:
 	go test -tags=integration ./... -v
+
+# Run golangci-lint code analysis
+lint:
+	$(GOLANGCI_LINT_CMD) run ./...
 
 # Generate Swagger REST API documentation
 swagger:

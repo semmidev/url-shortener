@@ -1,6 +1,7 @@
 package web
 
 import (
+	"math"
 	"net/http"
 	"strconv"
 	"strings"
@@ -26,7 +27,7 @@ func NewFilterFromRequest(r *http.Request) Filter {
 	if page < 1 {
 		page, _ = strconv.Atoi(q.Get("current_page"))
 	}
-	if page < 1 {
+	if page < 1 || page > math.MaxInt32 {
 		page = 1
 	}
 
@@ -86,6 +87,7 @@ func NewFilterFromRequest(r *http.Request) Filter {
 		}
 	}
 
+	// #nosec G109 -- page and limit integer ranges are explicitly bounded above before conversion
 	return Filter{
 		Page:          int32(page),
 		Limit:         int32(limit),
