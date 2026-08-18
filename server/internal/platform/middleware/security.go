@@ -39,11 +39,11 @@ func SecureHeaders(next http.Handler) http.Handler {
 			// Scalar UI loads from cdn.jsdelivr.net; Swagger UI uses inline scripts and styles
 			w.Header().Set("Content-Security-Policy",
 				"default-src 'self'; "+
-					"script-src 'self' cdn.jsdelivr.net 'unsafe-inline'; "+
+					"script-src 'self' cdn.jsdelivr.net 'unsafe-inline' 'unsafe-eval'; "+
 					"style-src 'self' 'unsafe-inline'; "+
 					"img-src 'self' data: https:; "+
-					"font-src 'self' data:; "+
-					"connect-src 'self' https:; "+
+					"font-src 'self' data: https://fonts.scalar.com; "+
+					"connect-src 'self' https: https://api.scalar.com; "+
 					"frame-ancestors 'none'",
 			)
 		} else {
