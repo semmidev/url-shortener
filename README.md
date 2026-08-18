@@ -24,13 +24,20 @@ A clean, modern, high-performance URL Shortener REST API backend written in Go u
 ### 2. Run Application Locally
 
 ```bash
-# 1. Start local PostgreSQL container (via compose.dev.yml)
+# 1. Clone the repository and navigate into project directory
+git clone https://github.com/semmidev/url-shortener.git
+cd url-shortener
+
+# 2. Copy environment variable template to .env
+cp .env.example .env
+
+# 3. Start local PostgreSQL container (via compose.dev.yml)
 make up-dev
 
-# 2. Run backend API server (runs database migrations automatically on startup)
+# 4. Run backend API server (runs database migrations automatically on startup)
 make run
 
-# 3. Stop local PostgreSQL container
+# 5. Stop local PostgreSQL container
 make down-dev
 ```
 
