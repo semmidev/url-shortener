@@ -1,0 +1,51 @@
+---
+# Role: caddy
+# Setup Caddy as a Dockerized reverse proxy gateway
+
+- name: Create caddy_net docker network
+  ansible.builtin.command:
+    cmd: docker network create caddy_net
+  register: network_create
+  failed_when: false
+  changed_when: "'already exists' not in network_create.stderr"
+
+- name: Create Caddy deployment directory
+  ansible.builtin.file:
+    path: "/home/{{ app_user }}/caddy"
+    state: directory
+    owner: "{{ app_user }}"
+    group: "{{ app_user }}"
+    mode: "0755"
+
+- name: Copy Caddy compose file
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/../caddy/compose.yml"
+    dest: "/home/{{ app_user }}/caddy/compose.yml"
+    owner: "{{ app_user }}"
+    group: "{{ app_user }}"
+    mode: "0644"
+
+- name: Copy Caddyfile config
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/../caddy/Caddyfile"
+    dest: "/home/{{ app_user }}/caddy/Caddyfile"
+    owner: "{{ app_user }}"
+    group: "{{ app_user }}"
+    mode: "0644"
+  notify: Reload Caddy
+
+- name: Deploy .env for Caddy
+  ansible.builtin.template:
+    src: env.j2
+    dest: "/home/{{ app_user }}/caddy/.env"
+    owner: "{{ app_user }}"
+    group: "{{ app_user }}"
+    mode: "0600"
+  notify: Reload Caddy
+
+- name: Start Caddy container
+  ansible.builtin.command:
+    cmd: docker compose up -d
+    chdir: "/home/{{ app_user }}/caddy"
+  become_user: "{{ app_user }}"
+  changed_when: false

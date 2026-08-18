@@ -1,0 +1,53 @@
+name: url-shortener
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: url-shortener-api
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      - APP_ENV=production
+      - APP_BASE_URL=${APP_BASE_URL:-http://localhost:8080}
+      - SERVER_ADDRESS=0.0.0.0:8080
+      - DB_SOURCE=postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-urlshortener}?sslmode=disable
+      - JWT_SECRET=${JWT_SECRET:-super-secret-32-byte-key-for-jwt-signing!}
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET:-}
+      - GOOGLE_REDIRECT_URI=${GOOGLE_REDIRECT_URI:-http://localhost:8080/api/v1/auth/google/callback}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - url_shortener_network
+
+  postgres:
+    image: postgres:18-alpine
+    container_name: url-shortener-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-urlshortener}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-urlshortener}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - url_shortener_network
+
+volumes:
+  postgres_data:
+
+networks:
+  url_shortener_network:
+    driver: bridge

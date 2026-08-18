@@ -1,0 +1,68 @@
+---
+# Ansible Playbook — Server Setup for restful-template
+# Run: ansible-playbook -i inventory playbook.yml
+#
+# Variables can be overridden with: -e "app_user=myuser domain=example.com"
+
+- name: Full server setup
+  hosts: all
+  become: true
+  gather_facts: true
+
+  vars:
+    app_user: deploy
+    app_dir: /home/deploy/app
+    swap_size_gb: 1
+    domain: app.my.id
+    caddy_acme_email: sammidev4@gmail.com
+    caddy_app_domain: 'url-shortener.{{ domain }}'
+
+  roles:
+    - role: base
+      tags: [base]
+    - role: docker
+      tags: [docker]
+    - role: caddy
+      tags: [caddy]
+
+  post_tasks:
+    - name: Create app directory
+      ansible.builtin.file:
+        path: '{{ app_dir }}'
+        state: directory
+        owner: '{{ app_user }}'
+        group: '{{ app_user }}'
+        mode: '0750'
+
+    - name: Ambil public key untuk GitHub Deploy Key
+      ansible.builtin.slurp:
+        src: '/home/{{ app_user }}/.ssh/id_ed25519.pub'
+      register: deploy_pubkey
+
+    - name: Print summary
+      ansible.builtin.debug:
+        msg: |
+          ✅ Server setup complete!
+
+          Deploy user:  {{ app_user }}
+          App dir:      {{ app_dir }}
+          Domain:       {{ domain if domain != "" else "none (using IP)" }}
+
+          ========================================================================
+          🔑 GITHUB DEPLOY KEY (Salin teks di bawah ini untuk GitHub):
+          {{ deploy_pubkey.content | b64decode | trim }}
+          ========================================================================
+
+          Langkah Selanjutnya:
+            1. Salin Public Key di atas dan daftarkan ke repositori GitHub Anda:
+               GitHub Web -> Settings -> Deploy Keys -> Add Deploy Key (Read-Only).
+
+            2. Login ke Server sebagai user `deploy`:
+               ssh -i ~/.ssh/lms-server deploy@<IP_SERVER>
+
+            3. Clone repositori Anda ke folder app (alamat SSH):
+               git clone git@github.com:USERNAME/REPOS-ANDA.git {{ app_dir }}
+
+            4. Jalankan aplikasi menggunakan Makefile:
+               cd {{ app_dir }}
+               make docker-up

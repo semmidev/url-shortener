@@ -1,0 +1,6 @@
+---
+- name: Reload Caddy
+  ansible.builtin.command:
+    cmd: docker compose exec -T caddy caddy reload --config /etc/caddy/Caddyfile
+    chdir: "/home/{{ app_user }}/caddy"
+  become_user: "{{ app_user }}"

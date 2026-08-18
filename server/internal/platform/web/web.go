@@ -1,0 +1,153 @@
+package web
+
+import (
+	"context"
+	"encoding/json"
+	"errors"
+	"net/http"
+
+	"github.com/google/uuid"
+	"github.com/semmidev/url-shortener/server/internal/platform/apperr"
+	"github.com/semmidev/url-shortener/server/internal/platform/logger"
+)
+
+type ctxKey int
+
+const (
+	userIDKey ctxKey = iota + 1
+	userRoleKey
+	sessionIDKey
+)
+
+type Response struct {
+	Success bool              `json:"success"`
+	Code    string            `json:"code"`
+	Message string            `json:"message"`
+	Data    any               `json:"data,omitempty"`
+	Meta    any               `json:"meta,omitempty"`
+	Errors  map[string]string `json:"errors,omitempty"`
+}
+
+// Success writes a standardized JSON success response.
+func Success(w http.ResponseWriter, status int, message string, data any, meta any) {
+	if message == "" {
+		message = "Operation completed successfully"
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	_ = json.NewEncoder(w).Encode(Response{
+		Success: true,
+		Code:    "SUCCESS",
+		Message: message,
+		Data:    data,
+		Meta:    meta,
+	})
+}
+
+// JSON writes a JSON response with status code (backward compatible helper).
+func JSON(w http.ResponseWriter, status int, data any) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+
+	// Check if data is already wrapped in a response map
+	if m, ok := data.(map[string]any); ok {
+		d, dataOk := m["data"]
+		meta, _ := m["meta"]
+		msg, _ := m["message"].(string)
+
+		if dataOk {
+			if msg == "" {
+				msg = "Operation completed successfully"
+			}
+			_ = json.NewEncoder(w).Encode(Response{
+				Success: true,
+				Code:    "SUCCESS",
+				Message: msg,
+				Data:    d,
+				Meta:    meta,
+			})
+			return
+		}
+	}
+
+	_ = json.NewEncoder(w).Encode(Response{
+		Success: true,
+		Code:    "SUCCESS",
+		Message: "Operation completed successfully",
+		Data:    data,
+	})
+}
+
+// Error writes a standardized JSON error response based on apperr.Error and enriches the wide event context.
+func Error(w http.ResponseWriter, r *http.Request, err error) {
+	if ev, ok := logger.EventFromContext(r.Context()); ok {
+		ev.SetError(err)
+	}
+
+	var appErr *apperr.Error
+	if errors.As(err, &appErr) {
+		status := appErr.HTTPStatusCode()
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(status)
+		_ = json.NewEncoder(w).Encode(Response{
+			Success: false,
+			Code:    appErr.Code,
+			Message: appErr.Message,
+			Errors:  appErr.Fields,
+		})
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusInternalServerError)
+	_ = json.NewEncoder(w).Encode(Response{
+		Success: false,
+		Code:    "INTERNAL_SERVER_ERROR",
+		Message: "internal server error",
+	})
+}
+
+// Decode decodes JSON request body into dst struct.
+func Decode(r *http.Request, dst any) error {
+	if r.Body == nil {
+		return apperr.Invalid("request body cannot be empty")
+	}
+	defer r.Body.Close()
+
+	decoder := json.NewDecoder(r.Body)
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(dst); err != nil {
+		return apperr.Invalid("invalid JSON body: " + err.Error())
+	}
+	return nil
+}
+
+// WithUser adds user information to context and enriches wide event context.
+func WithUser(ctx context.Context, userID uuid.UUID, role string, sessionID uuid.UUID) context.Context {
+	ctx = context.WithValue(ctx, userIDKey, userID)
+	ctx = context.WithValue(ctx, userRoleKey, role)
+	ctx = context.WithValue(ctx, sessionIDKey, sessionID)
+
+	logger.Enrich(ctx, "auth.user_id", userID.String())
+	logger.Enrich(ctx, "auth.role", role)
+
+	return ctx
+}
+
+// UserID retrieves user ID from context.
+func UserID(ctx context.Context) (uuid.UUID, bool) {
+	id, ok := ctx.Value(userIDKey).(uuid.UUID)
+	return id, ok
+}
+
+// UserRole retrieves user role from context.
+func UserRole(ctx context.Context) (string, bool) {
+	role, ok := ctx.Value(userRoleKey).(string)
+	return role, ok
+}
+
+// SessionID retrieves session ID from context.
+func SessionID(ctx context.Context) (uuid.UUID, bool) {
+	id, ok := ctx.Value(sessionIDKey).(uuid.UUID)
+	return id, ok
+}

@@ -1,0 +1,33 @@
+name: caddy-gateway
+
+services:
+  caddy:
+    image: caddy:2.11.4-alpine
+    restart: unless-stopped
+    ports:
+      - '80:80'
+      - '443:443'
+      - '443:443/udp'
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+      - caddy_config:/config
+    environment:
+      - ACME_EMAIL=${ACME_EMAIL:-sammidev4@gmail.com}
+      - APP_DOMAIN=${APP_DOMAIN:-lms.local}
+    networks:
+      - caddy_net
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: '3'
+
+volumes:
+  caddy_data:
+  caddy_config:
+
+networks:
+  caddy_net:
+    name: caddy_net
+    external: true

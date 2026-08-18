@@ -1,0 +1,606 @@
+basePath: /
+definitions:
+  analytics.AnalyticsSummaryResponse:
+    properties:
+      recent_clicks:
+        items:
+          $ref: '#/definitions/analytics.ClickResponse'
+        type: array
+      total_clicks:
+        type: integer
+      unique_visitors:
+        type: integer
+      url_id:
+        type: string
+    type: object
+  analytics.ClickResponse:
+    properties:
+      clicked_at:
+        type: string
+      country:
+        type: string
+      device_type:
+        type: string
+      id:
+        type: string
+      ip_address:
+        type: string
+      referrer:
+        type: string
+      user_agent:
+        type: string
+    type: object
+  apperr.Error:
+    properties:
+      code:
+        type: string
+      errors:
+        additionalProperties:
+          type: string
+        type: object
+      message:
+        type: string
+    type: object
+  url.CreateURLRequest:
+    properties:
+      custom_code:
+        maxLength: 50
+        minLength: 3
+        type: string
+      expires_at:
+        type: string
+      original_url:
+        type: string
+      title:
+        type: string
+    required:
+    - original_url
+    type: object
+  url.DeleteURLResponse:
+    properties:
+      message:
+        type: string
+    type: object
+  url.ListURLResponse:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/url.URLResponse'
+        type: array
+      meta:
+        $ref: '#/definitions/url.MetaResponse'
+    type: object
+  url.MetaResponse:
+    properties:
+      limit:
+        type: integer
+      page:
+        type: integer
+      search:
+        type: string
+      sort_by:
+        type: string
+      sort_direction:
+        type: string
+      total:
+        type: integer
+    type: object
+  url.URLResponse:
+    properties:
+      click_count:
+        type: integer
+      created_at:
+        type: string
+      expires_at:
+        type: string
+      id:
+        type: string
+      is_active:
+        type: boolean
+      original_url:
+        type: string
+      short_code:
+        type: string
+      short_url:
+        type: string
+      title:
+        type: string
+      updated_at:
+        type: string
+      user_id:
+        type: string
+    type: object
+  url.UpdateURLRequest:
+    properties:
+      expires_at:
+        type: string
+      is_active:
+        type: boolean
+      original_url:
+        type: string
+      title:
+        type: string
+    type: object
+  user.GoogleAuthURLResponse:
+    properties:
+      url:
+        type: string
+    type: object
+  user.GoogleExchangeTokenRequest:
+    properties:
+      code:
+        type: string
+    required:
+    - code
+    type: object
+  user.LoginRequest:
+    properties:
+      email:
+        type: string
+      password:
+        type: string
+    required:
+    - email
+    - password
+    type: object
+  user.LoginResponse:
+    properties:
+      access_token:
+        type: string
+      access_token_expires_at:
+        type: string
+      refresh_token:
+        type: string
+      refresh_token_expires_at:
+        type: string
+      user:
+        $ref: '#/definitions/user.UserResponse'
+    type: object
+  user.RefreshTokenRequest:
+    properties:
+      refresh_token:
+        type: string
+    required:
+    - refresh_token
+    type: object
+  user.RefreshTokenResponse:
+    properties:
+      access_token:
+        type: string
+      access_token_expires_at:
+        type: string
+    type: object
+  user.RegisterRequest:
+    properties:
+      email:
+        type: string
+      full_name:
+        type: string
+      password:
+        minLength: 6
+        type: string
+    required:
+    - email
+    - full_name
+    - password
+    type: object
+  user.UserResponse:
+    properties:
+      avatar_url:
+        type: string
+      created_at:
+        type: string
+      email:
+        type: string
+      full_name:
+        type: string
+      google_id:
+        type: string
+      id:
+        type: string
+      role:
+        type: string
+      updated_at:
+        type: string
+    type: object
+host: localhost:8080
+info:
+  contact:
+    name: API Support
+    url: https://github.com/semmidev/url-shortener
+  description: High-Performance Modular Monolith URL Shortener REST API in Go.
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+  termsOfService: http://swagger.io/terms/
+  title: URL Shortener API
+  version: "1.0"
+paths:
+  /{code}:
+    get:
+      parameters:
+      - description: Short Code
+        in: path
+        name: code
+        required: true
+        type: string
+      responses:
+        "307":
+          description: Temporary Redirect to destination URL
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/apperr.Error'
+      summary: Redirect short code to target destination URL
+      tags:
+      - Redirect
+  /api/v1/auth/google/callback:
+    get:
+      parameters:
+      - description: Google Authorization Code
+        in: query
+        name: code
+        required: true
+        type: string
+      responses:
+        "307":
+          description: Redirects to frontend app with one-time code
+      summary: Google OAuth callback handler
+      tags:
+      - Auth
+  /api/v1/auth/google/token:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: One-time code
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/user.GoogleExchangeTokenRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/user.LoginResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apperr.Error'
+      summary: Exchange Google one-time code for tokens
+      tags:
+      - Auth
+  /api/v1/auth/google/url:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/user.GoogleAuthURLResponse'
+      summary: Get Google OAuth login URL
+      tags:
+      - Auth
+  /api/v1/auth/login:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Login credentials
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/user.LoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/user.LoginResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apperr.Error'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apperr.Error'
+      summary: User login
+      tags:
+      - Auth
+  /api/v1/auth/me:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/user.UserResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apperr.Error'
+      security:
+      - BearerAuth: []
+      summary: Get current user profile
+      tags:
+      - Auth
+  /api/v1/auth/refresh:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Refresh token payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/user.RefreshTokenRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/user.RefreshTokenResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apperr.Error'
+      summary: Refresh access token
+      tags:
+      - Auth
+  /api/v1/auth/register:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Registration credentials
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/user.RegisterRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/user.LoginResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apperr.Error'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/apperr.Error'
+      summary: Register new user account
+      tags:
+      - Auth
+  /api/v1/urls:
+    get:
+      parameters:
+      - description: Search keyword for title, code, or URL
+        in: query
+        name: search
+        type: string
+      - description: Column to sort by (created_at, click_count, title, short_code)
+        in: query
+        name: sort_by
+        type: string
+      - description: Sort direction (asc, desc)
+        in: query
+        name: sort_direction
+        type: string
+      - description: 'Filter status: 1 (active), 0 (inactive), -1 (all)'
+        in: query
+        name: active
+        type: integer
+      - description: Page number (default 1)
+        in: query
+        name: page
+        type: integer
+      - description: Items per page (default 20)
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/url.ListURLResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apperr.Error'
+      security:
+      - BearerAuth: []
+      summary: List user short URLs with DataTable controls
+      tags:
+      - URLs
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Create short URL request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/url.CreateURLRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/url.URLResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apperr.Error'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apperr.Error'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/apperr.Error'
+      security:
+      - BearerAuth: []
+      summary: Create a short URL
+      tags:
+      - URLs
+  /api/v1/urls/{id}:
+    delete:
+      parameters:
+      - description: Short URL UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/url.DeleteURLResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apperr.Error'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/apperr.Error'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/apperr.Error'
+      security:
+      - BearerAuth: []
+      summary: Delete short URL
+      tags:
+      - URLs
+    get:
+      parameters:
+      - description: Short URL UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/url.URLResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apperr.Error'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/apperr.Error'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/apperr.Error'
+      security:
+      - BearerAuth: []
+      summary: Get short URL by ID
+      tags:
+      - URLs
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: Short URL UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Update payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/url.UpdateURLRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/url.URLResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apperr.Error'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apperr.Error'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/apperr.Error'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/apperr.Error'
+      security:
+      - BearerAuth: []
+      summary: Update short URL details
+      tags:
+      - URLs
+  /api/v1/urls/{id}/analytics:
+    get:
+      parameters:
+      - description: Short URL UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/analytics.AnalyticsSummaryResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apperr.Error'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/apperr.Error'
+      security:
+      - BearerAuth: []
+      summary: Get analytics summary for a short URL
+      tags:
+      - Analytics
+securityDefinitions:
+  BearerAuth:
+    description: Input your Bearer token in the format "Bearer <token>".
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"

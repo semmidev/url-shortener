@@ -1,0 +1,35 @@
+name: url-shortener-dev
+
+services:
+  postgres:
+    image: postgres:18-alpine
+    container_name: url-shortener-postgres-dev
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-urlshortener}
+    ports:
+      - '5432:5432'
+    volumes:
+      - db_dev_data:/var/lib/postgresql
+    restart: unless-stopped
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-urlshortener}']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: '3'
+    networks:
+      - url_shortener_dev_network
+
+volumes:
+  db_dev_data:
+
+networks:
+  url_shortener_dev_network:
+    driver: bridge

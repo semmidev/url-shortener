@@ -1,0 +1,164 @@
+---
+# Role: base
+# Setup dasar server: update, user, swap, UFW, fail2ban, hardening
+
+- name: Update apt cache
+  ansible.builtin.apt:
+    update_cache: true
+
+- name: Upgrade semua packages
+  ansible.builtin.apt:
+    upgrade: dist
+    update_cache: true
+    autoremove: true
+
+- name: Install packages dasar
+  ansible.builtin.apt:
+    name:
+      - curl
+      - wget
+      - git
+      - make
+      - ufw
+
+      - fail2ban
+      - unattended-upgrades
+      - ca-certificates
+      - gnupg
+      - lsb-release
+      - htop
+      - vim
+      - jq
+    state: present
+
+# ─────────────────────────────────────────
+# Non-root deploy user
+# ─────────────────────────────────────────
+- name: Buat user deploy
+  ansible.builtin.user:
+    name: '{{ app_user }}'
+    shell: /bin/bash
+    groups: sudo
+    append: true
+    create_home: true
+    generate_ssh_key: true
+    ssh_key_type: ed25519
+    ssh_key_file: .ssh/id_ed25519
+    ssh_key_comment: 'deploy-key@{{ domain }}'
+
+- name: Copy SSH authorized keys ke user deploy
+  ansible.posix.authorized_key:
+    user: '{{ app_user }}'
+    state: present
+    key: "{{ lookup('file', '~/.ssh/lms-server.pub') }}"
+
+- name: Izinkan sudo tanpa password untuk deploy (untuk CI/CD)
+  ansible.builtin.lineinfile:
+    path: /etc/sudoers.d/deploy
+    line: '{{ app_user }} ALL=(ALL) NOPASSWD: ALL'
+    create: true
+    mode: '0440'
+    validate: 'visudo -cf %s'
+
+# ─────────────────────────────────────────
+# Swap (penting untuk server 1-2GB RAM)
+# ─────────────────────────────────────────
+- name: Cek apakah swap sudah ada
+  ansible.builtin.command: swapon --show
+  register: swap_status
+  changed_when: false
+
+- name: Buat swap file {{ swap_size_gb }}GB
+  ansible.builtin.command: >
+    fallocate -l {{ swap_size_gb }}G /swapfile
+  when: swap_status.stdout == ""
+
+- name: Set permission swap file
+  ansible.builtin.file:
+    path: /swapfile
+    mode: '0600'
+  when: swap_status.stdout == ""
+
+- name: Format swap
+  ansible.builtin.command: mkswap /swapfile
+  when: swap_status.stdout == ""
+
+- name: Aktifkan swap
+  ansible.builtin.command: swapon /swapfile
+  when: swap_status.stdout == ""
+
+- name: Tambah swap ke fstab (persist setelah reboot)
+  ansible.builtin.lineinfile:
+    path: /etc/fstab
+    line: '/swapfile none swap sw 0 0'
+    state: present
+
+- name: Turunkan swappiness (performa lebih baik)
+  ansible.posix.sysctl:
+    name: vm.swappiness
+    value: '10'
+    state: present
+    reload: true
+
+# ─────────────────────────────────────────
+# UFW Firewall
+# ─────────────────────────────────────────
+- name: Set UFW default deny incoming
+  community.general.ufw:
+    default: deny
+    direction: incoming
+
+- name: Set UFW default allow outgoing
+  community.general.ufw:
+    default: allow
+    direction: outgoing
+
+- name: Izinkan SSH
+  community.general.ufw:
+    rule: allow
+    port: '22'
+    proto: tcp
+
+- name: Izinkan HTTP
+  community.general.ufw:
+    rule: allow
+    port: '80'
+    proto: tcp
+
+- name: Izinkan HTTPS
+  community.general.ufw:
+    rule: allow
+    port: '443'
+    proto: tcp
+
+- name: Aktifkan UFW
+  community.general.ufw:
+    state: enabled
+
+# ─────────────────────────────────────────
+# Unattended Upgrades (security patches otomatis)
+# ─────────────────────────────────────────
+- name: Konfigurasi unattended-upgrades
+  ansible.builtin.copy:
+    dest: /etc/apt/apt.conf.d/20auto-upgrades
+    content: |
+      APT::Periodic::Update-Package-Lists "1";
+      APT::Periodic::Unattended-Upgrade "1";
+      APT::Periodic::AutocleanInterval "7";
+    mode: '0644'
+
+# ─────────────────────────────────────────
+# SSH Hardening
+# ─────────────────────────────────────────
+- name: Hardening SSH config
+  ansible.builtin.lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: '{{ item.regexp }}'
+    line: '{{ item.line }}'
+    state: present
+  loop:
+    - { regexp: '^#?PermitRootLogin', line: 'PermitRootLogin no' }
+    - { regexp: '^#?PasswordAuthentication', line: 'PasswordAuthentication no' }
+    - { regexp: '^#?X11Forwarding', line: 'X11Forwarding no' }
+    - { regexp: '^#?MaxAuthTries', line: 'MaxAuthTries 3' }
+  notify: Restart SSH

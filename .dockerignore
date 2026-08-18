@@ -1,0 +1,40 @@
+# ─── Version Control ──────────────────────────────────────────────────────────
+.git/
+.gitignore
+.github/
+
+# ─── Local Build Artifacts & Binary Outputs ────────────────────────────────────
+bin/
+vendor/
+coverage.out
+*.out
+*.test
+*.prof
+tmp/
+/tmp/
+
+# ─── Environment & Local Secrets ──────────────────────────────────────────────
+.env
+.env.*
+*.env
+*.pem
+*.key
+*.crt
+
+# ─── References & Local Docs ──────────────────────────────────────────────────
+references/
+
+# ─── Infrastructure & Docker Compose ──────────────────────────────────────────
+compose*.yml
+Dockerfile*
+.terraform/
+terraform.tfstate*
+
+# ─── Documentation & OS / IDE Configs ─────────────────────────────────────────
+*.md
+.DS_Store
+.idea/
+.vscode/
+
+# ─── AI / Agent Workdirs ──────────────────────────────────────────────────────
+.gemini/

@@ -1,0 +1,145 @@
+---
+# Role: docker
+# Install Docker Engine + Docker Compose v2
+
+# ─────────────────────────────────────────
+# Prerequisites
+# ─────────────────────────────────────────
+
+- name: Install dependencies Docker
+  ansible.builtin.apt:
+    name:
+      - ca-certificates
+      - curl
+      - gnupg
+    state: present
+    update_cache: true
+
+- name: Create apt keyrings directory
+  ansible.builtin.file:
+    path: /etc/apt/keyrings
+    state: directory
+    mode: '0755'
+
+- name: Download Docker GPG key
+  ansible.builtin.get_url:
+    url: https://download.docker.com/linux/ubuntu/gpg
+    dest: /tmp/docker.asc
+    mode: '0644'
+
+- name: Convert Docker GPG key
+  ansible.builtin.command:
+    cmd: >
+      gpg --dearmor
+      -o /etc/apt/keyrings/docker.gpg
+      /tmp/docker.asc
+  args:
+    creates: /etc/apt/keyrings/docker.gpg
+
+- name: Set Docker key permissions
+  ansible.builtin.file:
+    path: /etc/apt/keyrings/docker.gpg
+    mode: '0644'
+
+- name: Add Docker repository
+  ansible.builtin.apt_repository:
+    repo: >-
+      deb [arch={{ deb_architecture }}
+      signed-by=/etc/apt/keyrings/docker.gpg]
+      https://download.docker.com/linux/ubuntu
+      {{ ansible_distribution_release }}
+      stable
+    filename: docker
+    state: present
+    update_cache: true
+
+# ─────────────────────────────────────────
+# Install Docker
+# ─────────────────────────────────────────
+
+- name: Install Docker Engine
+  ansible.builtin.apt:
+    name:
+      - docker-ce
+      - docker-ce-cli
+      - containerd.io
+      - docker-buildx-plugin
+      - docker-compose-plugin
+    state: present
+
+- name: Enable Docker
+  ansible.builtin.systemd:
+    name: docker
+    enabled: true
+    state: started
+
+# ─────────────────────────────────────────
+# User permissions
+# ─────────────────────────────────────────
+
+- name: Add deploy user to docker group
+  ansible.builtin.user:
+    name: '{{ app_user }}'
+    groups: docker
+    append: true
+
+# ─────────────────────────────────────────
+# Docker daemon
+# ─────────────────────────────────────────
+
+- name: Configure Docker daemon
+  ansible.builtin.copy:
+    dest: /etc/docker/daemon.json
+    mode: '0644'
+    content: |
+      {
+        "log-driver": "json-file",
+        "log-opts": {
+          "max-size": "10m",
+          "max-file": "3"
+        },
+        "live-restore": true
+      }
+  notify: Restart Docker
+
+# ─────────────────────────────────────────
+# Verification
+# ─────────────────────────────────────────
+
+- name: Check Docker version
+  ansible.builtin.command: docker --version
+  register: docker_version
+  changed_when: false
+
+- name: Check Docker Compose version
+  ansible.builtin.command: docker compose version
+  register: compose_version
+  changed_when: false
+
+- name: Print Docker versions
+  ansible.builtin.debug:
+    msg:
+      - '{{ docker_version.stdout }}'
+      - '{{ compose_version.stdout }}'
+
+# ─────────────────────────────────────────
+# Shell aliases
+# ─────────────────────────────────────────
+
+- name: Add docker alias for deploy user
+  ansible.builtin.lineinfile:
+    path: '/home/{{ app_user }}/.bashrc'
+    line: "alias d='docker'"
+    create: true
+    owner: '{{ app_user }}'
+    group: '{{ app_user }}'
+    mode: '0644'
+
+- name: Add docker alias for root
+  ansible.builtin.lineinfile:
+    path: '/root/.bashrc'
+    line: "alias d='docker'"
+    create: true
+    owner: root
+    group: root
+    mode: '0644'

@@ -1,0 +1,36 @@
+{
+    # Global options
+    # Provide an email to receive notifications about ACME/SSL renewal issues
+    email {$ACME_EMAIL:sammidev4@gmail.com}
+}
+
+# Common snippets
+(security_headers) {
+    header {
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "SAMEORIGIN"
+        Referrer-Policy "strict-origin-when-cross-origin"
+        Permissions-Policy "camera=(), microphone=(), geolocation=()"
+        -Server
+        Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+        Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://static.cloudflareinsights.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https:; connect-src 'self' https://accounts.google.com https://*.digitaloceanspaces.com https://*.nevacloud.com https://*.biznetgio.com https://*.neo.id https://cloudflareinsights.com https://static.cloudflareinsights.com; frame-src 'self' blob: https://*.digitaloceanspaces.com https://*.nevacloud.com https://*.biznetgio.com https://nos.wjv-1.neo.id https://www.youtube.com; frame-ancestors 'self'"
+        X-Permitted-Cross-Domain-Policies "none"
+        Cross-Origin-Opener-Policy "same-origin-allow-popups"
+        Cross-Origin-Resource-Policy "same-origin"
+    }
+}
+
+# Reverse Proxy
+{$APP_DOMAIN:lms.local} {
+    tls {
+        protocols tls1.2 tls1.3
+    }
+
+    encode zstd gzip
+
+    import security_headers
+
+    reverse_proxy lms-app-1:8080 {
+        header_up X-Real-IP {remote_host}
+    }
+}
