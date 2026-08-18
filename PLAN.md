@@ -174,7 +174,7 @@ tp := otel.GetTracerProvider()
 
 ---
 
-### ❌ Retry with Exponential Backoff (beyond DB startup)
+### ✅ Retry with Exponential Backoff (beyond DB startup)
 **Status**: DB startup retry exists in `migration.go`. No retry elsewhere.
 
 **Missing**:

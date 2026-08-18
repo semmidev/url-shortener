@@ -6,6 +6,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/semmidev/url-shortener/server/internal/platform/retry"
 )
 
 // Store defines all functions to execute db queries and transactions.
@@ -28,21 +29,24 @@ func NewStore(connPool *pgxpool.Pool) Store {
 	}
 }
 
-// ExecTx executes a callback function within a database transaction context.
+// ExecTx executes a callback function within a database transaction context with transient retry logic.
 func (s *SQLStore) ExecTx(ctx context.Context, fn func(*Queries) error) error {
-	tx, err := s.connPool.BeginTx(ctx, pgx.TxOptions{})
-	if err != nil {
-		return err
-	}
-
-	q := New(tx)
-	err = fn(q)
-	if err != nil {
-		if rbErr := tx.Rollback(ctx); rbErr != nil {
-			return fmt.Errorf("tx error: %v, rollback error: %v", err, rbErr)
+	return retry.Do(ctx, retry.DefaultConfig(), func() error {
+		tx, err := s.connPool.BeginTx(ctx, pgx.TxOptions{})
+		if err != nil {
+			return err
 		}
-		return err
-	}
 
-	return tx.Commit(ctx)
+		q := New(tx)
+		err = fn(q)
+		if err != nil {
+			if rbErr := tx.Rollback(ctx); rbErr != nil {
+				return fmt.Errorf("tx error: %v, rollback error: %v", err, rbErr)
+			}
+			return err
+		}
+
+		return tx.Commit(ctx)
+	})
 }
+

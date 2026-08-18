@@ -21,6 +21,7 @@ import (
 	"github.com/semmidev/url-shortener/server/internal/platform/apperr"
 	"github.com/semmidev/url-shortener/server/internal/platform/crypto"
 	"github.com/semmidev/url-shortener/server/internal/platform/logger"
+	"github.com/semmidev/url-shortener/server/internal/platform/retry"
 	"github.com/semmidev/url-shortener/server/internal/platform/token"
 )
 
@@ -243,59 +244,72 @@ func (s *Service) HandleGoogleCallback(ctx context.Context, req HandleGoogleCall
 		return nil, apperr.Internal("Google OAuth is not configured properly", nil)
 	}
 
-	// Exchange code for Google Access Token
-	data := url.Values{}
-	data.Set("code", req.Code)
-	data.Set("client_id", s.cfg.GoogleClientID)
-	data.Set("client_secret", s.cfg.GoogleClientSecret)
-	data.Set("redirect_uri", s.cfg.GoogleRedirectURI)
-	data.Set("grant_type", "authorization_code")
+	var gToken googleTokenResponse
+	var gUser googleUserInfo
 
-	tokenReq, err := http.NewRequestWithContext(ctx, http.MethodPost, "https://oauth2.googleapis.com/token", strings.NewReader(data.Encode()))
-	if err != nil {
-		return nil, apperr.Internal("failed to create Google token request", err)
-	}
-	tokenReq.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	// 1. Exchange code for Google Access Token with Retry on transient network errors
+	err := retry.Do(ctx, retry.DefaultConfig(), func() error {
+		data := url.Values{}
+		data.Set("code", req.Code)
+		data.Set("client_id", s.cfg.GoogleClientID)
+		data.Set("client_secret", s.cfg.GoogleClientSecret)
+		data.Set("redirect_uri", s.cfg.GoogleRedirectURI)
+		data.Set("grant_type", "authorization_code")
 
-	tokenResp, err := s.httpClient.Do(tokenReq)
+		tokenReq, err := http.NewRequestWithContext(ctx, http.MethodPost, "https://oauth2.googleapis.com/token", strings.NewReader(data.Encode()))
+		if err != nil {
+			return err
+		}
+		tokenReq.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+		tokenResp, err := s.httpClient.Do(tokenReq)
+		if err != nil {
+			return err
+		}
+		defer func() {
+			_ = tokenResp.Body.Close()
+		}()
+
+		if tokenResp.StatusCode != http.StatusOK {
+			return apperr.Unauthorized("invalid or expired Google authorization code")
+		}
+
+		return json.NewDecoder(tokenResp.Body).Decode(&gToken)
+	})
 	if err != nil {
+		if errors.As(err, &apperr.Error{}) {
+			return nil, err
+		}
 		return nil, apperr.Internal("failed to contact Google token endpoint", err)
 	}
-	defer func() {
-		_ = tokenResp.Body.Close()
-	}()
 
-	if tokenResp.StatusCode != http.StatusOK {
-		return nil, apperr.Unauthorized("invalid or expired Google authorization code")
-	}
+	// 2. Fetch User Info from Google with Retry on transient network errors
+	err = retry.Do(ctx, retry.DefaultConfig(), func() error {
+		userReq, err := http.NewRequestWithContext(ctx, http.MethodGet, "https://www.googleapis.com/oauth2/v2/userinfo", nil)
+		if err != nil {
+			return err
+		}
+		userReq.Header.Set("Authorization", "Bearer "+gToken.AccessToken)
 
-	var gToken googleTokenResponse
-	if err := json.NewDecoder(tokenResp.Body).Decode(&gToken); err != nil {
-		return nil, apperr.Internal("failed to parse Google token response", err)
-	}
+		userResp, err := s.httpClient.Do(userReq)
+		if err != nil {
+			return err
+		}
+		defer func() {
+			_ = userResp.Body.Close()
+		}()
 
-	// Fetch User Info from Google
-	userReq, err := http.NewRequestWithContext(ctx, http.MethodGet, "https://www.googleapis.com/oauth2/v2/userinfo", nil)
+		if userResp.StatusCode != http.StatusOK {
+			return apperr.Unauthorized("failed to retrieve Google user profile")
+		}
+
+		return json.NewDecoder(userResp.Body).Decode(&gUser)
+	})
 	if err != nil {
-		return nil, apperr.Internal("failed to create Google userinfo request", err)
-	}
-	userReq.Header.Set("Authorization", "Bearer "+gToken.AccessToken)
-
-	userResp, err := s.httpClient.Do(userReq)
-	if err != nil {
+		if errors.As(err, &apperr.Error{}) {
+			return nil, err
+		}
 		return nil, apperr.Internal("failed to fetch Google user profile", err)
-	}
-	defer func() {
-		_ = userResp.Body.Close()
-	}()
-
-	if userResp.StatusCode != http.StatusOK {
-		return nil, apperr.Unauthorized("failed to retrieve Google user profile")
-	}
-
-	var gUser googleUserInfo
-	if err := json.NewDecoder(userResp.Body).Decode(&gUser); err != nil {
-		return nil, apperr.Internal("failed to decode Google user profile", err)
 	}
 
 	logger.Enrich(ctx, "google.id", gUser.ID)
