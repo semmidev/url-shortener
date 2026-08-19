@@ -17,6 +17,7 @@ A clean, modern, high-performance URL Shortener REST API backend written in Go u
 
 ## 📋 Table of Contents
 - [🚀 Quick Start & Setup Guide](#-quick-start--setup-guide)
+- [🏗️ System Architecture & Data Flow](#️-system-architecture--data-flow)
 - [🛠️ Makefile Commands](#️-makefile-commands)
 - [🏗️ Architectural & Code Style Decisions (ADRs)](#-architectural--code-style-decisions-adrs)
 - [🛠️ Implementing a New Feature (Workflow Guide)](#️-implementing-a-new-feature-workflow-guide)
@@ -56,6 +57,131 @@ make down-dev
 Once the server is running (`http://localhost:8080`):
 - **Modern Scalar API Reference UI**: [http://localhost:8080/docs](http://localhost:8080/docs)
 - **Interactive Swagger UI**: [http://localhost:8080/swagger/index.html](http://localhost:8080/swagger/index.html)
+
+---
+
+## 🏗️ System Architecture & Data Flow
+
+### High-Level Architecture Diagram (Modular Monolith Component Layering)
+
+```mermaid
+graph TD
+    Client["Client / Web SPA / Mobile"] --> |HTTP Request| Router["Chi Router (HTTP Server)"]
+
+    subgraph MiddlewareStack["Middleware Stack"]
+        CORS["CORS Middleware"]
+        SecureHeaders["Secure Headers"]
+        RealIP["Real IP & Recovery"]
+        Timeout["Request Timeout (10s)"]
+        LoggerMW["Wide Event Logging"]
+        RateLimiter["Redis Rate Limiter"]
+        AuthMW["JWT Auth Middleware"]
+        RoleMW["Role Admin Guard"]
+    end
+
+    Router --> MiddlewareStack
+
+    subgraph Handlers["HTTP Handlers Layer"]
+        RedirectH["RedirectHandler"]
+        UserH["UserHandler"]
+        URLH["URLHandler"]
+        AnalyticsH["AnalyticsHandler"]
+        AdminH["AdminHandler"]
+        SPAH["Embedded SPA Handler"]
+    end
+
+    MiddlewareStack --> Handlers
+
+    subgraph Services["Core Business Logic Layer"]
+        UserSvc["UserService"]
+        URLSvc["URLService"]
+        AnalyticsSvc["AnalyticsService"]
+        AdminSvc["AdminService"]
+    end
+
+    UserH --> UserSvc
+    URLH --> URLSvc
+    RedirectH --> URLSvc
+    AnalyticsH --> AnalyticsSvc
+    AdminH --> AdminSvc
+
+    subgraph BackgroundWorkers["Background Workers"]
+        OutboxWorker["Outbox Worker (Async Event Stream)"]
+        CleanupWorker["URL Expiration Worker (Goroutine)"]
+    end
+
+    CleanupWorker -.-> URLSvc
+    OutboxWorker -.-> AnalyticsH
+
+    subgraph PlatformLayer["Platform & Infrastructure Layer"]
+        JWTMaker["JWT Token Maker"]
+        RedisCache["Redis Cache (L1 Cache & Rate Limit)"]
+        EventPub["Event Publisher (NATS / InMemory)"]
+        SQLCStore["SQLC Store (PostgreSQL DAO)"]
+    end
+
+    UserSvc --> JWTMaker
+    UserSvc --> RedisCache
+    UserSvc --> SQLCStore
+    URLSvc --> RedisCache
+    URLSvc --> SQLCStore
+    AnalyticsSvc --> SQLCStore
+    AdminSvc --> RedisCache
+    AdminSvc --> SQLCStore
+
+    OutboxWorker --> SQLCStore
+    OutboxWorker --> EventPub
+
+    subgraph DataStorage["Data Persistence Layer"]
+        PostgreSQL[("PostgreSQL Database")]
+        RedisDB[("Redis Store")]
+        NATS[("NATS JetStream Broker")]
+    end
+
+    SQLCStore --> PostgreSQL
+    RedisCache --> RedisDB
+    EventPub --> NATS
+```
+
+### Redirection & Analytics Sequence Diagram (`GET /{code}`)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor User as Client / User Browser
+    participant Chi as Chi Router & Middleware
+    participant RedH as RedirectHandler
+    participant URLSvc as URLService
+    participant Redis as Redis Cache
+    participant DB as PostgreSQL (SQLC)
+    participant AsyncLog as Async Goroutine
+    participant Analytics as Analytics Recorder
+
+    User->>Chi: GET /{code}
+    Chi->>Chi: Apply Rate Limiting & Wide Event Logging
+    Chi->>RedH: Handled by Redirect(w, r)
+    RedH->>URLSvc: GetByCode(shortCode)
+
+    URLSvc->>Redis: Get("url:code:" + shortCode)
+    alt Cache Hit (L1 Fast Path)
+        Redis-->>URLSvc: Return Cached URL Data
+    else Cache Miss (DB Lookup)
+        URLSvc->>DB: Query GetURLByShortCode
+        DB-->>URLSvc: Return DB Record
+        URLSvc->>Redis: Set("url:code:" + shortCode, URLData, TTL)
+    end
+
+    URLSvc-->>RedH: Return Target Destination URL
+    RedH-->>User: 307 Temporary Redirect (Location: target_url)
+
+    par Async Background Logging (Non-blocking)
+        RedH->>AsyncLog: Launch Goroutine (Click & Analytics)
+        AsyncLog->>URLSvc: IncrementClickCount(urlID)
+        AsyncLog->>DB: UPDATE click_count
+        AsyncLog->>Analytics: RecordClick(urlID, IP, UserAgent, Referrer)
+        Analytics->>DB: INSERT into url_analytics & outbox
+    end
+```
 
 ---
 
