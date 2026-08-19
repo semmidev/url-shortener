@@ -24,12 +24,14 @@ type AnalyticsRecorder interface {
 type RedirectHandler struct {
 	svc          *Service
 	analyticsRec AnalyticsRecorder
+	spaHandler   http.Handler
 }
 
-func NewRedirectHandler(svc *Service, analyticsRec AnalyticsRecorder) *RedirectHandler {
+func NewRedirectHandler(svc *Service, analyticsRec AnalyticsRecorder, spaHandler http.Handler) *RedirectHandler {
 	return &RedirectHandler{
 		svc:          svc,
 		analyticsRec: analyticsRec,
+		spaHandler:   spaHandler,
 	}
 }
 
@@ -52,8 +54,25 @@ type URLPreviewResponse struct {
 // @Failure 404 {object} apperr.Error
 // @Router /{code} [get]
 func (h *RedirectHandler) Redirect(w http.ResponseWriter, r *http.Request) {
+	path := r.URL.Path
+
+	// 1. If path is a physical static asset file embedded in SPA (e.g. /assets/*, /vite.svg), serve it directly.
+	if h.spaHandler != nil {
+		type fileChecker interface {
+			HasFile(string) bool
+		}
+		if fc, ok := h.spaHandler.(fileChecker); ok && fc.HasFile(path) {
+			h.spaHandler.ServeHTTP(w, r)
+			return
+		}
+	}
+
 	shortCode := chi.URLParam(r, "code")
-	if shortCode == "" {
+	if shortCode == "" || path == "/" {
+		if h.spaHandler != nil {
+			h.spaHandler.ServeHTTP(w, r)
+			return
+		}
 		web.Error(w, r, apperr.Invalid("short code is required"))
 		return
 	}
@@ -69,6 +88,11 @@ func (h *RedirectHandler) Redirect(w http.ResponseWriter, r *http.Request) {
 
 	res, err := h.svc.GetByCode(r.Context(), GetURLByCodeRequest{Code: shortCode})
 	if err != nil {
+		// If browser HTML page navigation (Accept: text/html), fall back to SPA index.html for client-side routing.
+		if h.spaHandler != nil && strings.Contains(r.Header.Get("Accept"), "text/html") {
+			h.spaHandler.ServeHTTP(w, r)
+			return
+		}
 		web.Error(w, r, err)
 		return
 	}

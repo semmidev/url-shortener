@@ -31,12 +31,15 @@ func SecureHeaders(next http.Handler) http.Handler {
 		w.Header().Set("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
 
 		// Content Security Policy:
-		// Docs pages (/docs, /swagger) load external CDN scripts and use inline styles —
-		// apply a relaxed CSP limited to those paths only.
-		// All other routes (API endpoints) get the strict deny-all policy.
+		// 1. API endpoints (/api/*, /health*, /version) return data (JSON) -> strict deny-all policy.
+		// 2. Docs pages (/docs, /swagger) load external CDN scripts and inline styles -> docs policy.
+		// 3. Web UI / SPA / static assets (/assets/*, /, SPA routes) -> web policy allowing scripts, styles, fonts, images.
 		path := r.URL.Path
-		if strings.HasPrefix(path, "/docs") || strings.HasPrefix(path, "/swagger") {
-			// Scalar UI loads from cdn.jsdelivr.net; Swagger UI uses inline scripts and styles
+		if strings.HasPrefix(path, "/api/") || strings.HasPrefix(path, "/health") || path == "/version" {
+			// Strict CSP for pure API endpoints returning JSON
+			w.Header().Set("Content-Security-Policy", "default-src 'none'; frame-ancestors 'none'")
+		} else if strings.HasPrefix(path, "/docs") || strings.HasPrefix(path, "/swagger") {
+			// Docs pages (/docs, /swagger) load external CDN scripts and use inline styles
 			w.Header().Set("Content-Security-Policy",
 				"default-src 'self'; "+
 					"script-src 'self' cdn.jsdelivr.net 'unsafe-inline' 'unsafe-eval'; "+
@@ -47,8 +50,17 @@ func SecureHeaders(next http.Handler) http.Handler {
 					"frame-ancestors 'none'",
 			)
 		} else {
-			// Strict CSP for all API and redirect endpoints
-			w.Header().Set("Content-Security-Policy", "default-src 'none'; frame-ancestors 'none'")
+			// Web frontend SPA and static assets (/assets/*, index.html, /vite.svg, SPA routes)
+			w.Header().Set("Content-Security-Policy",
+				"default-src 'self'; "+
+					"script-src 'self' 'unsafe-inline' 'unsafe-eval' https://static.cloudflareinsights.com https://cdn.jsdelivr.net; "+
+					"style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "+
+					"font-src 'self' data: https://fonts.gstatic.com; "+
+					"img-src 'self' data: blob: https:; "+
+					"connect-src 'self' http: https: ws: wss:; "+
+					"frame-src 'self' blob: https://www.youtube.com; "+
+					"frame-ancestors 'self'",
+			)
 		}
 
 		next.ServeHTTP(w, r)

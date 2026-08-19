@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en" data-theme="vercel">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script>
+      (function() {
+        try {
+          const saved = localStorage.getItem("theme");
+          const themes = [
+            "neobrutualism", "claude", "supabase", "vercel", "mono",
+            "notebook", "light-green", "zen", "astro-vista", "whatsapp"
+          ];
+          if (saved && themes.includes(saved)) {
+            document.documentElement.dataset.theme = saved;
+          } else {
+            document.documentElement.dataset.theme = "vercel";
+          }
+        } catch (e) {}
+      })();
+    </script>
+    <!-- Disable browser caching completely to prevent memory/disk cache issues -->
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
+
+    <!-- Primary SEO -->
+    <title>URL Shortener Portal</title>
+    <meta name="description" content="Platform belajar online terpadu untuk guru dan siswa. Akses modul, bank soal, ujian, dan pantau perkembangan belajar dengan mudah." />
+    <meta name="robots" content="index, follow" />
+
+    <!-- Open Graph / Social -->
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="LMS — Platform Belajar Online" />
+    <meta property="og:description" content="Platform belajar online terpadu untuk guru dan siswa. Akses modul, bank soal, ujian, dan pantau perkembangan belajar dengan mudah." />
+    <meta property="og:url" content="https://lms-staging.spaceku.my.id" />
+
+    <!-- Theme color for mobile browsers -->
+    <meta name="theme-color" content="#10b981" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <script type="module" crossorigin src="/assets/index-CIMBbdVC.js"></script>
+    <link rel="modulepreload" crossorigin href="/assets/rolldown-runtime-B0Z9INg1.js">
+    <link rel="modulepreload" crossorigin href="/assets/vendor-baseui-CUe6rLsI.js">
+    <link rel="modulepreload" crossorigin href="/assets/vendor-misc-BrU3DF34.js">
+    <link rel="modulepreload" crossorigin href="/assets/vendor-react-CIdZVSu8.js">
+    <link rel="modulepreload" crossorigin href="/assets/vendor-router-CHkw8SeS.js">
+    <link rel="modulepreload" crossorigin href="/assets/vendor-core-Si7WG4C6.js">
+    <link rel="modulepreload" crossorigin href="/assets/vendor-motion-D8BNE_bY.js">
+    <link rel="modulepreload" crossorigin href="/assets/vendor-lucide-DOHBhMo2.js">
+    <link rel="modulepreload" crossorigin href="/assets/vendor-recharts-B3UEWVGc.js">
+    <link rel="stylesheet" crossorigin href="/assets/index-CxxiPC1u.css">
+  </head>
+  <body>
+    <div id="root"></div>
+  </body>
+</html>

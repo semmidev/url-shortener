@@ -19,6 +19,7 @@ repos:
         entry: make lint
         language: system
         pass_filenames: false
+        exclude: ^web/node_modules/
       - id: go-test
         name: go test
         entry: make test

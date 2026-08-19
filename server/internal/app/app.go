@@ -31,6 +31,7 @@ import (
 	"github.com/semmidev/url-shortener/server/internal/platform/web"
 	"github.com/semmidev/url-shortener/server/internal/url"
 	"github.com/semmidev/url-shortener/server/internal/user"
+	spaweb "github.com/semmidev/url-shortener/server/internal/web"
 )
 
 func Run(cfg config.Config) error {
@@ -162,12 +163,18 @@ func BuildRouter(cfg config.Config, pool *pgxpool.Pool, appLogger *logger.Logger
 	analyticsSvc := analytics.NewService(store)
 	adminSvc := admin.NewService(store, appLogger)
 
+	// Initialize Embedded SPA Handler
+	spaHandler, err := spaweb.NewSPAHandler()
+	if err != nil {
+		appLogger.Warn(context.Background(), "failed to initialize embedded SPA handler", "error", err)
+	}
+
 	// Initialize Handlers
 	userH := user.NewHandler(userSvc)
 	urlH := url.NewHandler(urlSvc)
 	analyticsH := analytics.NewHandler(analyticsSvc)
 	adminH := admin.NewHandler(adminSvc)
-	redirectH := url.NewRedirectHandler(urlSvc, analyticsH)
+	redirectH := url.NewRedirectHandler(urlSvc, analyticsH, spaHandler)
 
 	// Start Outbox Worker for async background event streaming
 	outboxWorker := outbox.NewOutboxWorker(store, eventPub, analyticsH)
@@ -259,9 +266,11 @@ func BuildRouter(cfg config.Config, pool *pgxpool.Pool, appLogger *logger.Logger
 	publicRateLimitMw := customMw.RedisRateLimiter(redisCache, "public", cfg.RateLimitPublicRequests, cfg.RateLimitPublicWindow)
 	redirectRouter := chi.NewRouter()
 	redirectRouter.Use(customMw.WideEventLoggingWithSampling(appLogger, cfg.LogRedirectSampleRate))
+
 	redirectRouter.With(publicRateLimitMw).Get("/{code}", redirectH.Redirect)
 	redirectRouter.With(publicRateLimitMw).Get("/{code}/preview", redirectH.Preview)
 	redirectRouter.With(publicRateLimitMw).Get("/{code}/qr", redirectH.QRCode)
+	redirectRouter.Get("/*", redirectH.Redirect)
 	r.Mount("/", redirectRouter)
 
 	// Rate Limiters for API routes

@@ -1,3 +1,15 @@
+# ─── Stage 0: Frontend Build ──────────────────────────────────────────────────
+FROM node:20-alpine AS frontend-builder
+ARG VERSION=1.0.0
+ENV VITE_APP_VERSION=$VERSION
+WORKDIR /app/web
+
+COPY web/package*.json ./
+RUN --mount=type=cache,target=/root/.npm npm ci
+
+COPY web/ .
+RUN npm run build
+
 # ─── Stage 1: Build ───────────────────────────────────────────────────────────
 FROM golang:1.26-alpine AS builder
 ARG VERSION=1.0.0
@@ -14,6 +26,7 @@ COPY go.mod go.sum ./
 RUN --mount=type=cache,target=/go/pkg/mod go mod download
 
 COPY . .
+COPY --from=frontend-builder /app/web/dist ./server/internal/web/dist
 
 # Build fully static binary with version metadata injection
 RUN --mount=type=cache,target=/go/pkg/mod \

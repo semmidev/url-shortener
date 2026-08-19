@@ -8,10 +8,10 @@ DOCKER_CMD ?= $(shell command -v docker 2>/dev/null || command -v podman 2>/dev/
 GOLANGCI_LINT_CMD ?= $(shell command -v golangci-lint 2>/dev/null || echo "go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest")
 MIGRATE_CMD ?= $(shell command -v migrate 2>/dev/null || echo "go run github.com/golang-migrate/migrate/v4/cmd/migrate@latest")
 
-.PHONY: run dev build test test-integration test-all lint seed setup-hooks swagger sqlc new_migration migrateup migrateup1 migratedown migratedown1 createdb dropdb docker-up docker-down up-dev down-dev logs-dev clean
+.PHONY: run dev build build-frontend test test-integration test-all lint seed setup-hooks swagger sqlc new_migration migrateup migrateup1 migratedown migratedown1 createdb dropdb docker-up docker-down up-dev down-dev logs-dev clean
 
-# Run backend API locally
-run:
+# Run backend API locally (builds frontend first and embeds static dist)
+run: build-frontend
 	go run $(LDFLAGS) ./server/cmd/api
 
 # Run backend API locally with Air live hot-reload
@@ -34,8 +34,18 @@ setup-hooks:
 		echo "⚠️ Neither pre-commit nor lefthook command found in PATH"; \
 	fi
 
+# Build React SPA frontend and copy to Go embed directory
+build-frontend:
+	@echo "🎨 Building React SPA frontend..."
+	@cd web && npm install && npm run build
+	@echo "📦 Copying frontend build to embed directory..."
+	@rm -rf server/internal/web/dist
+	@cp -r web/dist server/internal/web/dist
+	@touch server/internal/web/dist/.gitkeep
+	@echo "✅ Frontend built and ready for embedding"
+
 # Build static binary with ldflags version metadata injection
-build:
+build: build-frontend
 	go build $(LDFLAGS) -o bin/api ./server/cmd/api
 
 # Run unit tests only (automatically skips integration build tag)
@@ -68,7 +78,7 @@ loadtest-stress:
 
 # Run golangci-lint code analysis
 lint:
-	$(GOLANGCI_LINT_CMD) run ./...
+	$(GOLANGCI_LINT_CMD) run ./server/...
 
 # Generate Swagger REST API documentation
 swagger:
