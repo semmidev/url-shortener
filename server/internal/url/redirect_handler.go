@@ -3,11 +3,16 @@ package url
 import (
 	"context"
 	"fmt"
+	"net"
 	"net/http"
+	"net/url"
+	"strings"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
-	_ "github.com/semmidev/url-shortener/server/internal/platform/apperr"
+	"github.com/skip2/go-qrcode"
+
+	"github.com/semmidev/url-shortener/server/internal/platform/apperr"
 	"github.com/semmidev/url-shortener/server/internal/platform/logger"
 	"github.com/semmidev/url-shortener/server/internal/platform/web"
 )
@@ -28,7 +33,18 @@ func NewRedirectHandler(svc *Service, analyticsRec AnalyticsRecorder) *RedirectH
 	}
 }
 
-// Redirect handles public short URL redirection
+type URLPreviewResponse struct {
+	ShortCode    string `json:"short_code"`
+	ShortURL     string `json:"short_url"`
+	OriginalURL  string `json:"original_url"`
+	Title        string `json:"title"`
+	IsActive     bool   `json:"is_active"`
+	SafetyRating string `json:"safety_rating"` // SAFE, SUSPICIOUS
+	IsHTTPS      bool   `json:"is_https"`
+	Domain       string `json:"domain"`
+}
+
+// Redirect handles public short URL redirection or preview/qr routing if suffix '+' or '/qr' is used
 // @Summary Redirect short code to target destination URL
 // @Tags Redirect
 // @Param code path string true "Short Code"
@@ -38,7 +54,14 @@ func NewRedirectHandler(svc *Service, analyticsRec AnalyticsRecorder) *RedirectH
 func (h *RedirectHandler) Redirect(w http.ResponseWriter, r *http.Request) {
 	shortCode := chi.URLParam(r, "code")
 	if shortCode == "" {
-		web.Error(w, r, http.ErrMissingFile)
+		web.Error(w, r, apperr.Invalid("short code is required"))
+		return
+	}
+
+	// Support /{code}+ for instant preview
+	if strings.HasSuffix(shortCode, "+") {
+		shortCode = strings.TrimSuffix(shortCode, "+")
+		h.PreviewWithCode(w, r, shortCode)
 		return
 	}
 
@@ -71,4 +94,78 @@ func (h *RedirectHandler) Redirect(w http.ResponseWriter, r *http.Request) {
 
 	// HTTP 307 Temporary Redirect to preserve request method if needed
 	http.Redirect(w, r, res.OriginalURL, http.StatusTemporaryRedirect)
+}
+
+// Preview handles short code preview and safety inspection
+// @Summary Preview short URL destination and safety analysis
+// @Tags Redirect
+// @Param code path string true "Short Code"
+// @Success 200 {object} URLPreviewResponse
+// @Failure 404 {object} apperr.Error
+// @Router /{code}/preview [get]
+func (h *RedirectHandler) Preview(w http.ResponseWriter, r *http.Request) {
+	shortCode := chi.URLParam(r, "code")
+	shortCode = strings.TrimSuffix(shortCode, "+")
+	h.PreviewWithCode(w, r, shortCode)
+}
+
+func (h *RedirectHandler) PreviewWithCode(w http.ResponseWriter, r *http.Request, code string) {
+	res, err := h.svc.GetByCode(r.Context(), GetURLByCodeRequest{Code: code})
+	if err != nil {
+		web.Error(w, r, err)
+		return
+	}
+
+	parsedURL, err := url.Parse(res.OriginalURL)
+	domain := ""
+	isHTTPS := false
+	safetyRating := "SAFE"
+
+	if err == nil {
+		domain = parsedURL.Hostname()
+		isHTTPS = parsedURL.Scheme == "https"
+		if !isHTTPS || net.ParseIP(domain) != nil {
+			safetyRating = "SUSPICIOUS"
+		}
+	}
+
+	preview := URLPreviewResponse{
+		ShortCode:    res.ShortCode,
+		ShortURL:     res.ShortURL,
+		OriginalURL:  res.OriginalURL,
+		Title:        res.Title,
+		IsActive:     res.IsActive,
+		SafetyRating: safetyRating,
+		IsHTTPS:      isHTTPS,
+		Domain:       domain,
+	}
+
+	web.JSON(w, http.StatusOK, preview)
+}
+
+// QRCode renders a PNG QR code for the short URL
+// @Summary Get QR Code image (PNG) for short code
+// @Tags Redirect
+// @Param code path string true "Short Code"
+// @Success 200 "PNG Image"
+// @Failure 404 {object} apperr.Error
+// @Router /{code}/qr [get]
+func (h *RedirectHandler) QRCode(w http.ResponseWriter, r *http.Request) {
+	shortCode := chi.URLParam(r, "code")
+	res, err := h.svc.GetByCode(r.Context(), GetURLByCodeRequest{Code: shortCode})
+	if err != nil {
+		web.Error(w, r, err)
+		return
+	}
+
+	pngBytes, err := qrcode.Encode(res.ShortURL, qrcode.Medium, 256)
+	if err != nil {
+		web.Error(w, r, apperr.Internal("failed to generate QR code", err))
+		return
+	}
+
+	w.Header().Set("Content-Type", "image/png")
+	w.Header().Set("Cache-Control", "public, max-age=86400")
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write(pngBytes)
 }

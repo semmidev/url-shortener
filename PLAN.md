@@ -373,23 +373,25 @@ tp := otel.GetTracerProvider()
 
 ## 🎁 Product Features
 
-### ❌ URL Expiration Cleanup Job
-**Missing**:
-- Expired URLs (`expires_at < NOW()`) are currently **not automatically cleaned up** or deactivated.
-- No background job or `pg_cron` to deactivate expired entries.
+### ✅ URL Expiration Cleanup Job
+**Status**: Implemented background ticker worker in `server/internal/url/service.go` and `DeactivateExpiredURLs` query in `server/db/query/urls.sql`.
+
+- Automatically deactivates expired links (`expires_at < NOW()`) in the background every 1 minute.
 
 ---
 
-### ❌ URL Preview / Safety Check
-**Missing**:
-- No "preview" page before redirect (e.g. `/{code}+` shows where the link goes).
-- No integration with Google Safe Browsing API to flag malicious URLs.
+### ✅ URL Preview / Safety Check
+**Status**: Implemented in `server/internal/url/redirect_handler.go`.
+
+- Supports `GET /{code}/preview` and instant `GET /{code}+` endpoints.
+- Evaluates target destination domain safety rating (`SAFE` vs `SUSPICIOUS` protocol/IP host analysis).
 
 ---
 
-### ❌ QR Code Generation
-**Missing**:
-- No QR code generation endpoint (`GET /api/v1/urls/{id}/qr`).
+### ✅ QR Code Generation
+**Status**: Implemented via `github.com/skip2/go-qrcode` in `server/internal/url/redirect_handler.go` and `server/internal/url/http.go`.
+
+- Endpoints: `GET /{code}/qr` (public) and `GET /api/v1/urls/{id}/qr` (authenticated) returning 256x256 `image/png` QR Code images.
 
 ---
 
@@ -400,10 +402,10 @@ tp := otel.GetTracerProvider()
 
 ---
 
-### ❌ User Dashboard Aggregate Stats API
-**Missing**:
-- No aggregate statistics endpoint (total clicks today, top referrers, device breakdown).
-- Analytics raw events exist but no rollup/aggregation queries.
+### ✅ User Dashboard Aggregate Stats API
+**Status**: Implemented in `server/internal/analytics/service.go` and `server/internal/analytics/http.go`.
+
+- Endpoint: `GET /api/v1/analytics/dashboard` returning total URLs, total clicks, top referrers, device breakdown, and country breakdown across user's URLs.
 
 ---
 

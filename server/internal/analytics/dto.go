@@ -37,3 +37,30 @@ type ClickResponse struct {
 	Country    string    `json:"country"`
 	ClickedAt  time.Time `json:"clicked_at"`
 }
+
+type UserDashboardRequest struct {
+	UserID uuid.UUID `json:"user_id"`
+}
+
+type ReferrerStat struct {
+	Referrer   string `json:"referrer"`
+	ClickCount int64  `json:"click_count"`
+}
+
+type DeviceStat struct {
+	DeviceType string `json:"device_type"`
+	ClickCount int64  `json:"click_count"`
+}
+
+type CountryStat struct {
+	Country    string `json:"country"`
+	ClickCount int64  `json:"click_count"`
+}
+
+type UserDashboardResponse struct {
+	TotalURLs    int64          `json:"total_urls"`
+	TotalClicks  int64          `json:"total_clicks"`
+	TopReferrers []ReferrerStat `json:"top_referrers"`
+	Devices      []DeviceStat   `json:"devices"`
+	Countries    []CountryStat  `json:"countries"`
+}

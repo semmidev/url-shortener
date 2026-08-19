@@ -8,6 +8,7 @@ import (
 	"context"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -16,6 +17,7 @@ type Querier interface {
 	CreateSession(ctx context.Context, arg CreateSessionParams) (Session, error)
 	CreateShortURL(ctx context.Context, arg CreateShortURLParams) (ShortUrl, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
+	DeactivateExpiredURLs(ctx context.Context) (pgconn.CommandTag, error)
 	DeleteShortURL(ctx context.Context, arg DeleteShortURLParams) error
 	GetSession(ctx context.Context, id uuid.UUID) (Session, error)
 	GetShortURLByCode(ctx context.Context, shortCode string) (ShortUrl, error)
@@ -24,6 +26,10 @@ type Querier interface {
 	GetUserByEmail(ctx context.Context, email string) (User, error)
 	GetUserByGoogleID(ctx context.Context, googleID pgtype.Text) (User, error)
 	GetUserByID(ctx context.Context, id uuid.UUID) (User, error)
+	GetUserCountryBreakdown(ctx context.Context, userID pgtype.UUID) ([]GetUserCountryBreakdownRow, error)
+	GetUserDashboardSummary(ctx context.Context, userID pgtype.UUID) (GetUserDashboardSummaryRow, error)
+	GetUserDeviceBreakdown(ctx context.Context, userID pgtype.UUID) ([]GetUserDeviceBreakdownRow, error)
+	GetUserTopReferrers(ctx context.Context, arg GetUserTopReferrersParams) ([]GetUserTopReferrersRow, error)
 	IncrementClickCount(ctx context.Context, id uuid.UUID) error
 	ListRecentClicksByUrlID(ctx context.Context, arg ListRecentClicksByUrlIDParams) ([]UrlAnalytic, error)
 	ListUserShortURLs(ctx context.Context, arg ListUserShortURLsParams) ([]ShortUrl, error)

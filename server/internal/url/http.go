@@ -7,6 +7,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/semmidev/url-shortener/server/internal/platform/apperr"
 	"github.com/semmidev/url-shortener/server/internal/platform/web"
+	"github.com/skip2/go-qrcode"
 )
 
 type Handler struct {
@@ -24,6 +25,7 @@ func (h *Handler) Mount(r chi.Router, authMw func(http.Handler) http.Handler) {
 		r.Post("/urls", h.create)
 		r.Get("/urls", h.list)
 		r.Get("/urls/{id}", h.getByID)
+		r.Get("/urls/{id}/qr", h.getQRByID)
 		r.Put("/urls/{id}", h.update)
 		r.Delete("/urls/{id}", h.delete)
 	})
@@ -211,4 +213,47 @@ func (h *Handler) delete(w http.ResponseWriter, r *http.Request) {
 	}
 
 	web.JSON(w, http.StatusOK, resp)
+}
+
+// getQRByID handles generating PNG QR code for a short URL by ID
+// @Summary Get QR Code image (PNG) for a short URL by ID
+// @Tags URLs
+// @Security BearerAuth
+// @Produce image/png
+// @Param id path string true "Short URL UUID"
+// @Success 200 "PNG Image"
+// @Failure 401 {object} apperr.Error
+// @Failure 403 {object} apperr.Error
+// @Failure 404 {object} apperr.Error
+// @Router /api/v1/urls/{id}/qr [get]
+func (h *Handler) getQRByID(w http.ResponseWriter, r *http.Request) {
+	userID, ok := web.UserID(r.Context())
+	if !ok {
+		web.Error(w, r, apperr.Unauthorized("unauthenticated"))
+		return
+	}
+
+	idStr := chi.URLParam(r, "id")
+	id, err := uuid.Parse(idStr)
+	if err != nil {
+		web.Error(w, r, apperr.Invalid("invalid URL ID"))
+		return
+	}
+
+	res, err := h.svc.GetByID(r.Context(), GetURLByIDRequest{ID: id, UserID: userID})
+	if err != nil {
+		web.Error(w, r, err)
+		return
+	}
+
+	pngBytes, err := qrcode.Encode(res.ShortURL, qrcode.Medium, 256)
+	if err != nil {
+		web.Error(w, r, apperr.Internal("failed to generate QR code", err))
+		return
+	}
+
+	w.Header().Set("Content-Type", "image/png")
+	w.Header().Set("Cache-Control", "public, max-age=86400")
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write(pngBytes)
 }

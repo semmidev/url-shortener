@@ -9,6 +9,7 @@ import (
 	"context"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -92,6 +93,16 @@ func (q *Queries) CreateShortURL(ctx context.Context, arg CreateShortURLParams) 
 		&i.UpdatedAt,
 	)
 	return i, err
+}
+
+const deactivateExpiredURLs = `-- name: DeactivateExpiredURLs :execresult
+UPDATE short_urls
+SET is_active = FALSE, updated_at = NOW()
+WHERE is_active = TRUE AND expires_at IS NOT NULL AND expires_at < NOW()
+`
+
+func (q *Queries) DeactivateExpiredURLs(ctx context.Context) (pgconn.CommandTag, error) {
+	return q.db.Exec(ctx, deactivateExpiredURLs)
 }
 
 const deleteShortURL = `-- name: DeleteShortURL :exec

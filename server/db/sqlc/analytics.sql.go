@@ -9,10 +9,11 @@ import (
 	"context"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const getURLAnalyticsSummary = `-- name: GetURLAnalyticsSummary :one
-SELECT 
+SELECT
     COUNT(*)::bigint AS total_clicks,
     COUNT(DISTINCT ip_address)::bigint AS unique_visitors
 FROM url_analytics
@@ -29,6 +30,140 @@ func (q *Queries) GetURLAnalyticsSummary(ctx context.Context, urlID uuid.UUID) (
 	var i GetURLAnalyticsSummaryRow
 	err := row.Scan(&i.TotalClicks, &i.UniqueVisitors)
 	return i, err
+}
+
+const getUserCountryBreakdown = `-- name: GetUserCountryBreakdown :many
+SELECT
+    COALESCE(NULLIF(a.country, ''), 'unknown')::text AS country,
+    COUNT(*)::bigint AS click_count
+FROM url_analytics a
+JOIN short_urls u ON a.url_id = u.id
+WHERE u.user_id = $1
+GROUP BY COALESCE(NULLIF(a.country, ''), 'unknown')::text
+ORDER BY click_count DESC
+`
+
+type GetUserCountryBreakdownRow struct {
+	Country    string `json:"country"`
+	ClickCount int64  `json:"click_count"`
+}
+
+func (q *Queries) GetUserCountryBreakdown(ctx context.Context, userID pgtype.UUID) ([]GetUserCountryBreakdownRow, error) {
+	rows, err := q.db.Query(ctx, getUserCountryBreakdown, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []GetUserCountryBreakdownRow{}
+	for rows.Next() {
+		var i GetUserCountryBreakdownRow
+		if err := rows.Scan(&i.Country, &i.ClickCount); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getUserDashboardSummary = `-- name: GetUserDashboardSummary :one
+SELECT
+    COUNT(DISTINCT u.id)::bigint AS total_urls,
+    COALESCE(SUM(u.click_count), 0)::bigint AS total_clicks
+FROM short_urls u
+WHERE u.user_id = $1
+`
+
+type GetUserDashboardSummaryRow struct {
+	TotalUrls   int64 `json:"total_urls"`
+	TotalClicks int64 `json:"total_clicks"`
+}
+
+func (q *Queries) GetUserDashboardSummary(ctx context.Context, userID pgtype.UUID) (GetUserDashboardSummaryRow, error) {
+	row := q.db.QueryRow(ctx, getUserDashboardSummary, userID)
+	var i GetUserDashboardSummaryRow
+	err := row.Scan(&i.TotalUrls, &i.TotalClicks)
+	return i, err
+}
+
+const getUserDeviceBreakdown = `-- name: GetUserDeviceBreakdown :many
+SELECT
+    COALESCE(NULLIF(a.device_type, ''), 'unknown')::text AS device_type,
+    COUNT(*)::bigint AS click_count
+FROM url_analytics a
+JOIN short_urls u ON a.url_id = u.id
+WHERE u.user_id = $1
+GROUP BY COALESCE(NULLIF(a.device_type, ''), 'unknown')::text
+ORDER BY click_count DESC
+`
+
+type GetUserDeviceBreakdownRow struct {
+	DeviceType string `json:"device_type"`
+	ClickCount int64  `json:"click_count"`
+}
+
+func (q *Queries) GetUserDeviceBreakdown(ctx context.Context, userID pgtype.UUID) ([]GetUserDeviceBreakdownRow, error) {
+	rows, err := q.db.Query(ctx, getUserDeviceBreakdown, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []GetUserDeviceBreakdownRow{}
+	for rows.Next() {
+		var i GetUserDeviceBreakdownRow
+		if err := rows.Scan(&i.DeviceType, &i.ClickCount); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getUserTopReferrers = `-- name: GetUserTopReferrers :many
+SELECT
+    COALESCE(NULLIF(a.referrer, ''), 'direct')::text AS referrer,
+    COUNT(*)::bigint AS click_count
+FROM url_analytics a
+JOIN short_urls u ON a.url_id = u.id
+WHERE u.user_id = $1
+GROUP BY COALESCE(NULLIF(a.referrer, ''), 'direct')::text
+ORDER BY click_count DESC
+LIMIT $2
+`
+
+type GetUserTopReferrersParams struct {
+	UserID pgtype.UUID `json:"user_id"`
+	Limit  int32       `json:"limit"`
+}
+
+type GetUserTopReferrersRow struct {
+	Referrer   string `json:"referrer"`
+	ClickCount int64  `json:"click_count"`
+}
+
+func (q *Queries) GetUserTopReferrers(ctx context.Context, arg GetUserTopReferrersParams) ([]GetUserTopReferrersRow, error) {
+	rows, err := q.db.Query(ctx, getUserTopReferrers, arg.UserID, arg.Limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []GetUserTopReferrersRow{}
+	for rows.Next() {
+		var i GetUserTopReferrersRow
+		if err := rows.Scan(&i.Referrer, &i.ClickCount); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const listRecentClicksByUrlID = `-- name: ListRecentClicksByUrlID :many

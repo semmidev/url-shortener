@@ -299,6 +299,32 @@ func (s *Service) IncrementClickCount(ctx context.Context, req IncrementClickCou
 	return nil
 }
 
+func (s *Service) DeactivateExpiredURLs(ctx context.Context) (int64, error) {
+	res, err := s.store.DeactivateExpiredURLs(ctx)
+	if err != nil {
+		return 0, apperr.MapDBError(err, "failed to cleanup expired URLs", "")
+	}
+	return res.RowsAffected(), nil
+}
+
+func (s *Service) StartExpirationCleanupWorker(ctx context.Context, interval time.Duration) {
+	if interval <= 0 {
+		interval = 1 * time.Minute
+	}
+	ticker := time.NewTicker(interval)
+	go func() {
+		for {
+			select {
+			case <-ctx.Done():
+				ticker.Stop()
+				return
+			case <-ticker.C:
+				_, _ = s.DeactivateExpiredURLs(ctx)
+			}
+		}
+	}()
+}
+
 func toPgUUID(id *uuid.UUID) pgtype.UUID {
 	if id == nil {
 		return pgtype.UUID{Valid: false}

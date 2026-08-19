@@ -144,6 +144,7 @@ func BuildRouter(cfg config.Config, pool *pgxpool.Pool, appLogger *logger.Logger
 	// Initialize Services
 	userSvc := user.NewService(store, tokenMaker, cfg, appLogger)
 	urlSvc := url.NewService(store, cfg, redisCache)
+	urlSvc.StartExpirationCleanupWorker(context.Background(), 1*time.Minute)
 	analyticsSvc := analytics.NewService(store)
 
 	// Initialize Handlers
@@ -238,6 +239,8 @@ func BuildRouter(cfg config.Config, pool *pgxpool.Pool, appLogger *logger.Logger
 	redirectRouter := chi.NewRouter()
 	redirectRouter.Use(customMw.WideEventLoggingWithSampling(appLogger, cfg.LogRedirectSampleRate))
 	redirectRouter.With(publicRateLimitMw).Get("/{code}", redirectH.Redirect)
+	redirectRouter.With(publicRateLimitMw).Get("/{code}/preview", redirectH.Preview)
+	redirectRouter.With(publicRateLimitMw).Get("/{code}/qr", redirectH.QRCode)
 	r.Mount("/", redirectRouter)
 
 	// Rate Limiters for API routes

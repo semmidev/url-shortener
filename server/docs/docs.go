@@ -16,13 +16,43 @@ const docTemplate = `{
         },
         "license": {
             "name": "MIT",
-            "url": "https://opensource.org/licenses/MIT"
+            "url": "https://github.com/semmidev/url-shortener/blob/main/LICENSE"
         },
         "version": "{{.Version}}"
     },
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
+        "/api/v1/analytics/dashboard": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Analytics"
+                ],
+                "summary": "Get user dashboard aggregate analytics",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/analytics.UserDashboardResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/apperr.Error"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/auth/google/callback": {
             "get": {
                 "tags": [
@@ -137,6 +167,39 @@ const docTemplate = `{
                         "description": "Bad Request",
                         "schema": {
                             "$ref": "#/definitions/apperr.Error"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/apperr.Error"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/auth/logout": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Logout and revoke session",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
                         }
                     },
                     "401": {
@@ -596,6 +659,54 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/urls/{id}/qr": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "image/png"
+                ],
+                "tags": [
+                    "URLs"
+                ],
+                "summary": "Get QR Code image (PNG) for a short URL by ID",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Short URL UUID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "PNG Image"
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/apperr.Error"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/apperr.Error"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/apperr.Error"
+                        }
+                    }
+                }
+            }
+        },
         "/{code}": {
             "get": {
                 "tags": [
@@ -614,6 +725,65 @@ const docTemplate = `{
                 "responses": {
                     "307": {
                         "description": "Temporary Redirect to destination URL"
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/apperr.Error"
+                        }
+                    }
+                }
+            }
+        },
+        "/{code}/preview": {
+            "get": {
+                "tags": [
+                    "Redirect"
+                ],
+                "summary": "Preview short URL destination and safety analysis",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Short Code",
+                        "name": "code",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/url.URLPreviewResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/apperr.Error"
+                        }
+                    }
+                }
+            }
+        },
+        "/{code}/qr": {
+            "get": {
+                "tags": [
+                    "Redirect"
+                ],
+                "summary": "Get QR Code image (PNG) for short code",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Short Code",
+                        "name": "code",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "PNG Image"
                     },
                     "404": {
                         "description": "Not Found",
@@ -669,6 +839,68 @@ const docTemplate = `{
                 },
                 "user_agent": {
                     "type": "string"
+                }
+            }
+        },
+        "analytics.CountryStat": {
+            "type": "object",
+            "properties": {
+                "click_count": {
+                    "type": "integer"
+                },
+                "country": {
+                    "type": "string"
+                }
+            }
+        },
+        "analytics.DeviceStat": {
+            "type": "object",
+            "properties": {
+                "click_count": {
+                    "type": "integer"
+                },
+                "device_type": {
+                    "type": "string"
+                }
+            }
+        },
+        "analytics.ReferrerStat": {
+            "type": "object",
+            "properties": {
+                "click_count": {
+                    "type": "integer"
+                },
+                "referrer": {
+                    "type": "string"
+                }
+            }
+        },
+        "analytics.UserDashboardResponse": {
+            "type": "object",
+            "properties": {
+                "countries": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/analytics.CountryStat"
+                    }
+                },
+                "devices": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/analytics.DeviceStat"
+                    }
+                },
+                "top_referrers": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/analytics.ReferrerStat"
+                    }
+                },
+                "total_clicks": {
+                    "type": "integer"
+                },
+                "total_urls": {
+                    "type": "integer"
                 }
             }
         },
@@ -753,6 +985,36 @@ const docTemplate = `{
                 },
                 "total": {
                     "type": "integer"
+                }
+            }
+        },
+        "url.URLPreviewResponse": {
+            "type": "object",
+            "properties": {
+                "domain": {
+                    "type": "string"
+                },
+                "is_active": {
+                    "type": "boolean"
+                },
+                "is_https": {
+                    "type": "boolean"
+                },
+                "original_url": {
+                    "type": "string"
+                },
+                "safety_rating": {
+                    "description": "SAFE, SUSPICIOUS",
+                    "type": "string"
+                },
+                "short_code": {
+                    "type": "string"
+                },
+                "short_url": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
                 }
             }
         },

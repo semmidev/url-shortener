@@ -32,6 +32,7 @@ func (h *Handler) Mount(r chi.Router, authMw func(http.Handler) http.Handler) {
 	r.Group(func(r chi.Router) {
 		r.Use(authMw)
 		r.Get("/urls/{id}/analytics", h.getAnalytics)
+		r.Get("/analytics/dashboard", h.getDashboard)
 	})
 }
 
@@ -66,4 +67,28 @@ func (h *Handler) getAnalytics(w http.ResponseWriter, r *http.Request) {
 	}
 
 	web.JSON(w, http.StatusOK, summary)
+}
+
+// getDashboard handles fetching user-wide analytics dashboard metrics
+// @Summary Get user dashboard aggregate analytics
+// @Tags Analytics
+// @Security BearerAuth
+// @Produce json
+// @Success 200 {object} UserDashboardResponse
+// @Failure 401 {object} apperr.Error
+// @Router /api/v1/analytics/dashboard [get]
+func (h *Handler) getDashboard(w http.ResponseWriter, r *http.Request) {
+	userID, ok := web.UserID(r.Context())
+	if !ok {
+		web.Error(w, r, apperr.Unauthorized("unauthenticated"))
+		return
+	}
+
+	dashboard, err := h.svc.GetUserDashboard(r.Context(), UserDashboardRequest{UserID: userID})
+	if err != nil {
+		web.Error(w, r, err)
+		return
+	}
+
+	web.JSON(w, http.StatusOK, dashboard)
 }

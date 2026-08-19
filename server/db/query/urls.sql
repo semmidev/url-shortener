@@ -73,3 +73,8 @@ WHERE id = $1;
 -- name: DeleteShortURL :exec
 DELETE FROM short_urls
 WHERE id = $1 AND (user_id = sqlc.arg('user_id') OR sqlc.arg('user_id') IS NULL);
+
+-- name: DeactivateExpiredURLs :execresult
+UPDATE short_urls
+SET is_active = FALSE, updated_at = NOW()
+WHERE is_active = TRUE AND expires_at IS NOT NULL AND expires_at < NOW();

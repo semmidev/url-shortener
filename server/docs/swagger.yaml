@@ -30,6 +30,46 @@ definitions:
       user_agent:
         type: string
     type: object
+  analytics.CountryStat:
+    properties:
+      click_count:
+        type: integer
+      country:
+        type: string
+    type: object
+  analytics.DeviceStat:
+    properties:
+      click_count:
+        type: integer
+      device_type:
+        type: string
+    type: object
+  analytics.ReferrerStat:
+    properties:
+      click_count:
+        type: integer
+      referrer:
+        type: string
+    type: object
+  analytics.UserDashboardResponse:
+    properties:
+      countries:
+        items:
+          $ref: '#/definitions/analytics.CountryStat'
+        type: array
+      devices:
+        items:
+          $ref: '#/definitions/analytics.DeviceStat'
+        type: array
+      top_referrers:
+        items:
+          $ref: '#/definitions/analytics.ReferrerStat'
+        type: array
+      total_clicks:
+        type: integer
+      total_urls:
+        type: integer
+    type: object
   apperr.Error:
     properties:
       code:
@@ -84,6 +124,26 @@ definitions:
         type: string
       total:
         type: integer
+    type: object
+  url.URLPreviewResponse:
+    properties:
+      domain:
+        type: string
+      is_active:
+        type: boolean
+      is_https:
+        type: boolean
+      original_url:
+        type: string
+      safety_rating:
+        description: SAFE, SUSPICIOUS
+        type: string
+      short_code:
+        type: string
+      short_url:
+        type: string
+      title:
+        type: string
     type: object
   url.URLResponse:
     properties:
@@ -211,7 +271,7 @@ info:
   description: High-Performance Modular Monolith URL Shortener REST API in Go.
   license:
     name: MIT
-    url: https://opensource.org/licenses/MIT
+    url: https://github.com/semmidev/url-shortener/blob/main/LICENSE
   termsOfService: http://swagger.io/terms/
   title: URL Shortener API
   version: "1.0"
@@ -234,6 +294,62 @@ paths:
       summary: Redirect short code to target destination URL
       tags:
       - Redirect
+  /{code}/preview:
+    get:
+      parameters:
+      - description: Short Code
+        in: path
+        name: code
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/url.URLPreviewResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/apperr.Error'
+      summary: Preview short URL destination and safety analysis
+      tags:
+      - Redirect
+  /{code}/qr:
+    get:
+      parameters:
+      - description: Short Code
+        in: path
+        name: code
+        required: true
+        type: string
+      responses:
+        "200":
+          description: PNG Image
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/apperr.Error'
+      summary: Get QR Code image (PNG) for short code
+      tags:
+      - Redirect
+  /api/v1/analytics/dashboard:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/analytics.UserDashboardResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apperr.Error'
+      security:
+      - BearerAuth: []
+      summary: Get user dashboard aggregate analytics
+      tags:
+      - Analytics
   /api/v1/auth/google/callback:
     get:
       parameters:
@@ -312,6 +428,26 @@ paths:
           schema:
             $ref: '#/definitions/apperr.Error'
       summary: User login
+      tags:
+      - Auth
+  /api/v1/auth/logout:
+    post:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apperr.Error'
+      security:
+      - BearerAuth: []
+      summary: Logout and revoke session
       tags:
       - Auth
   /api/v1/auth/me:
@@ -597,6 +733,36 @@ paths:
       summary: Get analytics summary for a short URL
       tags:
       - Analytics
+  /api/v1/urls/{id}/qr:
+    get:
+      parameters:
+      - description: Short URL UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - image/png
+      responses:
+        "200":
+          description: PNG Image
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apperr.Error'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/apperr.Error'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/apperr.Error'
+      security:
+      - BearerAuth: []
+      summary: Get QR Code image (PNG) for a short URL by ID
+      tags:
+      - URLs
 securityDefinitions:
   BearerAuth:
     description: Input your Bearer token in the format "Bearer <token>".
