@@ -1,6 +1,6 @@
 import http from 'k6/http';
 import { check, sleep } from 'k6';
-import { BASE_URL, THRESHOLDS } from './config.js';
+import { BASE_URL, HEADERS, THRESHOLDS } from './config.js';
 
 export const options = {
   stages: [
@@ -13,14 +13,19 @@ export const options = {
 };
 
 export default function () {
+  const params = { headers: HEADERS };
+
   // 1. High throughput redirect GET /{code}
-  const resRedirect = http.get(`${BASE_URL}/demo`, { redirects: 0 });
+  const resRedirect = http.get(`${BASE_URL}/demo`, {
+    ...params,
+    redirects: 0,
+  });
   check(resRedirect, {
     'redirect is 307 or 404': (r) => r.status === 307 || r.status === 404,
   });
 
   // 2. Short URL Instant Preview GET /{code}/preview
-  const resPreview = http.get(`${BASE_URL}/demo/preview`);
+  const resPreview = http.get(`${BASE_URL}/demo/preview`, params);
   check(resPreview, {
     'preview is 200 or 404': (r) => r.status === 200 || r.status === 404,
   });

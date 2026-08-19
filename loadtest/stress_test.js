@@ -1,6 +1,6 @@
 import http from 'k6/http';
 import { check, sleep } from 'k6';
-import { BASE_URL } from './config.js';
+import { BASE_URL, HEADERS } from './config.js';
 
 export const options = {
   stages: [
@@ -16,7 +16,12 @@ export const options = {
 };
 
 export default function () {
-  const resRedirect = http.get(`${BASE_URL}/demo`, { redirects: 0 });
+  const params = { headers: HEADERS };
+
+  const resRedirect = http.get(`${BASE_URL}/demo`, {
+    ...params,
+    redirects: 0,
+  });
   check(resRedirect, {
     'response received': (r) => r.status > 0,
   });

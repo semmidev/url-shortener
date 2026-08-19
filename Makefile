@@ -56,15 +56,15 @@ benchmark:
 
 # Run k6 smoke load test
 loadtest-smoke:
-	k6 run loadtest/smoke_test.js
+	RATE_LIMIT_PUBLIC_REQUESTS=100000 RATE_LIMIT_API_REQUESTS=100000 RATE_LIMIT_AUTH_REQUESTS=100000 k6 run loadtest/smoke_test.js
 
 # Run k6 standard load test
 loadtest-load:
-	k6 run loadtest/load_test.js
+	RATE_LIMIT_PUBLIC_REQUESTS=100000 RATE_LIMIT_API_REQUESTS=100000 RATE_LIMIT_AUTH_REQUESTS=100000 k6 run loadtest/load_test.js
 
 # Run k6 stress test
 loadtest-stress:
-	k6 run loadtest/stress_test.js
+	RATE_LIMIT_PUBLIC_REQUESTS=100000 RATE_LIMIT_API_REQUESTS=100000 RATE_LIMIT_AUTH_REQUESTS=100000 k6 run loadtest/stress_test.js
 
 # Run golangci-lint code analysis
 lint:

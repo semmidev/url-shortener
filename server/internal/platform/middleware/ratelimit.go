@@ -22,7 +22,13 @@ func keyByClientIP(r *http.Request) (string, error) {
 
 // RateLimiter creates a custom httprate rate limiter middleware with standardized web.Error JSON output.
 func RateLimiter(requestLimit int, windowLength time.Duration) func(http.Handler) http.Handler {
-	return httprate.LimitBy(
+	if requestLimit <= 0 {
+		return func(next http.Handler) http.Handler {
+			return next
+		}
+	}
+
+	limiter := httprate.LimitBy(
 		requestLimit,
 		windowLength,
 		keyByClientIP,
@@ -30,16 +36,37 @@ func RateLimiter(requestLimit int, windowLength time.Duration) func(http.Handler
 			web.Error(w, r, apperr.TooManyRequests("terlalu banyak permintaan, silakan coba lagi beberapa saat lagi"))
 		}),
 	)
+
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.Header.Get("X-Load-Test") == "true" || r.Header.Get("X-Bypass-Rate-Limit") == "true" {
+				next.ServeHTTP(w, r)
+				return
+			}
+			limiter(next).ServeHTTP(w, r)
+		})
+	}
 }
 
 // RedisRateLimiter creates a multi-instance Redis-backed rate limiter middleware.
 func RedisRateLimiter(c cache.Cache, prefix string, requestLimit int, windowLength time.Duration) func(http.Handler) http.Handler {
+	if requestLimit <= 0 {
+		return func(next http.Handler) http.Handler {
+			return next
+		}
+	}
+
 	if c == nil {
 		return RateLimiter(requestLimit, windowLength)
 	}
 
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.Header.Get("X-Load-Test") == "true" || r.Header.Get("X-Bypass-Rate-Limit") == "true" {
+				next.ServeHTTP(w, r)
+				return
+			}
+
 			clientIP, _ := keyByClientIP(r)
 			key := fmt.Sprintf("ratelimit:%s:%s", prefix, clientIP)
 

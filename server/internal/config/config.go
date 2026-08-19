@@ -28,6 +28,7 @@ type Config struct {
 	ServerShutdownTimeout time.Duration `mapstructure:"SERVER_SHUTDOWN_TIMEOUT"`
 
 	// Rate Limiting Settings
+	RateLimitEnabled        bool          `mapstructure:"RATE_LIMIT_ENABLED"`
 	RateLimitAuthRequests   int           `mapstructure:"RATE_LIMIT_AUTH_REQUESTS"`
 	RateLimitAuthWindow     time.Duration `mapstructure:"RATE_LIMIT_AUTH_WINDOW"`
 	RateLimitAPIRequests    int           `mapstructure:"RATE_LIMIT_API_REQUESTS"`
@@ -94,6 +95,7 @@ func LoadConfig(path string) (config Config, err error) {
 	viper.SetDefault("SERVER_IDLE_TIMEOUT", "60s")
 	viper.SetDefault("SERVER_SHUTDOWN_TIMEOUT", "10s")
 
+	viper.SetDefault("RATE_LIMIT_ENABLED", true)
 	viper.SetDefault("RATE_LIMIT_AUTH_REQUESTS", 10)
 	viper.SetDefault("RATE_LIMIT_AUTH_WINDOW", "1m")
 	viper.SetDefault("RATE_LIMIT_API_REQUESTS", 100)
