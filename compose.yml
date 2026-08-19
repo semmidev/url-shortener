@@ -13,12 +13,15 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      redis:
+        condition: service_healthy
     env_file:
       - path: .env
         required: true
     environment:
       APP_ENV: production
       DB_SOURCE: postgres://${DB_USER:-postgres}:${DB_PASSWORD:-postgres}@postgres:5432/${DB_NAME:-urlshortener}?sslmode=disable
+      REDIS_ADDRESS: redis:6379
       MIGRATION_URL: file://server/db/migration
     restart: unless-stopped
     ports:
@@ -84,6 +87,26 @@ services:
       S3_PREFIX: ${BACKUP_S3_PREFIX:-backups}
       S3_ENDPOINT: ${S3_ENDPOINT:-}
     restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
+    networks:
+      - url_shortener_network
+
+  redis:
+    image: redis:7-alpine
+    container_name: url-shortener-redis
+    ports:
+      - "127.0.0.1:6379:6379"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
     logging:
       driver: json-file
       options:

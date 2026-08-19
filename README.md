@@ -124,6 +124,7 @@ All major architectural and code style decisions are formally documented in our 
 | **ADR-0009** | Automated Database Migrations & Retry Resiliency | [Read Record](server/docs/adr/0009-automated-migrations-retry-resiliency.md) |
 | **ADR-0010** | Configurable Graceful Shutdown | [Read Record](server/docs/adr/0010-graceful-shutdown.md) |
 | **ADR-0011** | Tiered Rate Limiting by Route Classification | [Read Record](server/docs/adr/0011-tiered-rate-limiting.md) |
+| **ADR-0012** | Redis Cache-Aside & Edge Cache-Control Headers | [Read Record](server/docs/adr/0012-redis-cache-aside-edge-cache-control.md) |
 
 ---
 

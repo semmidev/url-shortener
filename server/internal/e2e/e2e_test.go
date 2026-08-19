@@ -184,9 +184,11 @@ func TestE2E_FullApplicationFlow(t *testing.T) {
 			},
 		},
 		{
-			name:           "10. List User Short URLs (DataTable Filter & Search)",
-			method:         http.MethodGet,
-			url:            func() string { return ts.URL + "/api/v1/urls?search=Table&sort_by=created_at&sort_direction=desc&active=1" },
+			name:   "10. List User Short URLs (DataTable Filter & Search)",
+			method: http.MethodGet,
+			url: func() string {
+				return ts.URL + "/api/v1/urls?search=Table&sort_by=created_at&sort_direction=desc&active=1"
+			},
 			token:          func() string { return accessToken },
 			body:           func() any { return nil },
 			expectedStatus: http.StatusOK,

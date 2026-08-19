@@ -27,6 +27,20 @@ services:
     networks:
       - url_shortener_dev_network
 
+  redis:
+    image: redis:7-alpine
+    container_name: url-shortener-redis-dev
+    ports:
+      - '6379:6379'
+    restart: unless-stopped
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - url_shortener_dev_network
+
 volumes:
   db_dev_data:
 

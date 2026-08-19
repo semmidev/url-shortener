@@ -20,6 +20,7 @@ import (
 	"github.com/semmidev/url-shortener/server/docs"
 	"github.com/semmidev/url-shortener/server/internal/analytics"
 	"github.com/semmidev/url-shortener/server/internal/config"
+	"github.com/semmidev/url-shortener/server/internal/platform/cache"
 	"github.com/semmidev/url-shortener/server/internal/platform/logger"
 	customMw "github.com/semmidev/url-shortener/server/internal/platform/middleware"
 	"github.com/semmidev/url-shortener/server/internal/platform/postgres"
@@ -98,28 +99,17 @@ func Run(cfg config.Config) error {
 		shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), cfg.ServerShutdownTimeout)
 		defer shutdownCancel()
 
-		shutdownError <- server.Shutdown(shutdownCtx)
+		server.SetKeepAlivesEnabled(false)
+		if err := server.Shutdown(shutdownCtx); err != nil {
+			appLogger.Error(shutdownCtx, "could not gracefully shutdown server", "error", err)
+			_ = server.Close()
+		}
+		close(shutdownError)
 	}()
 
-	appLogger.Info(context.Background(), "url shortener api starting",
-		"address", cfg.ServerAddress,
-		"environment", cfg.Environment,
-		"version", config.Version,
-		"build_time", config.BuildTime,
-		"git_commit", config.GitCommit,
-		"read_timeout", cfg.ServerReadTimeout,
-		"write_timeout", cfg.ServerWriteTimeout,
-		"idle_timeout", cfg.ServerIdleTimeout,
-		"shutdown_timeout", cfg.ServerShutdownTimeout,
-		"log_level", cfg.LogLevel,
-		"log_format", cfg.LogFormat,
-		"log_add_source", cfg.LogAddSource,
-		"scalar_docs", fmt.Sprintf("http://%s/docs", cfg.ServerAddress),
-		"swagger_docs", fmt.Sprintf("http://%s/swagger/index.html", cfg.ServerAddress),
-	)
-
+	appLogger.Info(context.Background(), "starting http server", "address", cfg.ServerAddress, "environment", cfg.Environment)
 	if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-		return fmt.Errorf("server error: %w", err)
+		return fmt.Errorf("http server failed: %w", err)
 	}
 
 	if err := <-shutdownError; err != nil {
@@ -139,9 +129,21 @@ func BuildRouter(cfg config.Config, pool *pgxpool.Pool, appLogger *logger.Logger
 		return nil, fmt.Errorf("token maker initialization failed: %w", err)
 	}
 
+	// Initialize Redis Cache
+	var redisCache cache.Cache
+	if cfg.RedisAddress != "" {
+		rc, err := cache.NewRedisCache(cfg.RedisAddress, cfg.RedisPassword, cfg.RedisDB)
+		if err != nil {
+			appLogger.Warn(context.Background(), "redis connection skipped/failed", "error", err)
+		} else {
+			appLogger.Info(context.Background(), "redis cache connected successfully", "address", cfg.RedisAddress)
+			redisCache = rc
+		}
+	}
+
 	// Initialize Services
 	userSvc := user.NewService(store, tokenMaker, cfg, appLogger)
-	urlSvc := url.NewService(store, cfg)
+	urlSvc := url.NewService(store, cfg, redisCache)
 	analyticsSvc := analytics.NewService(store)
 
 	// Initialize Handlers

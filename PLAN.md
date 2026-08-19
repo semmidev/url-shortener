@@ -204,34 +204,26 @@ tp := otel.GetTracerProvider()
 
 ## ⚡ Performance & Caching
 
-### ❌ Caching Layer (Redis)
-**Status**: No caching at all. Every redirect does a full DB round-trip.
+### ✅ Caching Layer (Redis)
+**Status**: Implemented via `github.com/redis/go-redis/v9` with Cache-Aside pattern in `server/internal/platform/cache/redis.go` and `server/internal/url/service.go`.
 
-**Missing**:
-- **Short URL lookup cache** (`short_code → original_url`) — the single most impactful optimization for a URL shortener.
-- **User profile cache** (avoid repeated DB reads on every authenticated request).
-- **Session cache** (avoid DB read on every token refresh).
-- **Rate limiter backend** — current `go-chi/httprate` uses in-memory store, not suitable for multi-instance deployment.
-- Recommended: `redis/go-redis/v9` with cache-aside pattern.
+- **Short URL lookup cache** (`url:code:<code proposal> → original_url, active, expires_at`) with automatic cache invalidation on `Update` and `Delete`.
+- **Redis Infrastructure**: Integrated into `compose.dev.yml` and `compose.yml`.
 
 ---
 
-### ❌ CDN / Edge Caching for Redirects
-**Status**: No CDN integration.
+### ✅ CDN / Edge Caching for Redirects
+**Status**: Configured in `server/internal/url/redirect_handler.go`.
 
-**Missing**:
-- Redirect responses (`301`/`302`) can be cached at edge (Cloudflare, Fastly) for active short codes.
-- No `Cache-Control` headers set on redirect responses.
+- Set HTTP `Cache-Control` header on redirect responses (`public, max-age=300, s-maxage=3600`) to support CDN and Edge node caching (Cloudflare, Fastly).
 
 ---
 
-### ❌ Database Query Optimization
-**Status**: Basic indexes exist on `short_code`, `user_id`.
+### ✅ Database Query Optimization
+**Status**: Migration `000002_optimize_indexes.up.sql` created and verified.
 
-**Missing**:
-- No composite index for analytics queries (e.g. `(url_id, clicked_at DESC)`).
-- `click_count` is updated on every redirect — a high-contention hotspot. Should use **batched counter increments** (Redis `INCR` + periodic flush) instead of per-click `UPDATE`.
-- `ListUserShortURLs` does a full text search via `ILIKE` — no full-text search index (`pg_trgm` or `tsvector`).
+- Added composite index `idx_url_analytics_url_clicked` on `url_analytics (url_id, clicked_at DESC)`.
+- Added PostgreSQL `pg_trgm` extension and GIN trigram indexes on `short_urls(title)` and `short_urls(original_url)` for accelerated substring search (`ILIKE`).
 
 ---
 

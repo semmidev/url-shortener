@@ -2,6 +2,7 @@ package url
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -60,6 +61,13 @@ func (h *RedirectHandler) Redirect(w http.ResponseWriter, r *http.Request) {
 			h.analyticsRec.RecordClick(ctx, urlID, ip, userAgent, referrer)
 		}
 	}(res.ID, r.RemoteAddr, r.UserAgent(), r.Referer())
+
+	// Set Cache-Control header for Edge / CDN caching (Cloudflare, Fastly)
+	maxAge := h.svc.cfg.CacheControlMaxAge
+	if maxAge <= 0 {
+		maxAge = 300
+	}
+	w.Header().Set("Cache-Control", fmt.Sprintf("public, max-age=%d, s-maxage=%d", maxAge, maxAge*12))
 
 	// HTTP 307 Temporary Redirect to preserve request method if needed
 	http.Redirect(w, r, res.OriginalURL, http.StatusTemporaryRedirect)

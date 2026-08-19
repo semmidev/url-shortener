@@ -17,6 +17,7 @@ This directory contains the Architecture Decision Records (ADRs) for the URL Sho
 | [ADR-0009](0009-automated-migrations-retry-resiliency.md) | Automated Database Migrations & Retry Resiliency | Accepted | 2026-08-19 |
 | [ADR-0010](0010-graceful-shutdown.md) | Configurable Graceful Shutdown with Context Timeouts | Accepted | 2026-08-19 |
 | [ADR-0011](0011-tiered-rate-limiting.md) | Tiered Rate Limiting by Route Classification | Accepted | 2026-08-19 |
+| [ADR-0012](0012-redis-cache-aside-edge-cache-control.md) | Redis Cache-Aside & Edge Cache-Control Headers | Accepted | 2026-08-19 |
 
 ---
 

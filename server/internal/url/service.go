@@ -13,17 +13,20 @@ import (
 	db "github.com/semmidev/url-shortener/server/db/sqlc"
 	"github.com/semmidev/url-shortener/server/internal/config"
 	"github.com/semmidev/url-shortener/server/internal/platform/apperr"
+	"github.com/semmidev/url-shortener/server/internal/platform/cache"
 )
 
 type Service struct {
 	store db.Store
 	cfg   config.Config
+	cache cache.Cache
 }
 
-func NewService(store db.Store, cfg config.Config) *Service {
+func NewService(store db.Store, cfg config.Config, c cache.Cache) *Service {
 	return &Service{
 		store: store,
 		cfg:   cfg,
+		cache: c,
 	}
 }
 
@@ -105,6 +108,21 @@ func (s *Service) Create(ctx context.Context, req CreateURLRequest) (*URLRespons
 }
 
 func (s *Service) GetByCode(ctx context.Context, req GetURLByCodeRequest) (*URLResponse, error) {
+	cacheKey := fmt.Sprintf("url:code:%s", req.Code)
+
+	if s.cache != nil {
+		var cachedResp URLResponse
+		if err := s.cache.Get(ctx, cacheKey, &cachedResp); err == nil {
+			if !cachedResp.IsActive {
+				return nil, apperr.NotFound("short URL is inactive")
+			}
+			if cachedResp.ExpiresAt != nil && time.Now().After(*cachedResp.ExpiresAt) {
+				return nil, apperr.NotFound("short URL has expired")
+			}
+			return &cachedResp, nil
+		}
+	}
+
 	u, err := s.store.GetShortURLByCode(ctx, req.Code)
 	if err != nil {
 		return nil, apperr.MapDBError(err, "short URL not found", "")
@@ -119,6 +137,15 @@ func (s *Service) GetByCode(ctx context.Context, req GetURLByCodeRequest) (*URLR
 	}
 
 	res := s.toResponse(u)
+
+	if s.cache != nil {
+		ttl := s.cfg.CacheTTLShortURL
+		if ttl <= 0 {
+			ttl = time.Hour
+		}
+		_ = s.cache.Set(ctx, cacheKey, res, ttl)
+	}
+
 	return &res, nil
 }
 
@@ -208,7 +235,7 @@ func (s *Service) Update(ctx context.Context, req UpdateURLRequest) (*URLRespons
 	}
 
 	// Verify ownership first
-	_, err := s.GetByID(ctx, GetURLByIDRequest{ID: req.ID, UserID: req.UserID})
+	existing, err := s.GetByID(ctx, GetURLByIDRequest{ID: req.ID, UserID: req.UserID})
 	if err != nil {
 		return nil, err
 	}
@@ -227,13 +254,17 @@ func (s *Service) Update(ctx context.Context, req UpdateURLRequest) (*URLRespons
 		return nil, apperr.MapDBError(err, "failed to update short URL", "")
 	}
 
+	if s.cache != nil {
+		_ = s.cache.Delete(ctx, fmt.Sprintf("url:code:%s", existing.ShortCode))
+	}
+
 	res := s.toResponse(u)
 	return &res, nil
 }
 
 func (s *Service) Delete(ctx context.Context, req DeleteURLRequest) (*DeleteURLResponse, error) {
 	// Verify ownership first
-	_, err := s.GetByID(ctx, GetURLByIDRequest(req))
+	existing, err := s.GetByID(ctx, GetURLByIDRequest(req))
 	if err != nil {
 		return nil, err
 	}
@@ -249,6 +280,10 @@ func (s *Service) Delete(ctx context.Context, req DeleteURLRequest) (*DeleteURLR
 	})
 	if err != nil {
 		return nil, apperr.MapDBError(err, "failed to delete short URL", "")
+	}
+
+	if s.cache != nil {
+		_ = s.cache.Delete(ctx, fmt.Sprintf("url:code:%s", existing.ShortCode))
 	}
 
 	return &DeleteURLResponse{

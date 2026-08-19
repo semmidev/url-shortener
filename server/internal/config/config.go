@@ -51,6 +51,13 @@ type Config struct {
 	GoogleClientID     string `mapstructure:"GOOGLE_CLIENT_ID"`
 	GoogleClientSecret string `mapstructure:"GOOGLE_CLIENT_SECRET"`
 	GoogleRedirectURI  string `mapstructure:"GOOGLE_REDIRECT_URI"`
+
+	// Redis Caching & Cache-Control Settings
+	RedisAddress       string        `mapstructure:"REDIS_ADDRESS"`
+	RedisPassword      string        `mapstructure:"REDIS_PASSWORD"`
+	RedisDB            int           `mapstructure:"REDIS_DB"`
+	CacheTTLShortURL   time.Duration `mapstructure:"CACHE_TTL_SHORT_URL"`
+	CacheControlMaxAge int           `mapstructure:"CACHE_CONTROL_MAX_AGE"`
 }
 
 // LoadConfig reads configuration from file or environment variables.
@@ -104,6 +111,12 @@ func LoadConfig(path string) (config Config, err error) {
 	viper.SetDefault("GOOGLE_CLIENT_ID", "")
 	viper.SetDefault("GOOGLE_CLIENT_SECRET", "")
 	viper.SetDefault("GOOGLE_REDIRECT_URI", "http://localhost:8080/api/v1/auth/google/callback")
+
+	viper.SetDefault("REDIS_ADDRESS", "127.0.0.1:6379")
+	viper.SetDefault("REDIS_PASSWORD", "")
+	viper.SetDefault("REDIS_DB", 0)
+	viper.SetDefault("CACHE_TTL_SHORT_URL", "1h")
+	viper.SetDefault("CACHE_CONTROL_MAX_AGE", 300)
 
 	viper.AutomaticEnv()
 
