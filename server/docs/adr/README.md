@@ -26,6 +26,7 @@ This directory contains the Architecture Decision Records (ADRs) for the URL Sho
 | [ADR-0018](0018-outbox-pattern-nats-event-bus.md) | Transactional Outbox Pattern & NATS JetStream Event Bus | Accepted | 2026-08-19 |
 | [ADR-0019](0019-request-timeout-propagation.md) | Request Timeout Propagation & Deadline Handling | Accepted | 2026-08-19 |
 | [ADR-0020](0020-admin-api-backoffice-rbac.md) | Admin API & Role-Based Access Control (RBAC) | Accepted | 2026-08-19 |
+| [ADR-0021](0021-benchmarks-and-k6-load-testing.md) | Benchmark Testing & k6 Performance Engineering | Accepted | 2026-08-19 |
 
 ---
 

@@ -50,6 +50,22 @@ test-integration:
 test-all:
 	go test -tags=integration ./... -v
 
+# Run Go performance benchmark tests
+benchmark:
+	go test -bench=. -benchmem ./server/internal/benchmark/...
+
+# Run k6 smoke load test
+loadtest-smoke:
+	k6 run loadtest/smoke_test.js
+
+# Run k6 standard load test
+loadtest-load:
+	k6 run loadtest/load_test.js
+
+# Run k6 stress test
+loadtest-stress:
+	k6 run loadtest/stress_test.js
+
 # Run golangci-lint code analysis
 lint:
 	$(GOLANGCI_LINT_CMD) run ./...

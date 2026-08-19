@@ -105,6 +105,7 @@ All major architectural and code style decisions are formally documented in our 
 | **ADR-0018** | Transactional Outbox Pattern & NATS JetStream Event Bus | [Read Record](server/docs/adr/0018-outbox-pattern-nats-event-bus.md) |
 | **ADR-0019** | Request Timeout Propagation & Deadline Handling | [Read Record](server/docs/adr/0019-request-timeout-propagation.md) |
 | **ADR-0020** | Admin API & Role-Based Access Control (RBAC) | [Read Record](server/docs/adr/0020-admin-api-backoffice-rbac.md) |
+| **ADR-0021** | Benchmark Testing & k6 Performance Engineering | [Read Record](server/docs/adr/0021-benchmarks-and-k6-load-testing.md) |
 
 ---
 
