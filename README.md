@@ -107,110 +107,23 @@ make clean             # Clean build artifacts
 
 ---
 
-## 🏗️ Architectural & Code Style Decisions
+## 🏗️ Architectural & Code Style Decisions (ADRs)
 
-### 1. **Modular Monolith Architecture**
-- **Domain Boundaries**: Divided into focused domain feature modules (`user`, `url`, `analytics`) and technical platform infrastructure (`platform/logger`, `platform/middleware`, `platform/token`, `platform/validator`, `platform/apperr`, `platform/web`).
-- **Composition Root**: `server/internal/app/app.go` acts as the single composition root where database pools, domain services, handlers, and routers are wired together cleanly.
+All major architectural and code style decisions are formally documented in our [Architecture Decision Records (`server/docs/adr`)](server/docs/adr/README.md).
 
----
-
-### 2. **Uniform Service Method Signatures**
-Every domain service method strictly follows the predictable signature pattern:
-$$\text{func (s *Service) MethodName(ctx context.Context, req RequestStruct) (*ResponseStruct, error)}$$
-
-- **Encapsulated DTO Structs**: Input arguments are encapsulated into dedicated DTO structs (e.g., `user.RegisterRequest`, `url.CreateURLRequest`).
-- **Context First**: `context.Context` is mandatory as the first parameter for deadline propagation, tracing, and log enrichment.
-
----
-
-### 3. **Structured Wide Event Logging (`log/slog`)**
-- **Zero 3rd-Party Log Dependency**: Built entirely on Go standard library `log/slog`.
-- **Canonical Log Line (`event.go`)**: Instead of emitting multiple noisy log statements per HTTP request, request attributes are accumulated dynamically into a `WideEvent` context struct and emitted as **exactly ONE canonical log line** upon request completion (`middleware.WideEventLogging`).
-- **Configurable Options (`LOG_LEVEL`, `LOG_FORMAT`, `LOG_ADD_SOURCE`)**: Easily controlled via environment variables.
-
----
-
-### 4. **Secure Error Handling & Sensitive Attribute Masking**
-- **Public vs. Internal Error Separation**: Technical stack traces and internal database errors are never exposed directly to end users.
-- **Automatic Attribute Redaction (`RedactReplaceAttr`)**: Automatically masks sensitive JSON keys (`password`, `token`, `access_token`, `refresh_token`, `jwt_secret`, `google_client_secret`).
-
----
-
-### 5. **Standardized JSON Responses & Unique Error Codes**
-- **Success Response (`web.Success` / `web.JSON`)**:
-  ```json
-  {
-    "success": true,
-    "message": "Operation completed successfully",
-    "data": { ... },
-    "meta": { "page": 1, "limit": 20, "total": 100 }
-  }
-  ```
-- **Error Response (`web.Error` / `apperr.Error`)**:
-  ```json
-  {
-    "success": false,
-    "code": "VALIDATION_ERROR",
-    "message": "validasi gagal untuk data yang dikirimkan",
-    "errors": {
-      "full_name": "wajib diisi",
-      "email": "harus berupa alamat email yang valid"
-    }
-  }
-  ```
-- **Unique Error Codes**: `VALIDATION_ERROR`, `INVALID_INPUT`, `UNAUTHORIZED`, `FORBIDDEN`, `NOT_FOUND`, `CONFLICT`, `TOO_MANY_REQUESTS`, `INTERNAL_SERVER_ERROR`.
-
----
-
-### 6. **Universal Translator & Locale Validation (`APP_LOCALE`)**
-- Integrated with `go-playground/universal-translator` and `go-playground/locales/id`.
-- Configurable default locale via `APP_LOCALE=id`.
-- Custom field translations ensure field names are **NOT repeated** inside validation error values (e.g. `"full_name": "wajib diisi"`).
-
----
-
-### 7. **Modern Scalar API Reference UI & Swagger (`@scalar/api-reference`)**
-- Integrated with ultra-modern **Scalar API Reference UI** rendering live from `/swagger/doc.json`.
-- Interactive Scalar UI endpoint: `http://localhost:8080/docs`.
-- Legacy Swagger UI endpoint: `http://localhost:8080/swagger/index.html`.
-- Run `make swagger` to regenerate Open API documentation schemas (`server/docs/`).
-
----
-
-### 8. **CORS Preflight & Cross-Origin Support (`github.com/go-chi/cors`)**
-- Configured with `cors.Handler` to support cross-origin preflight `OPTIONS` requests from Scalar UI, Swagger UI, and external frontend clients.
-
----
-
-### 9. **Database Error Mapping (`apperr.MapDBError`) & Atomic Transactions (`SQLStore.ExecTx`)**
-- Low-level `pgx/v5` errors are converted into domain `apperr.Error` objects:
-  - `pgx.ErrNoRows` $\rightarrow$ `apperr.NotFound(...)`
-  - `23505` (`unique_violation`) $\rightarrow$ `apperr.Conflict(...)`
-  - `23503` (`foreign_key_violation`) $\rightarrow$ `apperr.Invalid(...)`
-- Multi-query operations execute within atomic transaction callbacks (`s.store.ExecTx`).
-
----
-
-### 10. **Automated Database Migrations & Retry Resiliency (`golang-migrate`)**
-- Schema migrations run automatically on startup via `app.RunDBMigration` using `golang-migrate`.
-- Includes connection retry loop (up to 15s backoff) to gracefully wait while PostgreSQL container finishes booting.
-
----
-
-### 11. **Configurable Graceful Shutdown (`SERVER_SHUTDOWN_TIMEOUT`)**
-- Listens for `SIGINT` and `SIGTERM` signals.
-- Stops accepting new HTTP connections and grants an environment-controlled timeout window (`SERVER_SHUTDOWN_TIMEOUT=10s`) for active requests to finish before closing PostgreSQL connection pools.
-
----
-
-### 12. **Differentiated Rate Limiting (`github.com/go-chi/httprate`)**
-- Uses safe client IP canonicalization (`httprate.LimitBy` with `httprate.CanonicalizeIP`).
-- Returns standardized `web.Error` JSON responses with HTTP `429 Too Many Requests` (`TOO_MANY_REQUESTS`).
-- Distinct rate limits applied per route tier:
-  - **Auth Tier (`/api/v1/auth/*`)**: Strict limit (Default: 10 requests / 1 minute).
-  - **API Tier (`/api/v1/urls`, `/api/v1/analytics`)**: General limit (Default: 100 requests / 1 minute).
-  - **Public Redirection Tier (`/{code}`)**: High throughput limit (Default: 300 requests / 1 minute).
+| ADR | Summary | Link |
+| :--- | :--- | :--- |
+| **ADR-0001** | Modular Monolith Architecture | [Read Record](server/docs/adr/0001-modular-monolith-architecture.md) |
+| **ADR-0002** | Uniform Service Signatures & DTO Encapsulation | [Read Record](server/docs/adr/0002-uniform-service-method-signatures.md) |
+| **ADR-0003** | Structured Wide Event Logging (`log/slog`) | [Read Record](server/docs/adr/0003-structured-wide-event-logging.md) |
+| **ADR-0004** | Secure Error Handling & Sensitive Masking | [Read Record](server/docs/adr/0004-secure-error-handling-redaction.md) |
+| **ADR-0005** | Standardized JSON Responses & Error Codes | [Read Record](server/docs/adr/0005-standardized-json-responses.md) |
+| **ADR-0006** | Universal Translator & Locale Input Validation | [Read Record](server/docs/adr/0006-locale-validation-universal-translator.md) |
+| **ADR-0007** | Modern Scalar API Reference UI & Swagger | [Read Record](server/docs/adr/0007-scalar-api-reference-swagger.md) |
+| **ADR-0008** | Database Error Mapping & Atomic Transactions | [Read Record](server/docs/adr/0008-db-error-mapping-atomic-transactions.md) |
+| **ADR-0009** | Automated Database Migrations & Retry Resiliency | [Read Record](server/docs/adr/0009-automated-migrations-retry-resiliency.md) |
+| **ADR-0010** | Configurable Graceful Shutdown | [Read Record](server/docs/adr/0010-graceful-shutdown.md) |
+| **ADR-0011** | Tiered Rate Limiting by Route Classification | [Read Record](server/docs/adr/0011-tiered-rate-limiting.md) |
 
 ---
 
