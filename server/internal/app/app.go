@@ -186,6 +186,7 @@ func BuildRouter(cfg config.Config, pool *pgxpool.Pool, appLogger *logger.Logger
 	r.Use(customMw.SecureHeaders)
 	r.Use(chimw.RealIP)
 	r.Use(chimw.Recoverer)
+	r.Use(customMw.RequestTimeout(10 * time.Second))
 	r.Use(customMw.WideEventLogging(appLogger))
 
 	authMw := customMw.Auth(tokenMaker)

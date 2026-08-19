@@ -181,12 +181,11 @@ tp := otel.GetTracerProvider()
 
 ---
 
-### ❌ Request Timeout Propagation
-**Status**: HTTP server read/write timeouts exist but per-request context deadlines are not explicitly set.
+### ✅ Request Timeout Propagation
+**Status**: Implemented via `RequestTimeout(5 * time.Second)` middleware in `server/internal/platform/middleware/timeout.go` and context error mapping in `apperr.MapDBError`.
 
-**Missing**:
-- No `context.WithTimeout` per service method call.
-- Database queries can run indefinitely if the DB stalls.
+- Enforces explicit per-request context deadlines across database queries, Redis operations, and downstream handlers.
+- Automatically maps `context.DeadlineExceeded` to HTTP 504 `GatewayTimeout`.
 
 ---
 

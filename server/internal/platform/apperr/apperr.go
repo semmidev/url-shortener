@@ -1,6 +1,7 @@
 package apperr
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net/http"
@@ -108,6 +109,14 @@ func ServiceUnavailable(msg string) *Error {
 	}
 }
 
+func GatewayTimeout(msg string) *Error {
+	return &Error{
+		Code:    "GATEWAY_TIMEOUT",
+		Message: msg,
+		Status:  http.StatusGatewayTimeout,
+	}
+}
+
 // MapDBError converts raw PostgreSQL & pgx database errors into clean domain apperr.Errors.
 func MapDBError(err error, notFoundMsg, conflictMsg string) *Error {
 	if err == nil {
@@ -120,7 +129,12 @@ func MapDBError(err error, notFoundMsg, conflictMsg string) *Error {
 		return appErr
 	}
 
-	// 2. Check pgx.ErrNoRows (404)
+	// 2. Check context timeout / deadline exceeded
+	if errors.Is(err, context.DeadlineExceeded) {
+		return GatewayTimeout("request deadline exceeded while communicating with database")
+	}
+
+	// 3. Check pgx.ErrNoRows (404)
 	if errors.Is(err, pgx.ErrNoRows) {
 		if notFoundMsg == "" {
 			notFoundMsg = "resource yang diminta tidak ditemukan"
@@ -128,7 +142,7 @@ func MapDBError(err error, notFoundMsg, conflictMsg string) *Error {
 		return NotFound(notFoundMsg)
 	}
 
-	// 3. Check PostgreSQL error codes (*pgconn.PgError)
+	// 4. Check PostgreSQL error codes (*pgconn.PgError)
 	var pgErr *pgconn.PgError
 	if errors.As(err, &pgErr) {
 		switch pgErr.Code {
@@ -141,9 +155,11 @@ func MapDBError(err error, notFoundMsg, conflictMsg string) *Error {
 			return Invalid("referensi data tidak ditemukan")
 		case "23502": // not_null_violation
 			return Invalid("bidang wajib diisi dalam operasi database")
+		case "57014": // query_canceled
+			return GatewayTimeout("database query canceled due to timeout deadline")
 		}
 	}
 
-	// 4. Fallback to safe internal server error
+	// 5. Fallback to safe internal server error
 	return Internal("operasi database gagal", err)
 }
