@@ -62,15 +62,13 @@ func Run(cfg config.Config) error {
 		"min_conns", cfg.DBMinConns,
 	)
 
-	pgPoolConfig := postgres.Config{
+	pool, err := postgres.NewPool(ctx, postgres.Config{
 		Source:          cfg.DBSource,
 		MaxConns:        cfg.DBMaxConns,
 		MinConns:        cfg.DBMinConns,
 		MaxConnIdleTime: cfg.DBMaxConnIdleTime,
 		MaxConnLifetime: cfg.DBMaxConnLifetime,
-	}
-
-	pool, err := postgres.NewPool(ctx, pgPoolConfig)
+	})
 	if err != nil {
 		appLogger.Error(ctx, "database connection failed", "error", err)
 		return fmt.Errorf("database initialization failed: %w", err)

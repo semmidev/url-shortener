@@ -27,6 +27,11 @@ This directory contains the Architecture Decision Records (ADRs) for the URL Sho
 | [ADR-0019](0019-request-timeout-propagation.md) | Request Timeout Propagation & Deadline Handling | Accepted | 2026-08-19 |
 | [ADR-0020](0020-admin-api-backoffice-rbac.md) | Admin API & Role-Based Access Control (RBAC) | Accepted | 2026-08-19 |
 | [ADR-0021](0021-benchmarks-and-k6-load-testing.md) | Benchmark Testing & k6 Performance Engineering | Accepted | 2026-08-19 |
+| [ADR-0022](0022-http-security-headers-hardening-csp.md) | HTTP Security Headers Hardening & Route-Tailored Content Security Policy (CSP) | Accepted | 2026-08-19 |
+| [ADR-0023](0023-security-audit-logging.md) | Security Audit Logging | Accepted | 2026-08-19 |
+| [ADR-0024](0024-single-binary-spa-embedding.md) | Single-Binary SPA Embedding with Go `embed.FS` | Accepted | 2026-08-19 |
+| [ADR-0025](0025-browser-html-navigation-redirection.md) | Browser HTML Navigation Redirection for Inactive and Expired Short URLs | Accepted | 2026-08-19 |
+| [ADR-0026](0026-comprehensive-cache-invalidation.md) | Comprehensive Cache Invalidation Across Deactivation, Expiry, and Admin Triggers | Accepted | 2026-08-19 |
 
 ---
 
