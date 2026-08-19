@@ -32,6 +32,77 @@ func (q *Queries) GetURLAnalyticsSummary(ctx context.Context, urlID uuid.UUID) (
 	return i, err
 }
 
+const getURLClicksOverTime = `-- name: GetURLClicksOverTime :many
+SELECT
+    TO_CHAR(DATE(clicked_at), 'YYYY-MM-DD')::text AS click_date,
+    COUNT(*)::bigint AS click_count
+FROM url_analytics
+WHERE url_id = $1 AND clicked_at >= NOW() - INTERVAL '30 days'
+GROUP BY DATE(clicked_at)
+ORDER BY click_date ASC
+`
+
+type GetURLClicksOverTimeRow struct {
+	ClickDate  string `json:"click_date"`
+	ClickCount int64  `json:"click_count"`
+}
+
+func (q *Queries) GetURLClicksOverTime(ctx context.Context, urlID uuid.UUID) ([]GetURLClicksOverTimeRow, error) {
+	rows, err := q.db.Query(ctx, getURLClicksOverTime, urlID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []GetURLClicksOverTimeRow{}
+	for rows.Next() {
+		var i GetURLClicksOverTimeRow
+		if err := rows.Scan(&i.ClickDate, &i.ClickCount); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getUserClicksOverTime = `-- name: GetUserClicksOverTime :many
+SELECT
+    TO_CHAR(DATE(a.clicked_at), 'YYYY-MM-DD')::text AS click_date,
+    COUNT(*)::bigint AS click_count
+FROM url_analytics a
+JOIN short_urls u ON a.url_id = u.id
+WHERE u.user_id = $1 AND a.clicked_at >= NOW() - INTERVAL '30 days'
+GROUP BY DATE(a.clicked_at)
+ORDER BY click_date ASC
+`
+
+type GetUserClicksOverTimeRow struct {
+	ClickDate  string `json:"click_date"`
+	ClickCount int64  `json:"click_count"`
+}
+
+func (q *Queries) GetUserClicksOverTime(ctx context.Context, userID pgtype.UUID) ([]GetUserClicksOverTimeRow, error) {
+	rows, err := q.db.Query(ctx, getUserClicksOverTime, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []GetUserClicksOverTimeRow{}
+	for rows.Next() {
+		var i GetUserClicksOverTimeRow
+		if err := rows.Scan(&i.ClickDate, &i.ClickCount); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getUserCountryBreakdown = `-- name: GetUserCountryBreakdown :many
 SELECT
     COALESCE(NULLIF(a.country, ''), 'unknown')::text AS country,

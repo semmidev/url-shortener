@@ -78,11 +78,25 @@ func (s *Service) GetAnalyticsSummary(ctx context.Context, req GetAnalyticsSumma
 		}
 	}
 
+	clicksOverTime, err := s.store.GetURLClicksOverTime(ctx, req.URLID)
+	if err != nil {
+		return nil, apperr.MapDBError(err, "failed to fetch click history over time", "")
+	}
+
+	clicksOverTimeStats := make([]ClickOverTimeStat, len(clicksOverTime))
+	for i, cot := range clicksOverTime {
+		clicksOverTimeStats[i] = ClickOverTimeStat{
+			Date:       cot.ClickDate,
+			ClickCount: cot.ClickCount,
+		}
+	}
+
 	return &AnalyticsSummaryResponse{
 		URLID:          req.URLID,
 		TotalClicks:    summary.TotalClicks,
 		UniqueVisitors: summary.UniqueVisitors,
 		RecentClicks:   recentClicks,
+		ClicksOverTime: clicksOverTimeStats,
 	}, nil
 }
 
@@ -112,6 +126,11 @@ func (s *Service) GetUserDashboard(ctx context.Context, req UserDashboardRequest
 		return nil, apperr.MapDBError(err, "failed to fetch country breakdown", "")
 	}
 
+	clicksOverTime, err := s.store.GetUserClicksOverTime(ctx, pgUserID)
+	if err != nil {
+		return nil, apperr.MapDBError(err, "failed to fetch clicks over time", "")
+	}
+
 	referrerStats := make([]ReferrerStat, len(referrers))
 	for i, r := range referrers {
 		referrerStats[i] = ReferrerStat{
@@ -136,11 +155,20 @@ func (s *Service) GetUserDashboard(ctx context.Context, req UserDashboardRequest
 		}
 	}
 
+	clicksOverTimeStats := make([]ClickOverTimeStat, len(clicksOverTime))
+	for i, cot := range clicksOverTime {
+		clicksOverTimeStats[i] = ClickOverTimeStat{
+			Date:       cot.ClickDate,
+			ClickCount: cot.ClickCount,
+		}
+	}
+
 	return &UserDashboardResponse{
-		TotalURLs:    summary.TotalUrls,
-		TotalClicks:  summary.TotalClicks,
-		TopReferrers: referrerStats,
-		Devices:      deviceStats,
-		Countries:    countryStats,
+		TotalURLs:      summary.TotalUrls,
+		TotalClicks:    summary.TotalClicks,
+		TopReferrers:   referrerStats,
+		Devices:        deviceStats,
+		Countries:      countryStats,
+		ClicksOverTime: clicksOverTimeStats,
 	}, nil
 }

@@ -21,11 +21,17 @@ type GetAnalyticsSummaryRequest struct {
 	URLID uuid.UUID `json:"url_id"`
 }
 
+type ClickOverTimeStat struct {
+	Date       string `json:"date"`
+	ClickCount int64  `json:"click_count"`
+}
+
 type AnalyticsSummaryResponse struct {
-	URLID          uuid.UUID       `json:"url_id"`
-	TotalClicks    int64           `json:"total_clicks"`
-	UniqueVisitors int64           `json:"unique_visitors"`
-	RecentClicks   []ClickResponse `json:"recent_clicks"`
+	URLID          uuid.UUID           `json:"url_id"`
+	TotalClicks    int64               `json:"total_clicks"`
+	UniqueVisitors int64               `json:"unique_visitors"`
+	RecentClicks   []ClickResponse     `json:"recent_clicks"`
+	ClicksOverTime []ClickOverTimeStat `json:"clicks_over_time"`
 }
 
 type ClickResponse struct {
@@ -58,9 +64,10 @@ type CountryStat struct {
 }
 
 type UserDashboardResponse struct {
-	TotalURLs    int64          `json:"total_urls"`
-	TotalClicks  int64          `json:"total_clicks"`
-	TopReferrers []ReferrerStat `json:"top_referrers"`
-	Devices      []DeviceStat   `json:"devices"`
-	Countries    []CountryStat  `json:"countries"`
+	TotalURLs      int64               `json:"total_urls"`
+	TotalClicks    int64               `json:"total_clicks"`
+	TopReferrers   []ReferrerStat      `json:"top_referrers"`
+	Devices        []DeviceStat        `json:"devices"`
+	Countries      []CountryStat       `json:"countries"`
+	ClicksOverTime []ClickOverTimeStat `json:"clicks_over_time"`
 }

@@ -22,15 +22,8 @@ export default function Analytics() {
     const fetchAnalytics = async () => {
       setLoading(true);
       try {
-        // Fetch first URL analytics or general stats
-        const res = await client.get('/urls?limit=1');
-        const items = res.data?.items || [];
-        if (items.length > 0) {
-          const analyticsRes = await client.get(`/urls/${items[0].id}/analytics`);
-          setData(analyticsRes.data);
-        } else {
-          setData({ total_clicks: 0, clicks_over_time: [], referrers: [], browsers: [], devices: [] });
-        }
+        const res = await client.get('/analytics/dashboard');
+        setData(res.data);
       } catch {
         toast.error('Failed to load analytics metrics');
       } finally {
@@ -41,18 +34,11 @@ export default function Analytics() {
     fetchAnalytics();
   }, []);
 
-  const chartData = data?.clicks_over_time?.map((item) => ({
-    date: item.date || item.timestamp,
-    clicks: item.count || item.clicks || 0,
-  })) || [
-    { date: 'Mon', clicks: 12 },
-    { date: 'Tue', clicks: 28 },
-    { date: 'Wed', clicks: 45 },
-    { date: 'Thu', clicks: 32 },
-    { date: 'Fri', clicks: 60 },
-    { date: 'Sat', clicks: 75 },
-    { date: 'Sun', clicks: 90 },
-  ];
+  const chartData =
+    data?.clicks_over_time?.map((item) => ({
+      date: item.date,
+      clicks: Number(item.click_count || 0),
+    })) || [];
 
   return (
     <div className="space-y-6">
@@ -81,7 +67,7 @@ export default function Analytics() {
           </CardHeader>
           <CardContent>
             <div className="text-lg font-bold truncate">
-              {loading ? '...' : data?.referrers?.[0]?.domain || 'Direct / Bookmark'}
+              {loading ? '...' : data?.top_referrers?.[0]?.referrer || 'Direct / Bookmark'}
             </div>
             <p className="text-xs text-muted-foreground mt-1">Primary traffic source</p>
           </CardContent>
@@ -93,8 +79,8 @@ export default function Analytics() {
             <LaptopIcon className="size-4 text-primary" />
           </CardHeader>
           <CardContent>
-            <div className="text-lg font-bold">
-              {loading ? '...' : data?.devices?.[0]?.name || 'Desktop Browser'}
+            <div className="text-lg font-bold capitalize">
+              {loading ? '...' : data?.devices?.[0]?.device_type || 'Desktop Browser'}
             </div>
             <p className="text-xs text-muted-foreground mt-1">Most used device class</p>
           </CardContent>

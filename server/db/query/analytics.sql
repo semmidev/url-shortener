@@ -61,3 +61,22 @@ JOIN short_urls u ON a.url_id = u.id
 WHERE u.user_id = $1
 GROUP BY COALESCE(NULLIF(a.country, ''), 'unknown')::text
 ORDER BY click_count DESC;
+
+-- name: GetUserClicksOverTime :many
+SELECT
+    TO_CHAR(DATE(a.clicked_at), 'YYYY-MM-DD')::text AS click_date,
+    COUNT(*)::bigint AS click_count
+FROM url_analytics a
+JOIN short_urls u ON a.url_id = u.id
+WHERE u.user_id = $1 AND a.clicked_at >= NOW() - INTERVAL '30 days'
+GROUP BY DATE(a.clicked_at)
+ORDER BY click_date ASC;
+
+-- name: GetURLClicksOverTime :many
+SELECT
+    TO_CHAR(DATE(clicked_at), 'YYYY-MM-DD')::text AS click_date,
+    COUNT(*)::bigint AS click_count
+FROM url_analytics
+WHERE url_id = $1 AND clicked_at >= NOW() - INTERVAL '30 days'
+GROUP BY DATE(clicked_at)
+ORDER BY click_date ASC;
