@@ -1,6 +1,6 @@
-# PLAN.md — URL Shortener: Missing Aspects & Improvement Roadmap
+# PLAN.md — URL Shortener: Audit & Improvement Roadmap
 
-This document audits what is currently implemented and lists everything that is **missing or incomplete** across observability, security, reliability, developer experience, and product feature dimensions.
+This document audits what is currently implemented in the codebase and outlines all remaining **missing or incomplete** aspects across observability, security, reliability, performance, database, testing, deployment, developer experience, and product feature dimensions.
 
 ---
 
@@ -15,17 +15,18 @@ This document audits what is currently implemented and lists everything that is 
 - [🚀 Deployment & Infrastructure](#-deployment--infrastructure)
 - [📦 Developer Experience](#-developer-experience)
 - [🎁 Product Features](#-product-features)
+- [📊 Priority Summary](#-priority-summary)
 
 ---
 
 ## 🔭 Observability
 
 ### ❌ Distributed Tracing (OpenTelemetry)
-**Status**: `go.opentelemetry.io/otel` is already an **indirect** transitive dependency (pulled in by testcontainers), but **zero tracing instrumentation is wired**.
+**Status**: `go.opentelemetry.io/otel` is an indirect transitive dependency (via testcontainers), but **no tracing instrumentation is wired**.
 
 **Missing**:
 - No `TracerProvider` initialized or exported.
-- No trace context propagation (`W3C TraceContext` / `B3` headers) across HTTP boundaries.
+- No trace context propagation (`W3C TraceContext` / `traceparent` headers) across HTTP boundaries.
 - No spans created for database queries (`pgx/v5` instrumentation via `otelpgx`).
 - No OTLP exporter configured (Jaeger, Tempo, or Cloud Trace).
 
@@ -40,7 +41,7 @@ tp := otel.GetTracerProvider()
 ---
 
 ### ❌ Metrics (Prometheus / OpenTelemetry Metrics)
-**Status**: No metrics instrumentation whatsoever.
+**Status**: No metrics instrumentation in Go services.
 
 **Missing**:
 - No `MeterProvider` initialized.
@@ -49,116 +50,81 @@ tp := otel.GetTracerProvider()
 - No business metrics (short URLs created per minute, redirect rate, auth failure rate).
 - No `/metrics` endpoint (Prometheus scrape target).
 
-**Recommended approach**: `go.opentelemetry.io/otel/metric` + `prometheus` exporter or `go-chi/chi` middleware with `prometheus/client_golang`.
+**Recommended approach**: `go.opentelemetry.io/otel/metric` + Prometheus exporter (`prometheus/client_golang`).
 
 ---
 
-### ✅ Structured Logging
-**Status**: Wide Event logging with `log/slog` is implemented and redaction works.
+### ✅ Structured Wide Event Logging
+**Status**: Implemented using Go `log/slog` with structured Wide Event logging and sensitive header/body redaction (`server/internal/platform/middleware/logging.go`).
 
 **Missing**:
-- No **correlation between trace ID and log lines** (inject `trace_id`/`span_id` into Wide Event from OpenTelemetry context).
-- No **log sampling** for high-volume redirect endpoint (300 req/min × all logs = log flood in production).
-- No **log shipping configuration** (Fluentd, Vector, or Loki sidecar).
+- Correlation between trace ID and log lines (inject `trace_id`/`span_id` into Wide Event from OpenTelemetry context when tracing is wired).
+- Log shipping sidecar configuration (Fluentd, Vector, or Loki).
 
 ---
 
-### ✅ Health Check Enhancements
-**Status**: `/health` returns basic `{"status":"ok"}`.
+### ✅ Liveness & Readiness Health Checks
+**Status**: Implemented in `server/internal/app/app.go`.
 
-**Missing**:
-- No **liveness vs readiness** separation (Kubernetes-style `/health/live` vs `/health/ready`).
-- No **dependency health checks**: PostgreSQL ping, external service reachability.
-- `/health` currently does not verify DB connection is alive.
+- `/health/live`: Liveness check verifying the application process is running.
+- `/health/ready`: Readiness check pinging PostgreSQL connection pool.
+- `/health`: Legacy health check returning service version and DB status for backwards compatibility.
 
 ---
 
 ## 🔒 Security
 
-### ⏭️ CSRF Protection (skipped — Bearer token API is not vulnerable to CSRF)
-**Status**: Not implemented.
-
-**Missing**:
-- No CSRF token validation on state-changing endpoints (`POST`, `PUT`, `DELETE`).
-- Especially important for cookie-based auth flows if a web frontend is added.
-- Recommended: `gorilla/csrf` or a custom double-submit cookie pattern.
+### ⏭️ CSRF Protection (Skipped — API uses Bearer token auth)
+**Status**: API endpoints rely on standard HTTP `Authorization: Bearer <token>` headers, which browsers do not attach automatically, mitigating CSRF risks.
 
 ---
 
 ### ✅ Security Headers (HTTP Hardening)
-**Status**: Only CORS headers are set.
+**Status**: Implemented via custom middleware `server/internal/platform/middleware/secure_headers.go`.
 
-**Missing**:
-- `Strict-Transport-Security` (HSTS)
-- `Content-Security-Policy` (CSP)
-- `X-Content-Type-Options: nosniff`
-- `X-Frame-Options: DENY`
-- `Referrer-Policy`
-- `Permissions-Policy`
-
-**Recommended approach**: `unrolled/secure` middleware or custom `SecureHeaders` middleware.
+- Standard Security Headers set: `Content-Security-Policy`, `Strict-Transport-Security` (HSTS), `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy`, and `Permissions-Policy`.
+- Dynamic CSP header tailored per route type (strict for APIs, relaxed for SPA and Swagger UI).
 
 ---
 
-### ✅ Input Sanitization (XSS / Injection Prevention)
-**Status**: Validator checks format/required but does not sanitize HTML.
+### ✅ Session Revocation & Logout
+**Status**: Implemented in `server/internal/user/service.go` and `server/internal/user/http.go`.
 
-**Missing**:
-- `original_url` should be validated against allowlisted URL schemes and blocked for `javascript:`, `data:`, `vbscript:` URIs.
-- `title` field should be HTML-escaped on output to prevent stored XSS if rendered in a web UI.
-
----
-
-### ✅ Token Blacklisting / Session Revocation (Logout endpoint)
-**Status**: Sessions can be blocked in DB (`is_blocked` column) but there is **no active enforcement on access tokens**.
-
-**Missing**:
-- JWT access tokens, once issued, are valid until expiry even if the session is blocked (15-minute window).
-- No Redis-backed token denylist (or short-lived token with server-side session check).
-- No `Logout` endpoint that invalidates both access and refresh tokens.
+- Endpoint: `POST /api/v1/auth/logout`.
+- Revokes user sessions in PostgreSQL (`sessions` table) and records audit log entries.
 
 ---
 
-### ✅ Brute-Force / Credential Stuffing Protection
-**Status**: Rate limiting on auth endpoints (10 req/min globally) exists but is IP-based only.
+### ✅ Brute-Force & Account Lockout Protection
+**Status**: Implemented in `server/internal/user/service.go`.
 
-**Missing**:
-- No **per-email** rate limiting (1 IP can try 10 different emails).
-- No **account lockout** after N failed attempts per user.
-- No **CAPTCHA** or proof-of-work challenge for suspicious traffic.
+- Tracks failed login attempts per email address (`maxEmailLoginAttempts = 10`, `emailLockoutWindow = 15m`).
+- Leverages Redis atomic `INCR` + `EXPIRE` with local fallback map to temporarily lock accounts under brute-force attacks.
 
 ---
 
-### ❌ Secret Management
+### ✅ Tamper-Evident Audit Logging
+**Status**: Implemented in `server/internal/platform/logger/audit.go`.
+
+- Emits structured audit logs (`audit.action`) for security-sensitive operations: user registration, login, failed login attempts, logout, Google OAuth login, URL creation, URL updates, URL soft-deletion, token refresh, admin user suspension, and admin force-deletion.
+
+---
+
+### ❌ Centralized Secret Management
 **Status**: Secrets loaded via `.env` / `app.env` and Viper.
 
 **Missing**:
-- No integration with a secrets manager (HashiCorp Vault, AWS Secrets Manager, GCP Secret Manager).
-- JWT secret, DB credentials, and Google OAuth secrets currently stored in plaintext env files.
-- No secret rotation mechanism.
+- No integration with a dedicated secrets manager (HashiCorp Vault, AWS Secrets Manager, GCP Secret Manager).
+- JWT secret, DB credentials, and Google OAuth secrets currently stored in environment variables.
 
 ---
 
 ### ❌ TLS / mTLS
-**Status**: App listens on plain HTTP. TLS is assumed to be terminated at reverse proxy.
+**Status**: App listens on plain HTTP (`SERVER_ADDRESS`). TLS termination is deferred to edge reverse proxy.
 
 **Missing**:
-- No TLS configuration in Go HTTP server (production hardening).
-- No mutual TLS (mTLS) between internal services if the architecture is ever decomposed.
-- Documentation does not mention required TLS termination setup (nginx, caddy, etc.).
-
----
-
-### ✅ Audit Logging
-**Status**: Wide Event logs capture HTTP requests but at an operational level only.
-
-**Missing**:
-- No tamper-evident audit trail for security-sensitive operations:
-  - User account creation / deletion
-  - Password changes / Google OAuth link
-  - URL creation / deletion
-  - Admin role changes (if ever added)
-- No separate audit log sink (different from operational logs).
+- No TLS listener configuration in Go HTTP server for direct TLS termination.
+- Documentation lacks explicit TLS reverse proxy configurations (Nginx, Caddy, Cloudflare).
 
 ---
 
@@ -167,139 +133,137 @@ tp := otel.GetTracerProvider()
 ### ✅ Circuit Breaker
 **Status**: Implemented via `github.com/sony/gobreaker` in `server/internal/platform/breaker` and `user.Service`.
 
-- Wrapped Google OAuth token exchange and userinfo API calls.
-- Fast-fails with HTTP 503 `apperr.ServiceUnavailable` when the external service is degraded or circuit breaker trips.
+- Wraps Google OAuth token exchange and userinfo API endpoints.
+- Fast-fails with HTTP 503 `apperr.ServiceUnavailable` when external Google auth services degrade.
 
 ---
 
-### ✅ Retry with Exponential Backoff (beyond DB startup)
-**Status**: DB startup retry exists in `migration.go`. No retry elsewhere.
+### ❌ Transient DB Query Retries
+**Status**: DB connection startup retry exists in `migration.go`, but runtime queries do not retry.
 
 **Missing**:
-- No retry on transient database errors (e.g. connection reset, deadlock retry for DB writes).
-- No retry on Google OAuth HTTP calls.
+- No automatic retry with exponential backoff on transient PostgreSQL network dropouts or deadlock errors (`40P01`).
 
 ---
 
 ### ✅ Request Timeout Propagation
-**Status**: Implemented via `RequestTimeout(5 * time.Second)` middleware in `server/internal/platform/middleware/timeout.go` and context error mapping in `apperr.MapDBError`.
+**Status**: Implemented via `RequestTimeout(10 * time.Second)` middleware in `server/internal/platform/middleware/timeout.go` and context error mapping in `apperr.MapDBError`.
 
-- Enforces explicit per-request context deadlines across database queries, Redis operations, and downstream handlers.
+- Enforces per-request context deadlines across DB queries, Redis calls, and HTTP handlers.
 - Automatically maps `context.DeadlineExceeded` to HTTP 504 `GatewayTimeout`.
 
 ---
 
-### ✅ Outbox Pattern / Event Streaming
-**Status**: Implemented transactional `outbox_events` table (migration `000004_create_outbox_events.up.sql`), NATS JetStream event bus (`platform/eventbus`), and background outbox worker (`platform/outbox`).
+### ✅ Transactional Outbox Pattern & Event Streaming
+**Status**: Implemented transactional `outbox_events` table, NATS JetStream event bus (`platform/eventbus`), and background outbox worker (`platform/outbox`).
 
-- Decouples analytics click processing from HTTP redirect path.
-- Pluggable `EventPublisher` interface allows easy switching to Kafka or RabbitMQ in the future without changing business services.
+- Asynchronously processes analytics click events without adding DB latency to the HTTP redirection path.
+- Pluggable `EventPublisher` interface allows switching event brokers seamlessly.
 
 ---
 
 ## ⚡ Performance & Caching
 
-### ✅ Caching Layer (Redis)
-**Status**: Implemented via `github.com/redis/go-redis/v9` with Cache-Aside pattern in `server/internal/platform/cache/redis.go` and `server/internal/url/service.go`.
+### ✅ Redis Cache-Aside & Automatic Cache Invalidation
+**Status**: Implemented via `github.com/redis/go-redis/v9` in `server/internal/platform/cache/redis.go`, `server/internal/url/service.go`, and `server/internal/admin/service.go`.
 
-- **Short URL lookup cache** (`url:code:<code proposal> → original_url, active, expires_at`) with automatic cache invalidation on `Update` and `Delete`.
-- **Redis Infrastructure**: Integrated into `compose.dev.yml` and `compose.yml`.
+- **Short URL lookup cache** (`url:code:<code proposal> → URLResponse`).
+- **Invalidation Triggers**:
+  - `Update`: Deletes cache key on short URL update.
+  - `Delete`: Deletes cache key on soft-deletion.
+  - `Restore`: Deletes cache key on URL restoration.
+  - `DeactivateExpiredURLs`: Background ticker fetches deactivated short codes from DB and invalidates their Redis cache keys.
+  - `ForceDeleteURL`: Admin force-delete invalidates Redis cache entry immediately.
 
 ---
 
-### ✅ CDN / Edge Caching for Redirects
+### ✅ CDN / Edge Cache-Control Headers
 **Status**: Configured in `server/internal/url/redirect_handler.go`.
 
-- Set HTTP `Cache-Control` header on redirect responses (`public, max-age=300, s-maxage=3600`) to support CDN and Edge node caching (Cloudflare, Fastly).
+- Sets HTTP `Cache-Control` header on redirect responses (`public, max-age=300, s-maxage=3600`) to support Edge / CDN node caching (Cloudflare, Fastly).
 
 ---
 
-### ✅ Database Query Optimization
+### ✅ Database Index Optimization
 **Status**: Migration `000002_optimize_indexes.up.sql` created and verified.
 
-- Added composite index `idx_url_analytics_url_clicked` on `url_analytics (url_id, clicked_at DESC)`.
-- Added PostgreSQL `pg_trgm` extension and GIN trigram indexes on `short_urls(title)` and `short_urls(original_url)` for accelerated substring search (`ILIKE`).
+- Composite index `idx_url_analytics_url_clicked` on `url_analytics (url_id, clicked_at DESC)`.
+- PostgreSQL `pg_trgm` extension and GIN trigram indexes on `short_urls(title)` and `short_urls(original_url)` for substring search (`ILIKE`).
 
 ---
 
 ## 🗄️ Database & Data Layer
 
-### ✅ Soft Deletes
-**Status**: Implemented migration `000003_add_soft_deletes.up.sql` (`deleted_at TIMESTAMPTZ`), partial index `idx_short_urls_deleted_at`, and `POST /api/v1/urls/{id}/restore` endpoint.
+### ✅ Soft Deletes & Restoration
+**Status**: Implemented migration `000003_add_soft_deletes.up.sql` (`deleted_at TIMESTAMPTZ`) and `POST /api/v1/urls/{id}/restore` endpoint.
 
-- `DeleteShortURL` sets `deleted_at = NOW(), is_active = FALSE` preserving analytics and audit history.
+- `DeleteShortURL` sets `deleted_at = NOW(), is_active = FALSE`, preserving click history.
 - `RestoreShortURL` clears `deleted_at` and reactivates short URLs.
 
 ---
 
 ### ❌ Database Read Replicas
-**Status**: Single connection pool pointing at one PostgreSQL instance.
+**Status**: Single connection pool pointing at primary PostgreSQL database.
 
 **Missing**:
-- No read/write split (write to primary, read from replica).
-- No `pgBouncer` connection pooler in front of PostgreSQL for high-concurrency scenarios.
+- No read/write pool splitting (writes to primary, read queries to read replicas).
+- No `pgBouncer` connection pooler configured in front of PostgreSQL for high concurrency.
 
 ---
 
-### ❌ Database Backup & Point-in-Time Recovery
-**Status**: No backup strategy documented or scripted.
+### ❌ Database Backup & Disaster Recovery
+**Status**: No automated database backups scripted.
 
 **Missing**:
-- No `pg_dump` cron job or WAL archiving configured in `compose.yml`.
-- No restore procedure documented.
+- No `pg_dump` backup cron job or WAL archiving setup in `compose.yml`.
+- No point-in-time recovery (PITR) documentation.
 
 ---
 
 ## 🏗️ Architecture & Code Quality
 
-### ✅ Domain Events / Event Bus
+### ✅ Decoupled Domain Events
 **Status**: Implemented pluggable `EventPublisher` interface in `server/internal/platform/eventbus/eventbus.go` and `OutboxWorker` in `server/internal/platform/outbox/outbox_worker.go`.
 
-- Decouples cross-domain side effects via NATS JetStream and in-memory event publishing (`click.recorded`, outbox events).
-- Allows seamless future switching to Kafka/RabbitMQ without altering domain services.
+- Publishes domain events (`click.recorded`, `outbox_events`) to NATS JetStream or memory fallback without coupling domain modules.
 
 ---
 
-### ✅ Admin API / Backoffice
+### ✅ Admin Backoffice API
 **Status**: Implemented RBAC middleware (`RequireRole("admin")`) in `server/internal/platform/middleware/role.go` and `admin` domain package in `server/internal/admin`.
 
-- Protected `/api/v1/admin` route group with JWT authentication and admin role enforcement.
-- Admin Endpoints:
-  - `GET /api/v1/admin/users` — Paginated user listing and search.
-  - `PUT /api/v1/admin/users/{id}/suspend` — Suspend / unsuspend user accounts (blocks logins).
-  - `DELETE /api/v1/admin/urls/{id}` — Force delete short URLs regardless of owner.
-  - `GET /api/v1/admin/stats` — Platform aggregate statistics (users, URLs, active links, total clicks).
+- Protected `/api/v1/admin` endpoints:
+  - `GET /api/v1/admin/users`: Paginated user list and search.
+  - `PUT /api/v1/admin/users/{id}/suspend`: Suspend / unsuspend user accounts.
+  - `DELETE /api/v1/admin/urls/{id}`: Admin force-delete short URLs with cache invalidation.
+  - `GET /api/v1/admin/stats`: Aggregate system statistics.
 
 ---
 
 ## 🧪 Testing
 
 ### ❌ Unit Tests for Services (Mocked DB)
-**Status**: Only integration (E2E) tests exist for service logic. No unit tests with a mocked `db.Store`.
+**Status**: Integration (E2E) tests cover full flows, but unit tests with mocked `db.Store` are missing.
 
 **Missing**:
-- `db.MockStore` using `gomock` or `testify/mock` to unit test each service method in isolation.
-- Fast feedback cycle without needing a running PostgreSQL container.
+- `db.MockStore` using `gomock` or `testify/mock` to test business services in isolation.
 
 ---
 
 ### ✅ Benchmark Tests
-**Status**: Implemented Go benchmark test suite across internal packages (`make benchmark`).
+**Status**: Implemented Go benchmark suite (`make benchmark`).
 
-- `BenchmarkJWTVerify`: Verified token validation speed (~6.6 µs/op).
-- `BenchmarkBase62Generate`: Verified random Base62 short code generation speed (~2.0 µs/op).
-- `BenchmarkPasswordHash`: Verified bcrypt password hash & check bounds.
-- `BenchmarkSyncMapCacheHit`: Verified in-memory lookup overhead (~1.0 µs/op).
+- Benchmark results: JWT verification (~6.6 µs/op), Base62 code generation (~2.0 µs/op), SyncMap lookup (~1.0 µs/op).
 
 ---
 
-### ✅ Load / Stress Testing
-**Status**: Implemented k6 performance engineering suite under `loadtest/` directory.
+### ✅ Integration & E2E Testing
+**Status**: Implemented suite under `server/internal/e2e` using `testcontainers-go` and `postgres:18-alpine` (`make test-integration`).
 
-- `loadtest/config.js`: Enforces strict SLO targets (`p(95) < 50ms`, `p(99) < 100ms`, `http_req_failed < 1%`).
-- `loadtest/smoke_test.js`: Quick verification suite (`make loadtest-smoke`).
-- `loadtest/load_test.js`: Ramping load test up to 100 VUs (`make loadtest-load`).
-- `loadtest/stress_test.js`: High-concurrency stress test up to 500 VUs (`make loadtest-stress`).
+---
+
+### ✅ Load & Stress Testing
+**Status**: Implemented k6 test suite in `loadtest/` directory (`make loadtest-smoke`, `make loadtest-load`, `make loadtest-stress`).
 
 ---
 
@@ -309,126 +273,84 @@ tp := otel.GetTracerProvider()
 **Status**: Only `compose.yml` and `Dockerfile` exist.
 
 **Missing**:
-- No Kubernetes `Deployment`, `Service`, `Ingress`, `HorizontalPodAutoscaler` manifests.
-- No `readinessProbe` / `livenessProbe` configured for the container.
-- No resource `limits` and `requests` defined.
+- No Kubernetes `Deployment`, `Service`, `Ingress`, or `HorizontalPodAutoscaler` manifests.
+- No `readinessProbe` / `livenessProbe` definitions in container spec.
 
 ---
 
 ### ✅ CI Pipeline (Continuous Integration)
 **Status**: Implemented via [.github/workflows/ci.yml](file://.github/workflows/ci.yml).
 
-- Executes `golangci-lint` (using `golangci-lint-action@v8`), unit tests (`go test ./...`), E2E integration tests (`go test -tags=integration ./...`), and coverage artifact uploads on every `push` and `pull_request` to `main`.
-- Features concurrency cancellation (`cancel-in-progress: true`) for redundant workflow runs.
+- Runs `golangci-lint`, unit tests (`go test ./...`), and integration tests (`go test -tags=integration ./...`) on every `push` and `pull_request` to `main`.
 
 ---
 
 ### ❌ CD Pipeline (Continuous Deployment)
-**Status**: No automated deployment configuration.
+**Status**: No automated CD pipeline.
 
 **Missing**:
-- No automated Docker image build & push to container registry (GHCR / DockerHub).
-- No deployment step (K8s / Helm / Cloud deployment trigger).
-- No image signing (Cosign) or SBOM generation (Syft/Trivy).
-
----
-
-### ✅ Multi-Instance Compatibility
-**Status**: Implemented via Redis shared stores with graceful local fallback.
-
-- Shared rate limiting middleware (`RedisRateLimiter`) via Redis atomic `INCR` + `EXPIRE`.
-- Shared OAuth single-use code storage (`oauth:code:<code>`).
-- Shared failed login attempt tracking & lockout protection (`auth:failed:<email>`).
+- No automated Docker image build & push to container registries (GHCR / DockerHub).
+- No automated deployment triggers.
 
 ---
 
 ## 📦 Developer Experience
 
-### ✅ Pre-commit Hooks
-**Status**: Implemented via `.pre-commit-config.yaml`, `.lefthook.yml`, and `make setup-hooks`.
-
-- Configured automatic pre-commit checks for `gofmt`, `golangci-lint`, and `go test`.
+### ✅ Pre-commit Hooks & Air Live Reload
+**Status**: Implemented via `.pre-commit-config.yaml`, `.lefthook.yml`, `.air.toml`, `make setup-hooks`, and `make dev`.
 
 ---
 
-### ✅ Local Development with Hot Reload
-**Status**: Implemented via Air (`.air.toml`) and `make dev`.
-
-- Run `make dev` to automatically rebuild and restart the backend server on any source file modifications.
-
----
-
-### ✅ Mock/Seed Data Script
+### ✅ Mock Seed Script
 **Status**: Implemented via `server/cmd/seed/main.go` and `make seed`.
-
-- Run `make seed` to populate PostgreSQL with realistic users, short URLs, and click analytics data.
 
 ---
 
 ## 🎁 Product Features
 
-### ✅ URL Expiration Cleanup Job
-**Status**: Implemented background ticker worker in `server/internal/url/service.go` and `DeactivateExpiredURLs` query in `server/db/query/urls.sql`.
+### ✅ Inactive & Invalid URL Handling Page
+**Status**: Implemented in `server/internal/url/redirect_handler.go` and `web/src/features/urls/pages/InvalidURLPage.jsx`.
 
-- Automatically deactivates expired links (`expires_at < NOW()`) in the background every 1 minute.
-
----
-
-### ✅ URL Preview / Safety Check
-**Status**: Implemented in `server/internal/url/redirect_handler.go`.
-
-- Supports `GET /{code}/preview` and instant `GET /{code}+` endpoints.
-- Evaluates target destination domain safety rating (`SAFE` vs `SUSPICIOUS` protocol/IP host analysis).
+- Browser requests (`Accept: text/html`) for inactive, expired, or missing URLs are redirected to `/invalid-url?code={code}&reason={inactive|expired|not_found}`.
+- Frontend page styled using clean shadcn UI `Card` and `Button` components matching the workspace design.
 
 ---
 
-### ✅ QR Code Generation
-**Status**: Implemented via `github.com/skip2/go-qrcode` in `server/internal/url/redirect_handler.go` and `server/internal/url/http.go`.
+### ✅ Background Expiration Worker
+**Status**: Implemented in `server/internal/url/service.go` (`DeactivateExpiredURLs`).
 
-- Endpoints: `GET /{code}/qr` (public) and `GET /api/v1/urls/{id}/qr` (authenticated) returning 256x256 `image/png` QR Code images.
+- Periodically deactivates expired links and clears them from Redis cache.
 
 ---
 
-### ❌ Custom Domain Support
+### ✅ Safety Preview & QR Codes
+**Status**: Implemented `GET /{code}/preview`, `GET /{code}+`, and QR code endpoints (`GET /{code}/qr` and `GET /api/v1/urls/{id}/qr`).
+
+---
+
+### ❌ Custom Domain Routing & Webhooks
 **Missing**:
-- Currently only supports one base domain.
-- No multi-tenant custom domain routing (e.g. `links.mycompany.com/abc`).
-
----
-
-### ✅ User Dashboard Aggregate Stats API
-**Status**: Implemented in `server/internal/analytics/service.go` and `server/internal/analytics/http.go`.
-
-- Endpoint: `GET /api/v1/analytics/dashboard` returning total URLs, total clicks, top referrers, device breakdown, and country breakdown across user's URLs.
-
----
-
-### ❌ Webhook / Notification Support
-**Missing**:
-- No webhook delivery when a short URL reaches a click threshold.
-- No email notification support.
+- No multi-tenant custom domain routing (e.g. `links.mybrand.com/code`).
+- No webhooks or email notifications on click thresholds or link expiry.
 
 ---
 
 ## 📊 Priority Summary
 
-| Priority | Category | Item |
-|:---:|:---|:---|
-| 🔴 **Critical** | Performance | Redis caching for redirect lookup |
-| 🔴 **Critical** | Reliability | Async analytics write (decouple from redirect path) |
-| 🔴 **Critical** | Security | Logout endpoint + access token denylist |
-| 🔴 **Critical** | Deployment | CI/CD GitHub Actions pipeline |
-| 🟠 **High** | Observability | OpenTelemetry tracing + Prometheus metrics |
-| 🟠 **High** | Security | Security headers middleware (HSTS, CSP, X-Frame-Options) |
-| 🟠 **High** | Security | Per-email rate limiting + account lockout |
-| 🟠 **High** | Testing | Unit tests with mocked DB store (gomock) |
-| 🟠 **High** | Deployment | Kubernetes manifests / Helm chart |
-| 🟡 **Medium** | Observability | Liveness vs readiness health checks |
-| 🟡 **Medium** | Reliability | Circuit breaker for Google OAuth calls |
-| 🟡 **Medium** | Database | Soft deletes + expired URL cleanup job |
-| 🟡 **Medium** | DX | Air hot-reload (`make dev`) |
-| 🟡 **Medium** | DX | Seed data script (`make seed`) |
-| 🟢 **Low** | Features | QR code generation |
-| 🟢 **Low** | Features | URL preview page |
-| 🟢 **Low** | Features | Webhook / notification support |
-| 🟢 **Low** | Architecture | Admin API / Backoffice routes |
+| Priority | Category | Item | Status |
+|:---:|:---|:---|:---:|
+| 🔴 **Critical** | Performance | Redis caching & cache invalidation on delete/deactivate | ✅ Completed |
+| 🔴 **Critical** | Reliability | Transactional outbox & async click recording | ✅ Completed |
+| 🔴 **Critical** | Security | Logout endpoint & session revocation | ✅ Completed |
+| 🔴 **Critical** | Security | Brute-force email lockout & rate limiting | ✅ Completed |
+| 🔴 **Critical** | Product | Inactive/Invalid URL frontend page & redirect | ✅ Completed |
+| 🔴 **Critical** | Deployment | CI Pipeline via GitHub Actions | ✅ Completed |
+| 🟠 **High** | Observability | Distributed Tracing (OpenTelemetry) | ❌ Missing |
+| 🟠 **High** | Observability | Metrics instrumentation & `/metrics` endpoint | ❌ Missing |
+| 🟠 **High** | Testing | Service unit tests with mocked DB (`gomock`) | ❌ Missing |
+| 🟠 **High** | Deployment | Continuous Deployment (CD) & K8s/Helm manifests | ❌ Missing |
+| 🟡 **Medium** | Database | DB Read Replicas & Connection Pooling (`pgBouncer`) | ❌ Missing |
+| 🟡 **Medium** | Database | Automated DB backups & Point-in-Time Recovery | ❌ Missing |
+| 🟡 **Medium** | Security | Centralized Secrets Manager integration | ❌ Missing |
+| 🟢 **Low** | Features | Custom multi-tenant domain support | ❌ Missing |
+| 🟢 **Low** | Features | Webhook & email notification delivery | ❌ Missing |
