@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { getAccessToken, getRefreshToken, setTokens, clearTokens } from './tokenStorage';
+import { setTokens, clearTokens } from './tokenStorage';
 
 const client = axios.create({
   baseURL: '/api/v1',
@@ -9,12 +9,12 @@ const client = axios.create({
 let isRefreshing = false;
 let failedQueue = [];
 
-function processQueue(error, token = null) {
+function processQueue(error) {
   failedQueue.forEach((prom) => {
     if (error) {
       prom.reject(error);
     } else {
-      prom.resolve(token);
+      prom.resolve();
     }
   });
   failedQueue = [];
@@ -22,10 +22,8 @@ function processQueue(error, token = null) {
 
 client.interceptors.request.use(
   (config) => {
-    const token = getAccessToken();
-    if (token) {
-      config.headers['Authorization'] = `Bearer ${token}`;
-    }
+    // No manual Authorization header injection.
+    // Relative endpoints share same-origin, so HTTP cookies are sent automatically.
     return config;
   },
   (error) => Promise.reject(error)
@@ -64,8 +62,7 @@ client.interceptors.response.use(
       return new Promise((resolve, reject) => {
         failedQueue.push({ resolve, reject });
       })
-        .then((token) => {
-          originalRequest.headers['Authorization'] = `Bearer ${token}`;
+        .then(() => {
           return client(originalRequest);
         })
         .catch((err) => Promise.reject(err));
@@ -75,30 +72,15 @@ client.interceptors.response.use(
     isRefreshing = true;
 
     try {
-      const refreshToken = getRefreshToken();
-      if (!refreshToken) {
-        throw new Error('No refresh token');
-      }
+      // POST to refresh endpoint. Refresh token is passed automatically via HTTP cookies.
+      await axios.post('/api/v1/auth/refresh');
 
-      const response = await axios.post('/api/v1/auth/refresh', {
-        refresh_token: refreshToken,
-      });
-
-      const data = response.data?.data || response.data;
-      const newAccessToken = data.access_token;
-      const newRefreshToken = data.refresh_token;
-
-      setTokens({
-        accessToken: newAccessToken,
-        refreshToken: newRefreshToken,
-      });
-
-      processQueue(null, newAccessToken);
-      originalRequest.headers['Authorization'] = `Bearer ${newAccessToken}`;
+      setTokens(); // Updates the is_authenticated flag in localStorage
+      processQueue(null);
       return client(originalRequest);
     } catch (refreshError) {
       clearTokens();
-      processQueue(refreshError, null);
+      processQueue(refreshError);
       if (window.location.pathname !== '/login') {
         window.location.href = '/login';
       }

@@ -73,12 +73,22 @@ export default function Register() {
     if (!values.fullName) newErrors.fullName = 'Full name is required';
     if (!values.email) newErrors.email = 'Email is required';
     if (!values.password || values.password.length < 8) newErrors.password = 'Password must be at least 8 characters';
-    if (values.password !== values.confirmPassword) newErrors.confirmPassword = 'Passwords do not match';
+    if (values.confirmPassword && values.password !== values.confirmPassword) newErrors.confirmPassword = 'Passwords do not match';
     if (Object.keys(newErrors).length > 0) { setErrors(newErrors); return; }
 
     const res = await register(values.email, values.password, values.fullName);
     if (res.success) { navigate('/dashboard', { replace: true }); return; }
-    setServerError(res.error || 'Registration failed. Please try again.');
+
+    if (res.errors) {
+      const mappedErrors = {};
+      Object.keys(res.errors).forEach((key) => {
+        const mappedKey = key === 'full_name' ? 'fullName' : key;
+        mappedErrors[mappedKey] = res.errors[key];
+      });
+      setErrors(mappedErrors);
+    } else {
+      setServerError(res.error || 'Registration failed. Please try again.');
+    }
   }
 
   async function handleGoogleLogin() {

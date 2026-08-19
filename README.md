@@ -2,6 +2,8 @@
 
 A clean, modern, high-performance URL Shortener REST API backend written in Go using **Modular Monolith** architecture, **Go-Chi**, and **PostgreSQL 18**. Features interactive Scalar API Reference UI & Swagger documentation, automatic database migrations, structured wide-event logging, multi-language input validation, tiered rate limiting, and containerized testing support.
 
+![Dashboard Preview](server/docs/ss/dashboard.png)
+
 ---
 
 ## 📋 Table of Contents

@@ -1,18 +1,16 @@
-const ACCESS_TOKEN_KEY = 'url_shortener_access_token';
-const REFRESH_TOKEN_KEY = 'url_shortener_refresh_token';
-const SESSION_ID_KEY = 'url_shortener_session_id';
 const USER_KEY = 'url_shortener_user';
+const AUTH_FLAG_KEY = 'url_shortener_is_authenticated';
 
 export function getAccessToken() {
-  return localStorage.getItem(ACCESS_TOKEN_KEY);
+  return null; // Handled by HTTP-only cookies
 }
 
 export function getRefreshToken() {
-  return localStorage.getItem(REFRESH_TOKEN_KEY);
+  return null; // Handled by HTTP-only cookies
 }
 
 export function getSessionId() {
-  return localStorage.getItem(SESSION_ID_KEY);
+  return null; // Handled by HTTP-only cookies
 }
 
 export function getUser() {
@@ -25,23 +23,25 @@ export function getUser() {
   }
 }
 
-export function setTokens({ accessToken, refreshToken, sessionId }) {
-  if (accessToken) localStorage.setItem(ACCESS_TOKEN_KEY, accessToken);
-  if (refreshToken) localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken);
-  if (sessionId) localStorage.setItem(SESSION_ID_KEY, sessionId);
+export function getIsAuthenticated() {
+  return localStorage.getItem(AUTH_FLAG_KEY) === 'true';
+}
+
+export function setTokens() {
+  localStorage.setItem(AUTH_FLAG_KEY, 'true');
 }
 
 export function setUser(user) {
   if (user) {
     localStorage.setItem(USER_KEY, JSON.stringify(user));
+    localStorage.setItem(AUTH_FLAG_KEY, 'true');
   } else {
     localStorage.removeItem(USER_KEY);
+    localStorage.removeItem(AUTH_FLAG_KEY);
   }
 }
 
 export function clearTokens() {
-  localStorage.removeItem(ACCESS_TOKEN_KEY);
-  localStorage.removeItem(REFRESH_TOKEN_KEY);
-  localStorage.removeItem(SESSION_ID_KEY);
   localStorage.removeItem(USER_KEY);
+  localStorage.removeItem(AUTH_FLAG_KEY);
 }

@@ -1,8 +1,8 @@
 import { create } from 'zustand';
 import client from '@/lib/client';
 import {
-  getAccessToken,
   getUser,
+  getIsAuthenticated,
   setTokens,
   setUser,
   clearTokens,
@@ -10,13 +10,13 @@ import {
 
 export const useAuthStore = create((set) => ({
   user: getUser(),
-  isAuthenticated: !!getAccessToken(),
+  isAuthenticated: getIsAuthenticated(),
   isLoading: true,   // only used for initialize() — auth hydration
   isSubmitting: false, // used for login/register form submissions
 
   initialize: async () => {
-    const token = getAccessToken();
-    if (!token) {
+    const isAuthenticated = getIsAuthenticated();
+    if (!isAuthenticated) {
       set({ isAuthenticated: false, user: null, isLoading: false });
       return;
     }
@@ -37,15 +37,16 @@ export const useAuthStore = create((set) => ({
     try {
       const res = await client.post('/auth/login', { email, password });
       const payload = res.data?.data || res.data;
-      const { access_token, refresh_token, session_id, user } = payload;
-      setTokens({ accessToken: access_token, refreshToken: refresh_token, sessionId: session_id });
+      const { user } = payload;
+      setTokens();
       setUser(user);
       set({ user, isAuthenticated: true, isSubmitting: false });
       return { success: true };
     } catch (err) {
       set({ isSubmitting: false });
       const message = err.response?.data?.message || 'Login failed. Please check your credentials.';
-      return { success: false, error: message };
+      const errors = err.response?.data?.errors || null;
+      return { success: false, error: message, errors };
     }
   },
 
@@ -58,15 +59,16 @@ export const useAuthStore = create((set) => ({
         full_name: fullName,
       });
       const payload = res.data?.data || res.data;
-      const { access_token, refresh_token, session_id, user } = payload;
-      setTokens({ accessToken: access_token, refreshToken: refresh_token, sessionId: session_id });
+      const { user } = payload;
+      setTokens();
       setUser(user);
       set({ user, isAuthenticated: true, isSubmitting: false });
       return { success: true };
     } catch (err) {
       set({ isSubmitting: false });
       const message = err.response?.data?.message || 'Registration failed.';
-      return { success: false, error: message };
+      const errors = err.response?.data?.errors || null;
+      return { success: false, error: message, errors };
     }
   },
 

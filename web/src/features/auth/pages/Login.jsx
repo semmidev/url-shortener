@@ -50,7 +50,17 @@ export default function Login() {
 
     const res = await login(values.email, values.password);
     if (res.success) { navigate('/dashboard', { replace: true }); return; }
-    setServerError(res.error || 'Login failed. Please check your credentials.');
+
+    if (res.errors) {
+      const mappedErrors = {};
+      Object.keys(res.errors).forEach((key) => {
+        const mappedKey = key === 'full_name' ? 'fullName' : key;
+        mappedErrors[mappedKey] = res.errors[key];
+      });
+      setErrors(mappedErrors);
+    } else {
+      setServerError(res.error || 'Login failed. Please check your credentials.');
+    }
   }
 
   async function handleGoogleLogin() {

@@ -60,6 +60,7 @@ func (h *Handler) register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	h.setAuthCookies(w, resp)
 	web.JSON(w, http.StatusCreated, resp)
 }
 
@@ -88,6 +89,7 @@ func (h *Handler) login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	h.setAuthCookies(w, resp)
 	web.JSON(w, http.StatusOK, resp)
 }
 
@@ -102,9 +104,17 @@ func (h *Handler) login(w http.ResponseWriter, r *http.Request) {
 // @Router /api/v1/auth/refresh [post]
 func (h *Handler) refresh(w http.ResponseWriter, r *http.Request) {
 	var req RefreshTokenRequest
-	if err := web.Decode(r, &req); err != nil {
-		web.Error(w, r, err)
-		return
+	// Try to get refresh token from cookie first
+	if cookie, err := r.Cookie("refresh_token"); err == nil && cookie.Value != "" {
+		req.RefreshToken = cookie.Value
+	}
+
+	// Fallback to body decoding if cookie is not present
+	if req.RefreshToken == "" {
+		if err := web.Decode(r, &req); err != nil {
+			web.Error(w, r, err)
+			return
+		}
 	}
 
 	resp, err := h.svc.RefreshToken(r.Context(), req)
@@ -112,6 +122,17 @@ func (h *Handler) refresh(w http.ResponseWriter, r *http.Request) {
 		web.Error(w, r, err)
 		return
 	}
+
+	// Set updated access token in cookies
+	http.SetCookie(w, &http.Cookie{
+		Name:     "access_token",
+		Value:    resp.AccessToken,
+		Path:     "/",
+		Expires:  resp.AccessTokenExpiresAt,
+		HttpOnly: true,
+		Secure:   true,
+		SameSite: http.SameSiteLaxMode,
+	})
 
 	web.JSON(w, http.StatusOK, resp)
 }
@@ -188,6 +209,7 @@ func (h *Handler) googleExchangeToken(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	h.setAuthCookies(w, resp)
 	web.JSON(w, http.StatusOK, resp)
 }
 
@@ -240,5 +262,60 @@ func (h *Handler) logout(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	h.clearAuthCookies(w)
 	web.JSON(w, http.StatusOK, map[string]string{"message": "logged out successfully"})
+}
+
+func (h *Handler) setAuthCookies(w http.ResponseWriter, resp *LoginResponse) {
+	http.SetCookie(w, &http.Cookie{
+		Name:     "access_token",
+		Value:    resp.AccessToken,
+		Path:     "/",
+		Expires:  resp.AccessTokenExpiresAt,
+		HttpOnly: true,
+		Secure:   true,
+		SameSite: http.SameSiteLaxMode,
+	})
+
+	http.SetCookie(w, &http.Cookie{
+		Name:     "refresh_token",
+		Value:    resp.RefreshToken,
+		Path:     "/",
+		Expires:  resp.RefreshTokenExpiresAt,
+		HttpOnly: true,
+		Secure:   true,
+		SameSite: http.SameSiteLaxMode,
+	})
+}
+
+func (h *Handler) clearAuthCookies(w http.ResponseWriter) {
+	http.SetCookie(w, &http.Cookie{
+		Name:     "access_token",
+		Value:    "",
+		Path:     "/",
+		MaxAge:   -1,
+		HttpOnly: true,
+		Secure:   true,
+		SameSite: http.SameSiteLaxMode,
+	})
+
+	http.SetCookie(w, &http.Cookie{
+		Name:     "refresh_token",
+		Value:    "",
+		Path:     "/",
+		MaxAge:   -1,
+		HttpOnly: true,
+		Secure:   true,
+		SameSite: http.SameSiteLaxMode,
+	})
+
+	http.SetCookie(w, &http.Cookie{
+		Name:     "token",
+		Value:    "",
+		Path:     "/",
+		MaxAge:   -1,
+		HttpOnly: true,
+		Secure:   true,
+		SameSite: http.SameSiteLaxMode,
+	})
 }
