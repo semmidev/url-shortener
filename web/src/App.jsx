@@ -7,6 +7,7 @@ import { useAuthStore } from '@/features/auth/store';
 import Login from '@/features/auth/pages/Login';
 import Register from '@/features/auth/pages/Register';
 import GoogleCallback from '@/features/auth/pages/GoogleCallback';
+import InvalidURLPage from '@/features/urls/pages/InvalidURLPage';
 
 import DashboardLayout from '@/features/dashboard/pages/DashboardLayout';
 import Overview from '@/features/dashboard/pages/OverviewPage';
@@ -89,6 +90,7 @@ export default function App() {
             }
           />
           <Route path="/auth/google/callback" element={<GoogleCallback />} />
+          <Route path="/invalid-url" element={<InvalidURLPage />} />
 
           {/* Protected Dashboard Layout & Subroutes */}
           <Route

@@ -83,7 +83,8 @@ SET deleted_at = NULL, is_active = TRUE, updated_at = NOW()
 WHERE id = $1 AND (user_id = sqlc.arg('user_id') OR sqlc.arg('user_id') IS NULL) AND deleted_at IS NOT NULL
 RETURNING *;
 
--- name: DeactivateExpiredURLs :execresult
+-- name: DeactivateExpiredURLs :many
 UPDATE short_urls
 SET is_active = FALSE, updated_at = NOW()
-WHERE is_active = TRUE AND deleted_at IS NULL AND expires_at IS NOT NULL AND expires_at < NOW();
+WHERE is_active = TRUE AND deleted_at IS NULL AND expires_at IS NOT NULL AND expires_at < NOW()
+RETURNING short_code;

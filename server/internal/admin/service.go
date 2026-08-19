@@ -2,23 +2,27 @@ package admin
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 	db "github.com/semmidev/url-shortener/server/db/sqlc"
 	"github.com/semmidev/url-shortener/server/internal/platform/apperr"
+	"github.com/semmidev/url-shortener/server/internal/platform/cache"
 	"github.com/semmidev/url-shortener/server/internal/platform/logger"
 )
 
 type Service struct {
 	store     db.Store
 	appLogger *logger.Logger
+	cache     cache.Cache
 }
 
-func NewService(store db.Store, appLogger *logger.Logger) *Service {
+func NewService(store db.Store, appLogger *logger.Logger, cache cache.Cache) *Service {
 	return &Service{
 		store:     store,
 		appLogger: appLogger,
+		cache:     cache,
 	}
 }
 
@@ -98,7 +102,12 @@ func (s *Service) SetUserSuspended(ctx context.Context, req SuspendUserRequest) 
 }
 
 func (s *Service) ForceDeleteURL(ctx context.Context, urlID uuid.UUID) error {
-	err := s.store.ExecTx(ctx, func(q *db.Queries) error {
+	existing, err := s.store.GetShortURLByID(ctx, urlID)
+	if err != nil {
+		return apperr.MapDBError(err, "short URL not found", "")
+	}
+
+	err = s.store.ExecTx(ctx, func(q *db.Queries) error {
 		return q.DeleteShortURL(ctx, db.DeleteShortURLParams{
 			ID:     urlID,
 			UserID: pgtype.UUID{Valid: false}, // admin override
@@ -106,6 +115,10 @@ func (s *Service) ForceDeleteURL(ctx context.Context, urlID uuid.UUID) error {
 	})
 	if err != nil {
 		return apperr.MapDBError(err, "short URL not found", "")
+	}
+
+	if s.cache != nil {
+		_ = s.cache.Delete(ctx, fmt.Sprintf("url:code:%s", existing.ShortCode))
 	}
 
 	s.appLogger.Audit(ctx, "admin.url.force_deleted", "url_id", urlID.String())

@@ -324,11 +324,18 @@ func (s *Service) IncrementClickCount(ctx context.Context, req IncrementClickCou
 }
 
 func (s *Service) DeactivateExpiredURLs(ctx context.Context) (int64, error) {
-	res, err := s.store.DeactivateExpiredURLs(ctx)
+	codes, err := s.store.DeactivateExpiredURLs(ctx)
 	if err != nil {
 		return 0, apperr.MapDBError(err, "failed to cleanup expired URLs", "")
 	}
-	return res.RowsAffected(), nil
+
+	if s.cache != nil {
+		for _, code := range codes {
+			_ = s.cache.Delete(ctx, fmt.Sprintf("url:code:%s", code))
+		}
+	}
+
+	return int64(len(codes)), nil
 }
 
 func (s *Service) StartExpirationCleanupWorker(ctx context.Context, interval time.Duration) {

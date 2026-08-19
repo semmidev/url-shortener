@@ -9,7 +9,6 @@ import (
 	"context"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -97,14 +96,31 @@ func (q *Queries) CreateShortURL(ctx context.Context, arg CreateShortURLParams) 
 	return i, err
 }
 
-const deactivateExpiredURLs = `-- name: DeactivateExpiredURLs :execresult
+const deactivateExpiredURLs = `-- name: DeactivateExpiredURLs :many
 UPDATE short_urls
 SET is_active = FALSE, updated_at = NOW()
 WHERE is_active = TRUE AND deleted_at IS NULL AND expires_at IS NOT NULL AND expires_at < NOW()
+RETURNING short_code
 `
 
-func (q *Queries) DeactivateExpiredURLs(ctx context.Context) (pgconn.CommandTag, error) {
-	return q.db.Exec(ctx, deactivateExpiredURLs)
+func (q *Queries) DeactivateExpiredURLs(ctx context.Context) ([]string, error) {
+	rows, err := q.db.Query(ctx, deactivateExpiredURLs)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []string{}
+	for rows.Next() {
+		var short_code string
+		if err := rows.Scan(&short_code); err != nil {
+			return nil, err
+		}
+		items = append(items, short_code)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const deleteShortURL = `-- name: DeleteShortURL :exec

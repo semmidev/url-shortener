@@ -161,7 +161,7 @@ func BuildRouter(cfg config.Config, pool *pgxpool.Pool, appLogger *logger.Logger
 	urlSvc := url.NewService(store, cfg, redisCache)
 	urlSvc.StartExpirationCleanupWorker(context.Background(), 1*time.Minute)
 	analyticsSvc := analytics.NewService(store)
-	adminSvc := admin.NewService(store, appLogger)
+	adminSvc := admin.NewService(store, appLogger, redisCache)
 
 	// Initialize Embedded SPA Handler
 	spaHandler, err := spaweb.NewSPAHandler()

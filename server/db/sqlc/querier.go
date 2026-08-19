@@ -8,7 +8,6 @@ import (
 	"context"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -19,7 +18,7 @@ type Querier interface {
 	CreateSession(ctx context.Context, arg CreateSessionParams) (Session, error)
 	CreateShortURL(ctx context.Context, arg CreateShortURLParams) (ShortUrl, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
-	DeactivateExpiredURLs(ctx context.Context) (pgconn.CommandTag, error)
+	DeactivateExpiredURLs(ctx context.Context) ([]string, error)
 	DeleteShortURL(ctx context.Context, arg DeleteShortURLParams) error
 	GetPendingOutboxEvents(ctx context.Context, limit int32) ([]OutboxEvent, error)
 	GetSession(ctx context.Context, id uuid.UUID) (Session, error)

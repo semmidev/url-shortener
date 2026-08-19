@@ -68,6 +68,13 @@ func (h *RedirectHandler) Redirect(w http.ResponseWriter, r *http.Request) {
 	}
 
 	shortCode := chi.URLParam(r, "code")
+	if isFrontendRoute(shortCode) {
+		if h.spaHandler != nil {
+			h.spaHandler.ServeHTTP(w, r)
+			return
+		}
+	}
+
 	if shortCode == "" || path == "/" {
 		if h.spaHandler != nil {
 			h.spaHandler.ServeHTTP(w, r)
@@ -88,9 +95,17 @@ func (h *RedirectHandler) Redirect(w http.ResponseWriter, r *http.Request) {
 
 	res, err := h.svc.GetByCode(r.Context(), GetURLByCodeRequest{Code: shortCode})
 	if err != nil {
-		// If browser HTML page navigation (Accept: text/html), fall back to SPA index.html for client-side routing.
+		// If browser HTML page navigation (Accept: text/html), redirect to the frontend invalid page.
 		if h.spaHandler != nil && strings.Contains(r.Header.Get("Accept"), "text/html") {
-			h.spaHandler.ServeHTTP(w, r)
+			reason := "not_found"
+			errMsg := err.Error()
+			if strings.Contains(errMsg, "inactive") {
+				reason = "inactive"
+			} else if strings.Contains(errMsg, "expired") {
+				reason = "expired"
+			}
+			redirectURL := fmt.Sprintf("/invalid-url?code=%s&reason=%s", url.QueryEscape(shortCode), reason)
+			http.Redirect(w, r, redirectURL, http.StatusTemporaryRedirect)
 			return
 		}
 		web.Error(w, r, err)
@@ -192,4 +207,12 @@ func (h *RedirectHandler) QRCode(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Cache-Control", "public, max-age=86400")
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write(pngBytes)
+}
+
+func isFrontendRoute(code string) bool {
+	switch code {
+	case "login", "register", "dashboard", "auth", "invalid-url":
+		return true
+	}
+	return false
 }
