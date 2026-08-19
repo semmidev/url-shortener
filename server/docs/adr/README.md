@@ -20,6 +20,7 @@ This directory contains the Architecture Decision Records (ADRs) for the URL Sho
 | [ADR-0012](0012-redis-cache-aside-edge-cache-control.md) | Redis Cache-Aside & Edge Cache-Control Headers | Accepted | 2026-08-19 |
 | [ADR-0013](0013-developer-experience-tooling.md) | Developer Experience & Tooling (Air, Pre-commit, Seed) | Accepted | 2026-08-19 |
 | [ADR-0014](0014-product-features-cleanup-preview-qr-dashboard.md) | Product Features (Cleanup Worker, Preview & Safety, QR Code, Dashboard Analytics) | Accepted | 2026-08-19 |
+| [ADR-0015](0015-multi-instance-redis-state.md) | Multi-Instance State Management with Redis (Rate Limiting, OAuth Codes, Lockout) | Accepted | 2026-08-19 |
 
 ---
 

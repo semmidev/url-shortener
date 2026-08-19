@@ -130,6 +130,7 @@ All major architectural and code style decisions are formally documented in our 
 | **ADR-0012** | Redis Cache-Aside & Edge Cache-Control Headers | [Read Record](server/docs/adr/0012-redis-cache-aside-edge-cache-control.md) |
 | **ADR-0013** | Developer Experience & Tooling (Air, Pre-commit, Seed) | [Read Record](server/docs/adr/0013-developer-experience-tooling.md) |
 | **ADR-0014** | Product Features (Cleanup, Preview, QR, Dashboard Analytics) | [Read Record](server/docs/adr/0014-product-features-cleanup-preview-qr-dashboard.md) |
+| **ADR-0015** | Multi-Instance State Management with Redis | [Read Record](server/docs/adr/0015-multi-instance-redis-state.md) |
 
 ---
 

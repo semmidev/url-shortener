@@ -16,6 +16,7 @@ type Cache interface {
 	Get(ctx context.Context, key string, dest interface{}) error
 	Set(ctx context.Context, key string, value interface{}, ttl time.Duration) error
 	Delete(ctx context.Context, keys ...string) error
+	Incr(ctx context.Context, key string, ttl time.Duration) (int64, error)
 	Close() error
 }
 
@@ -99,6 +100,26 @@ func (r *RedisCache) Delete(ctx context.Context, keys ...string) error {
 	}
 
 	return nil
+}
+
+func (r *RedisCache) Incr(ctx context.Context, key string, ttl time.Duration) (int64, error) {
+	if r == nil || r.client == nil {
+		return 0, errors.New("cache: redis client is nil")
+	}
+
+	count, err := r.client.Incr(ctx, key).Result()
+	if err != nil {
+		slog.WarnContext(ctx, "redis incr error", "key", key, "error", err)
+		return 0, err
+	}
+
+	if count == 1 && ttl > 0 {
+		if err := r.client.Expire(ctx, key, ttl).Err(); err != nil {
+			slog.WarnContext(ctx, "redis expire error", "key", key, "error", err)
+		}
+	}
+
+	return count, nil
 }
 
 func (r *RedisCache) Close() error {

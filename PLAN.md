@@ -338,13 +338,12 @@ tp := otel.GetTracerProvider()
 
 ---
 
-### ❌ Multi-Instance Compatibility
-**Status**: Stateful in-process stores break horizontal scaling.
+### ✅ Multi-Instance Compatibility
+**Status**: Implemented via Redis shared stores with graceful local fallback.
 
-**Missing**:
-- In-memory rate limiter (`httprate`) is **not shared across multiple instances**.
-- One-time OAuth code store (`sync.Map`) is **in-process only** — breaks with multiple replicas.
-- Both need Redis-backed equivalents for multi-replica deployments.
+- Shared rate limiting middleware (`RedisRateLimiter`) via Redis atomic `INCR` + `EXPIRE`.
+- Shared OAuth single-use code storage (`oauth:code:<code>`).
+- Shared failed login attempt tracking & lockout protection (`auth:failed:<email>`).
 
 ---
 

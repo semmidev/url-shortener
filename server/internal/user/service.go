@@ -19,6 +19,7 @@ import (
 	db "github.com/semmidev/url-shortener/server/db/sqlc"
 	"github.com/semmidev/url-shortener/server/internal/config"
 	"github.com/semmidev/url-shortener/server/internal/platform/apperr"
+	"github.com/semmidev/url-shortener/server/internal/platform/cache"
 	"github.com/semmidev/url-shortener/server/internal/platform/crypto"
 	"github.com/semmidev/url-shortener/server/internal/platform/logger"
 	"github.com/semmidev/url-shortener/server/internal/platform/retry"
@@ -41,17 +42,19 @@ type Service struct {
 	tokenMaker    *token.JWTMaker
 	cfg           config.Config
 	appLogger     *logger.Logger
-	oneTimeCodes  sync.Map // map[string]oneTimeCodeEntry
-	emailAttempts sync.Map // map[string]emailAttemptEntry
+	cache         cache.Cache
+	oneTimeCodes  sync.Map // fallback in-memory store
+	emailAttempts sync.Map // fallback in-memory store
 	httpClient    *http.Client
 }
 
-func NewService(store db.Store, tokenMaker *token.JWTMaker, cfg config.Config, appLogger *logger.Logger) *Service {
+func NewService(store db.Store, tokenMaker *token.JWTMaker, cfg config.Config, appLogger *logger.Logger, c cache.Cache) *Service {
 	s := &Service{
 		store:      store,
 		tokenMaker: tokenMaker,
 		cfg:        cfg,
 		appLogger:  appLogger,
+		cache:      c,
 		httpClient: &http.Client{Timeout: 10 * time.Second},
 	}
 	go s.cleanupExpiredOneTimeCodes()
@@ -82,9 +85,35 @@ func (s *Service) cleanupExpiredOneTimeCodes() {
 	}
 }
 
+// isEmailLocked checks if the email is currently locked out due to excessive failed login attempts.
+func (s *Service) isEmailLocked(ctx context.Context, email string) bool {
+	if s.cache != nil {
+		var count int64
+		key := fmt.Sprintf("auth:failed:%s", email)
+		if err := s.cache.Get(ctx, key, &count); err == nil && count >= maxEmailLoginAttempts {
+			return true
+		}
+	}
+
+	if val, loaded := s.emailAttempts.Load(email); loaded {
+		if entry, ok := val.(emailAttemptEntry); ok {
+			return entry.count >= maxEmailLoginAttempts && time.Now().Before(entry.firstSeen.Add(emailLockoutWindow))
+		}
+	}
+	return false
+}
+
 // recordFailedLogin increments the per-email failed attempt counter.
 // Returns true if the account should be locked out.
-func (s *Service) recordFailedLogin(email string) bool {
+func (s *Service) recordFailedLogin(ctx context.Context, email string) bool {
+	if s.cache != nil {
+		key := fmt.Sprintf("auth:failed:%s", email)
+		count, err := s.cache.Incr(ctx, key, emailLockoutWindow)
+		if err == nil {
+			return count >= maxEmailLoginAttempts
+		}
+	}
+
 	now := time.Now()
 	val, _ := s.emailAttempts.LoadOrStore(email, emailAttemptEntry{count: 0, firstSeen: now})
 	entry, ok := val.(emailAttemptEntry)
@@ -102,7 +131,10 @@ func (s *Service) recordFailedLogin(email string) bool {
 }
 
 // resetEmailAttempts clears the failed attempt counter for an email on successful login.
-func (s *Service) resetEmailAttempts(email string) {
+func (s *Service) resetEmailAttempts(ctx context.Context, email string) {
+	if s.cache != nil {
+		_ = s.cache.Delete(ctx, fmt.Sprintf("auth:failed:%s", email))
+	}
 	s.emailAttempts.Delete(email)
 }
 
@@ -178,21 +210,17 @@ func (s *Service) Login(ctx context.Context, req LoginRequest) (*LoginResponse, 
 	}
 
 	// Per-email brute-force protection: check if email is locked out
-	if val, loaded := s.emailAttempts.Load(req.Email); loaded {
-		if entry, ok := val.(emailAttemptEntry); ok {
-			if entry.count >= maxEmailLoginAttempts && time.Now().Before(entry.firstSeen.Add(emailLockoutWindow)) {
-				s.appLogger.Audit(ctx, logger.AuditActionUserLoginFailed,
-					"user.email", req.Email,
-					"reason", "account_locked_out",
-				)
-				return nil, apperr.Unauthorized("too many failed login attempts, please try again later")
-			}
-		}
+	if s.isEmailLocked(ctx, req.Email) {
+		s.appLogger.Audit(ctx, logger.AuditActionUserLoginFailed,
+			"user.email", req.Email,
+			"reason", "account_locked_out",
+		)
+		return nil, apperr.Unauthorized("too many failed login attempts, please try again later")
 	}
 
 	user, err := s.store.GetUserByEmail(ctx, req.Email)
 	if err != nil {
-		s.recordFailedLogin(req.Email)
+		s.recordFailedLogin(ctx, req.Email)
 		s.appLogger.Audit(ctx, logger.AuditActionUserLoginFailed, "user.email", req.Email, "reason", "user_not_found")
 		return nil, apperr.MapDBError(err, "invalid email or password", "")
 	}
@@ -202,7 +230,7 @@ func (s *Service) Login(ctx context.Context, req LoginRequest) (*LoginResponse, 
 	}
 
 	if err := crypto.CheckPassword(req.Password, user.PasswordHash.String); err != nil {
-		locked := s.recordFailedLogin(req.Email)
+		locked := s.recordFailedLogin(ctx, req.Email)
 		reason := "wrong_password"
 		if locked {
 			reason = "account_now_locked"
@@ -215,7 +243,7 @@ func (s *Service) Login(ctx context.Context, req LoginRequest) (*LoginResponse, 
 		return nil, apperr.Unauthorized("invalid email or password")
 	}
 
-	s.resetEmailAttempts(req.Email)
+	s.resetEmailAttempts(ctx, req.Email)
 	resp, err := s.createSessionAndTokensWithQuerier(ctx, s.store, user, req.UserAgent, req.ClientIP)
 	if err != nil {
 		return nil, err
@@ -354,6 +382,14 @@ func (s *Service) GenerateOneTimeCode(loginResp *LoginResponse) string {
 	_, _ = rand.Read(b)
 	code := hex.EncodeToString(b)
 
+	if s.cache != nil {
+		ctx := context.Background()
+		key := fmt.Sprintf("oauth:code:%s", code)
+		if err := s.cache.Set(ctx, key, loginResp, 5*time.Minute); err == nil {
+			return code
+		}
+	}
+
 	s.oneTimeCodes.Store(code, oneTimeCodeEntry{
 		loginResp: loginResp,
 		expiresAt: time.Now().Add(5 * time.Minute),
@@ -365,6 +401,15 @@ func (s *Service) GenerateOneTimeCode(loginResp *LoginResponse) string {
 func (s *Service) ExchangeOneTimeCode(ctx context.Context, req GoogleExchangeTokenRequest) (*LoginResponse, error) {
 	if err := req.Validate(); err != nil {
 		return nil, err
+	}
+
+	if s.cache != nil {
+		key := fmt.Sprintf("oauth:code:%s", req.Code)
+		var resp LoginResponse
+		if err := s.cache.Get(ctx, key, &resp); err == nil {
+			_ = s.cache.Delete(ctx, key)
+			return &resp, nil
+		}
 	}
 
 	val, ok := s.oneTimeCodes.LoadAndDelete(req.Code)

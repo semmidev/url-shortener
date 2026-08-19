@@ -142,7 +142,7 @@ func BuildRouter(cfg config.Config, pool *pgxpool.Pool, appLogger *logger.Logger
 	}
 
 	// Initialize Services
-	userSvc := user.NewService(store, tokenMaker, cfg, appLogger)
+	userSvc := user.NewService(store, tokenMaker, cfg, appLogger, redisCache)
 	urlSvc := url.NewService(store, cfg, redisCache)
 	urlSvc.StartExpirationCleanupWorker(context.Background(), 1*time.Minute)
 	analyticsSvc := analytics.NewService(store)
@@ -235,7 +235,7 @@ func BuildRouter(cfg config.Config, pool *pgxpool.Pool, appLogger *logger.Logger
 	})
 
 	// Public Redirection Endpoint with sampling middleware for high-throughput logging control
-	publicRateLimitMw := customMw.RateLimiter(cfg.RateLimitPublicRequests, cfg.RateLimitPublicWindow)
+	publicRateLimitMw := customMw.RedisRateLimiter(redisCache, "public", cfg.RateLimitPublicRequests, cfg.RateLimitPublicWindow)
 	redirectRouter := chi.NewRouter()
 	redirectRouter.Use(customMw.WideEventLoggingWithSampling(appLogger, cfg.LogRedirectSampleRate))
 	redirectRouter.With(publicRateLimitMw).Get("/{code}", redirectH.Redirect)
@@ -244,8 +244,8 @@ func BuildRouter(cfg config.Config, pool *pgxpool.Pool, appLogger *logger.Logger
 	r.Mount("/", redirectRouter)
 
 	// Rate Limiters for API routes
-	authRateLimitMw := customMw.RateLimiter(cfg.RateLimitAuthRequests, cfg.RateLimitAuthWindow)
-	apiRateLimitMw := customMw.RateLimiter(cfg.RateLimitAPIRequests, cfg.RateLimitAPIWindow)
+	authRateLimitMw := customMw.RedisRateLimiter(redisCache, "auth", cfg.RateLimitAuthRequests, cfg.RateLimitAuthWindow)
+	apiRateLimitMw := customMw.RedisRateLimiter(redisCache, "api", cfg.RateLimitAPIRequests, cfg.RateLimitAPIWindow)
 
 	// API v1 Routes
 	r.Route("/api/v1", func(r chi.Router) {
