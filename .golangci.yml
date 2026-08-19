@@ -28,6 +28,29 @@ linters:
     - exhaustive
     - nilerr
     - depguard
+
+  # Konfigurasi pengecualian path/linter khusus di v2 dipindah ke sini
+  exclusions:
+    rules:
+      - path: _test\.go
+        linters:
+          - gocyclo
+          - errcheck
+          - gosec
+          - gocognit
+          - exhaustive
+      - path: server/db/sqlc
+        linters:
+          - errcheck
+          - gosec
+          - gocyclo
+          - gocognit
+      - path: server/docs
+        linters:
+          - errcheck
+          - gosec
+          - misspell
+
   settings:
     govet:
       enable-all: true
@@ -70,23 +93,5 @@ linters:
               desc: "domain models and DTOs must not import chi"
 
 issues:
-  exclude-rules:
-    - path: _test\.go
-      linters:
-        - gocyclo
-        - errcheck
-        - gosec
-        - gocognit
-        - exhaustive
-    - path: server/db/sqlc
-      linters:
-        - errcheck
-        - gosec
-        - gocyclo
-        - gocognit
-    - path: server/docs
-      linters:
-        - errcheck
-        - gosec
-        - misspell
-
+  max-issues-per-linter: 0
+  max-same-issues: 0
