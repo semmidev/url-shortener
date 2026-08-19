@@ -52,7 +52,7 @@ test-all:
 
 # Run Go performance benchmark tests
 benchmark:
-	go test -bench=. -benchmem ./server/internal/benchmark/...
+	go test -bench=. -benchmem ./server/internal/...
 
 # Run k6 smoke load test
 loadtest-smoke:

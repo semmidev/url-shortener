@@ -10,11 +10,11 @@ To guarantee high throughput, low latency, and stability under heavy traffic, th
 ## Decision
 
 We implemented Go benchmark tests and a k6 load testing suite:
-1. **Go Benchmark Suite (`server/internal/benchmark/benchmark_test.go`)**:
-   - `BenchmarkJWTVerify`: Verified token verification latency (~6.6 µs/op).
-   - `BenchmarkBase62Generate`: Verified Base62 code generation speed (~2.0 µs/op).
-   - `BenchmarkPasswordHash`: Verified bcrypt security/performance bounds.
-   - `BenchmarkSyncMapCacheHit`: Verified in-memory lookup overhead (~1.0 µs/op).
+1. **Go Benchmark Suite (`server/internal/...`)**:
+   - `BenchmarkJWTVerify`: Verified token verification latency (`server/internal/platform/token/token_benchmark_test.go`).
+   - `BenchmarkBase62Generate`: Verified Base62 code generation speed (`server/internal/url/url_benchmark_test.go`).
+   - `BenchmarkPasswordHash`: Verified bcrypt security/performance bounds (`server/internal/platform/crypto/password_benchmark_test.go`).
+   - `BenchmarkSyncMapCacheHit`: Verified in-memory lookup overhead (`server/internal/platform/cache/cache_benchmark_test.go`).
 2. **k6 Load & Stress Suite (`loadtest/`)**:
    - Configured SLO targets: `p(95) < 50ms`, `p(99) < 100ms`, `http_req_failed < 1%`.
    - `smoke_test.js`: Rapid validation (5 VUs, 30s).

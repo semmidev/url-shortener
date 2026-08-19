@@ -284,7 +284,7 @@ tp := otel.GetTracerProvider()
 ---
 
 ### ✅ Benchmark Tests
-**Status**: Implemented Go benchmark test suite in `server/internal/benchmark/benchmark_test.go` (`make benchmark`).
+**Status**: Implemented Go benchmark test suite across internal packages (`make benchmark`).
 
 - `BenchmarkJWTVerify`: Verified token validation speed (~6.6 µs/op).
 - `BenchmarkBase62Generate`: Verified random Base62 short code generation speed (~2.0 µs/op).
