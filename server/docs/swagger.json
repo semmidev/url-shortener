@@ -17,6 +17,215 @@
     "host": "localhost:8080",
     "basePath": "/",
     "paths": {
+        "/api/v1/admin/stats": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin"
+                ],
+                "summary": "Get system-wide platform statistics",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/admin.SystemStatsResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/apperr.Error"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/apperr.Error"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/admin/urls/{id}": {
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin"
+                ],
+                "summary": "Force delete any short URL",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Short URL UUID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/apperr.Error"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/apperr.Error"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/apperr.Error"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/admin/users": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin"
+                ],
+                "summary": "List all registered users",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Page number",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Items per page",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Search query",
+                        "name": "search",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/admin.ListUsersResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/apperr.Error"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/apperr.Error"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/admin/users/{id}/suspend": {
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin"
+                ],
+                "summary": "Suspend or unsuspend user account",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User UUID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Suspension payload",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/admin.SuspendUserRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/admin.AdminUserResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/apperr.Error"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/apperr.Error"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/apperr.Error"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/analytics/dashboard": {
             "get": {
                 "security": [
@@ -835,6 +1044,71 @@
         }
     },
     "definitions": {
+        "admin.AdminUserResponse": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "email": {
+                    "type": "string"
+                },
+                "full_name": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "is_suspended": {
+                    "type": "boolean"
+                },
+                "role": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "admin.ListUsersResponse": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/admin.AdminUserResponse"
+                    }
+                },
+                "meta": {
+                    "$ref": "#/definitions/web.Filter"
+                }
+            }
+        },
+        "admin.SuspendUserRequest": {
+            "type": "object",
+            "properties": {
+                "is_suspended": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "admin.SystemStatsResponse": {
+            "type": "object",
+            "properties": {
+                "total_active_urls": {
+                    "type": "integer"
+                },
+                "total_clicks": {
+                    "type": "integer"
+                },
+                "total_urls": {
+                    "type": "integer"
+                },
+                "total_users": {
+                    "type": "integer"
+                }
+            }
+        },
         "analytics.AnalyticsSummaryResponse": {
             "type": "object",
             "properties": {
@@ -1233,6 +1507,41 @@
                     "type": "string"
                 },
                 "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "web.Filter": {
+            "type": "object",
+            "properties": {
+                "active": {
+                    "description": "Active filter: 1 -\u003e active only, 0 -\u003e inactive only, -1 -\u003e all",
+                    "type": "integer"
+                },
+                "end_date": {
+                    "type": "string"
+                },
+                "limit": {
+                    "description": "Items per page",
+                    "type": "integer"
+                },
+                "page": {
+                    "description": "Current page number (1-indexed)",
+                    "type": "integer"
+                },
+                "search": {
+                    "description": "Search keyword",
+                    "type": "string"
+                },
+                "sort_by": {
+                    "description": "Column to sort by (created_at, click_count, title, short_code)",
+                    "type": "string"
+                },
+                "sort_direction": {
+                    "description": "Sort direction: asc or desc",
+                    "type": "string"
+                },
+                "start_date": {
                     "type": "string"
                 }
             }

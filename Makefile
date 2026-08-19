@@ -56,7 +56,7 @@ lint:
 
 # Generate Swagger REST API documentation
 swagger:
-	go run github.com/swaggo/swag/cmd/swag@latest init -d server/cmd/api,server/internal/user,server/internal/url,server/internal/analytics -g main.go -o server/docs --parseDependency --parseInternal
+	go run github.com/swaggo/swag/cmd/swag@latest init -d server/cmd/api,server/internal/user,server/internal/url,server/internal/analytics,server/internal/admin -g main.go -o server/docs --parseDependency --parseInternal
 
 # Generate SQLC type-safe database code
 sqlc:

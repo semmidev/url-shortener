@@ -228,6 +228,11 @@ func (s *Service) Login(ctx context.Context, req LoginRequest) (*LoginResponse, 
 		return nil, apperr.MapDBError(err, "invalid email or password", "")
 	}
 
+	if user.IsSuspended {
+		s.appLogger.Audit(ctx, logger.AuditActionUserLoginFailed, "user.id", user.ID.String(), "reason", "account_suspended")
+		return nil, apperr.Forbidden("akun Anda ditangguhkan (suspended), silakan hubungi dukungan")
+	}
+
 	if !user.PasswordHash.Valid || user.PasswordHash.String == "" {
 		return nil, apperr.Unauthorized("this account uses Google Login. Please sign in with Google")
 	}

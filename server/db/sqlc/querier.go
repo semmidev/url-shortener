@@ -13,6 +13,7 @@ import (
 )
 
 type Querier interface {
+	CountAllUsers(ctx context.Context, search pgtype.Text) (int64, error)
 	CountUserShortURLs(ctx context.Context, arg CountUserShortURLsParams) (int64, error)
 	CreateOutboxEvent(ctx context.Context, arg CreateOutboxEventParams) (OutboxEvent, error)
 	CreateSession(ctx context.Context, arg CreateSessionParams) (Session, error)
@@ -24,6 +25,7 @@ type Querier interface {
 	GetSession(ctx context.Context, id uuid.UUID) (Session, error)
 	GetShortURLByCode(ctx context.Context, shortCode string) (ShortUrl, error)
 	GetShortURLByID(ctx context.Context, id uuid.UUID) (ShortUrl, error)
+	GetSystemStats(ctx context.Context) (GetSystemStatsRow, error)
 	GetURLAnalyticsSummary(ctx context.Context, urlID uuid.UUID) (GetURLAnalyticsSummaryRow, error)
 	GetUserByEmail(ctx context.Context, email string) (User, error)
 	GetUserByGoogleID(ctx context.Context, googleID pgtype.Text) (User, error)
@@ -33,12 +35,14 @@ type Querier interface {
 	GetUserDeviceBreakdown(ctx context.Context, userID pgtype.UUID) ([]GetUserDeviceBreakdownRow, error)
 	GetUserTopReferrers(ctx context.Context, arg GetUserTopReferrersParams) ([]GetUserTopReferrersRow, error)
 	IncrementClickCount(ctx context.Context, id uuid.UUID) error
+	ListAllUsers(ctx context.Context, arg ListAllUsersParams) ([]ListAllUsersRow, error)
 	ListRecentClicksByUrlID(ctx context.Context, arg ListRecentClicksByUrlIDParams) ([]UrlAnalytic, error)
 	ListUserShortURLs(ctx context.Context, arg ListUserShortURLsParams) ([]ShortUrl, error)
 	MarkOutboxEventProcessed(ctx context.Context, id uuid.UUID) error
 	RecordClick(ctx context.Context, arg RecordClickParams) (UrlAnalytic, error)
 	RestoreShortURL(ctx context.Context, arg RestoreShortURLParams) (ShortUrl, error)
 	RevokeSession(ctx context.Context, id uuid.UUID) error
+	SetUserSuspended(ctx context.Context, arg SetUserSuspendedParams) (SetUserSuspendedRow, error)
 	UpdateShortURL(ctx context.Context, arg UpdateShortURLParams) (ShortUrl, error)
 	UpdateUser(ctx context.Context, arg UpdateUserParams) (User, error)
 	UpsertGoogleUser(ctx context.Context, arg UpsertGoogleUserParams) (User, error)

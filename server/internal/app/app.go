@@ -18,6 +18,7 @@ import (
 
 	db "github.com/semmidev/url-shortener/server/db/sqlc"
 	"github.com/semmidev/url-shortener/server/docs"
+	"github.com/semmidev/url-shortener/server/internal/admin"
 	"github.com/semmidev/url-shortener/server/internal/analytics"
 	"github.com/semmidev/url-shortener/server/internal/config"
 	"github.com/semmidev/url-shortener/server/internal/platform/cache"
@@ -159,11 +160,13 @@ func BuildRouter(cfg config.Config, pool *pgxpool.Pool, appLogger *logger.Logger
 	urlSvc := url.NewService(store, cfg, redisCache)
 	urlSvc.StartExpirationCleanupWorker(context.Background(), 1*time.Minute)
 	analyticsSvc := analytics.NewService(store)
+	adminSvc := admin.NewService(store, appLogger)
 
 	// Initialize Handlers
 	userH := user.NewHandler(userSvc)
 	urlH := url.NewHandler(urlSvc)
 	analyticsH := analytics.NewHandler(analyticsSvc)
+	adminH := admin.NewHandler(adminSvc)
 	redirectH := url.NewRedirectHandler(urlSvc, analyticsH)
 
 	// Start Outbox Worker for async background event streaming
@@ -275,6 +278,8 @@ func BuildRouter(cfg config.Config, pool *pgxpool.Pool, appLogger *logger.Logger
 			r.Use(apiRateLimitMw)
 			urlH.Mount(r, authMw)
 			analyticsH.Mount(r, authMw)
+			roleAdminMw := customMw.RequireRole("admin")
+			adminH.Mount(r, authMw, roleAdminMw)
 		})
 	})
 

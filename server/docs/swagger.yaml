@@ -1,5 +1,47 @@
 basePath: /
 definitions:
+  admin.AdminUserResponse:
+    properties:
+      created_at:
+        type: string
+      email:
+        type: string
+      full_name:
+        type: string
+      id:
+        type: string
+      is_suspended:
+        type: boolean
+      role:
+        type: string
+      updated_at:
+        type: string
+    type: object
+  admin.ListUsersResponse:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/admin.AdminUserResponse'
+        type: array
+      meta:
+        $ref: '#/definitions/web.Filter'
+    type: object
+  admin.SuspendUserRequest:
+    properties:
+      is_suspended:
+        type: boolean
+    type: object
+  admin.SystemStatsResponse:
+    properties:
+      total_active_urls:
+        type: integer
+      total_clicks:
+        type: integer
+      total_urls:
+        type: integer
+      total_users:
+        type: integer
+    type: object
   analytics.AnalyticsSummaryResponse:
     properties:
       recent_clicks:
@@ -263,6 +305,31 @@ definitions:
       updated_at:
         type: string
     type: object
+  web.Filter:
+    properties:
+      active:
+        description: 'Active filter: 1 -> active only, 0 -> inactive only, -1 -> all'
+        type: integer
+      end_date:
+        type: string
+      limit:
+        description: Items per page
+        type: integer
+      page:
+        description: Current page number (1-indexed)
+        type: integer
+      search:
+        description: Search keyword
+        type: string
+      sort_by:
+        description: Column to sort by (created_at, click_count, title, short_code)
+        type: string
+      sort_direction:
+        description: 'Sort direction: asc or desc'
+        type: string
+      start_date:
+        type: string
+    type: object
 host: localhost:8080
 info:
   contact:
@@ -332,6 +399,137 @@ paths:
       summary: Get QR Code image (PNG) for short code
       tags:
       - Redirect
+  /api/v1/admin/stats:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/admin.SystemStatsResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apperr.Error'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/apperr.Error'
+      security:
+      - BearerAuth: []
+      summary: Get system-wide platform statistics
+      tags:
+      - Admin
+  /api/v1/admin/urls/{id}:
+    delete:
+      parameters:
+      - description: Short URL UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apperr.Error'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/apperr.Error'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/apperr.Error'
+      security:
+      - BearerAuth: []
+      summary: Force delete any short URL
+      tags:
+      - Admin
+  /api/v1/admin/users:
+    get:
+      parameters:
+      - description: Page number
+        in: query
+        name: page
+        type: integer
+      - description: Items per page
+        in: query
+        name: limit
+        type: integer
+      - description: Search query
+        in: query
+        name: search
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/admin.ListUsersResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apperr.Error'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/apperr.Error'
+      security:
+      - BearerAuth: []
+      summary: List all registered users
+      tags:
+      - Admin
+  /api/v1/admin/users/{id}/suspend:
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: User UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Suspension payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/admin.SuspendUserRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/admin.AdminUserResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apperr.Error'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apperr.Error'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/apperr.Error'
+      security:
+      - BearerAuth: []
+      summary: Suspend or unsuspend user account
+      tags:
+      - Admin
   /api/v1/analytics/dashboard:
     get:
       produces:

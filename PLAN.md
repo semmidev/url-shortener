@@ -260,13 +260,15 @@ tp := otel.GetTracerProvider()
 
 ---
 
-### ❌ Admin API / Backoffice
-**Status**: No admin role enforcement beyond the `role` field stored in DB.
+### ✅ Admin API / Backoffice
+**Status**: Implemented RBAC middleware (`RequireRole("admin")`) in `server/internal/platform/middleware/role.go` and `admin` domain package in `server/internal/admin`.
 
-**Missing**:
-- No `/api/v1/admin/` route group with role-based access control.
-- No admin endpoints (list all users, suspend accounts, force-delete URLs, view system stats).
-- `role` field is set but never checked beyond what JWT payload carries.
+- Protected `/api/v1/admin` route group with JWT authentication and admin role enforcement.
+- Admin Endpoints:
+  - `GET /api/v1/admin/users` — Paginated user listing and search.
+  - `PUT /api/v1/admin/users/{id}/suspend` — Suspend / unsuspend user accounts (blocks logins).
+  - `DELETE /api/v1/admin/urls/{id}` — Force delete short URLs regardless of owner.
+  - `GET /api/v1/admin/stats` — Platform aggregate statistics (users, URLs, active links, total clicks).
 
 ---
 

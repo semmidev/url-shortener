@@ -104,6 +104,7 @@ All major architectural and code style decisions are formally documented in our 
 | **ADR-0017** | Database Soft Deletes for Short URLs | [Read Record](server/docs/adr/0017-soft-deletes.md) |
 | **ADR-0018** | Transactional Outbox Pattern & NATS JetStream Event Bus | [Read Record](server/docs/adr/0018-outbox-pattern-nats-event-bus.md) |
 | **ADR-0019** | Request Timeout Propagation & Deadline Handling | [Read Record](server/docs/adr/0019-request-timeout-propagation.md) |
+| **ADR-0020** | Admin API & Role-Based Access Control (RBAC) | [Read Record](server/docs/adr/0020-admin-api-backoffice-rbac.md) |
 
 ---
 
