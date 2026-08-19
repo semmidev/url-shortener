@@ -7,10 +7,10 @@ A clean, modern, high-performance URL Shortener REST API backend written in Go u
 ## 📋 Table of Contents
 - [🚀 Quick Start & Setup Guide](#-quick-start--setup-guide)
 - [🛠️ Makefile Commands](#️-makefile-commands)
-- [⚙️ Environment Variables Reference](#️-environment-variables-reference)
-- [🏗️ Architectural & Code Style Decisions](#-architectural--code-style-decisions)
+- [🏗️ Architectural & Code Style Decisions (ADRs)](#-architectural--code-style-decisions-adrs)
 - [🛠️ Implementing a New Feature (Workflow Guide)](#️-implementing-a-new-feature-workflow-guide)
 - [🧪 Testing Guide](#-testing-guide)
+- [⚙️ Environment Variables Reference](#️-environment-variables-reference)
 
 ---
 
@@ -76,37 +76,6 @@ make createdb          # Create urlshortener database via container
 make dropdb            # Drop urlshortener database via container
 make clean             # Clean build artifacts
 ```
-
----
-
-## ⚙️ Environment Variables Reference
-
-| Variable | Type | Default | Description |
-| :--- | :--- | :--- | :--- |
-| `APP_ENV` | `string` | `development` | Application environment (`development`, `production`, `test`). |
-| `APP_BASE_URL` | `string` | `http://localhost:8080` | Public base URL of the service. |
-| `MIGRATION_URL` | `string` | `file://server/db/migration` | Migration files directory location. |
-| `APP_LOCALE` | `string` | `id` | Locale for validation messages (`id`, `en`). |
-| `LOG_LEVEL` | `string` | `debug` | Slog log level threshold (`debug`, `info`, `warn`, `error`). |
-| `LOG_FORMAT` | `string` | `text` | Slog output format (`text`, `json`). |
-| `LOG_ADD_SOURCE` | `bool` | `true` | Include caller `file:line` in log records (`true`, `false`). |
-| `SERVER_ADDRESS` | `string` | `0.0.0.0:8080` | HTTP server listening address. |
-| `SERVER_READ_TIMEOUT` | `duration` | `15s` | HTTP server read timeout. |
-| `SERVER_WRITE_TIMEOUT` | `duration` | `15s` | HTTP server write timeout. |
-| `SERVER_IDLE_TIMEOUT` | `duration` | `60s` | HTTP server keep-alive idle timeout. |
-| `SERVER_SHUTDOWN_TIMEOUT` | `duration` | `10s` | Graceful shutdown timeout window. |
-| `RATE_LIMIT_AUTH_REQUESTS` | `int` | `10` | Auth endpoints request limit per window. |
-| `RATE_LIMIT_AUTH_WINDOW` | `duration` | `1m` | Auth endpoints rate limit window. |
-| `RATE_LIMIT_API_REQUESTS` | `int` | `100` | General API endpoints request limit per window. |
-| `RATE_LIMIT_API_WINDOW` | `duration` | `1m` | General API endpoints rate limit window. |
-| `RATE_LIMIT_PUBLIC_REQUESTS` | `int` | `300` | Public redirection request limit per window. |
-| `RATE_LIMIT_PUBLIC_WINDOW` | `duration` | `1m` | Public redirection rate limit window. |
-| `DB_SOURCE` | `string` | `postgres://postgres:postgres@127.0.0.1:5432/urlshortener?sslmode=disable` | PostgreSQL connection string DSN. |
-| `DB_MAX_CONNS` | `int32` | `25` | Maximum database pool connections. |
-| `DB_MIN_CONNS` | `int32` | `5` | Minimum idle database pool connections. |
-| `JWT_SECRET` | `string` | `super-secret-32-byte-key-for-jwt-signing!` | Secret key for signing JWT tokens. |
-| `JWT_ACCESS_TOKEN_DURATION` | `duration` | `15m` | Access token expiration duration. |
-| `JWT_REFRESH_TOKEN_DURATION` | `duration` | `168h` | Refresh token expiration duration (7 days). |
 
 ---
 
@@ -197,3 +166,34 @@ make test-integration
 # Run all unit and integration tests
 make test-all
 ```
+
+---
+
+## ⚙️ Environment Variables Reference
+
+| Variable | Type | Default | Description |
+| :--- | :--- | :--- | :--- |
+| `APP_ENV` | `string` | `development` | Application environment (`development`, `production`, `test`). |
+| `APP_BASE_URL` | `string` | `http://localhost:8080` | Public base URL of the service. |
+| `MIGRATION_URL` | `string` | `file://server/db/migration` | Migration files directory location. |
+| `APP_LOCALE` | `string` | `id` | Locale for validation messages (`id`, `en`). |
+| `LOG_LEVEL` | `string` | `debug` | Slog log level threshold (`debug`, `info`, `warn`, `error`). |
+| `LOG_FORMAT` | `string` | `text` | Slog output format (`text`, `json`). |
+| `LOG_ADD_SOURCE` | `bool` | `true` | Include caller `file:line` in log records (`true`, `false`). |
+| `SERVER_ADDRESS` | `string` | `0.0.0.0:8080` | HTTP server listening address. |
+| `SERVER_READ_TIMEOUT` | `duration` | `15s` | HTTP server read timeout. |
+| `SERVER_WRITE_TIMEOUT` | `duration` | `15s` | HTTP server write timeout. |
+| `SERVER_IDLE_TIMEOUT` | `duration` | `60s` | HTTP server keep-alive idle timeout. |
+| `SERVER_SHUTDOWN_TIMEOUT` | `duration` | `10s` | Graceful shutdown timeout window. |
+| `RATE_LIMIT_AUTH_REQUESTS` | `int` | `10` | Auth endpoints request limit per window. |
+| `RATE_LIMIT_AUTH_WINDOW` | `duration` | `1m` | Auth endpoints rate limit window. |
+| `RATE_LIMIT_API_REQUESTS` | `int` | `100` | General API endpoints request limit per window. |
+| `RATE_LIMIT_API_WINDOW` | `duration` | `1m` | General API endpoints rate limit window. |
+| `RATE_LIMIT_PUBLIC_REQUESTS` | `int` | `300` | Public redirection request limit per window. |
+| `RATE_LIMIT_PUBLIC_WINDOW` | `duration` | `1m` | Public redirection rate limit window. |
+| `DB_SOURCE` | `string` | `postgres://postgres:postgres@127.0.0.1:5432/urlshortener?sslmode=disable` | PostgreSQL connection string DSN. |
+| `DB_MAX_CONNS` | `int32` | `25` | Maximum database pool connections. |
+| `DB_MIN_CONNS` | `int32` | `5` | Minimum idle database pool connections. |
+| `JWT_SECRET` | `string` | `super-secret-32-byte-key-for-jwt-signing!` | Secret key for signing JWT tokens. |
+| `JWT_ACCESS_TOKEN_DURATION` | `duration` | `15m` | Access token expiration duration. |
+| `JWT_REFRESH_TOKEN_DURATION` | `duration` | `168h` | Refresh token expiration duration (7 days). |
