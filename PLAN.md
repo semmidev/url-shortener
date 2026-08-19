@@ -164,13 +164,11 @@ tp := otel.GetTracerProvider()
 
 ## 🛡️ Reliability & Resilience
 
-### ❌ Circuit Breaker
-**Status**: No circuit breaker pattern implemented.
+### ✅ Circuit Breaker
+**Status**: Implemented via `github.com/sony/gobreaker` in `server/internal/platform/breaker` and `user.Service`.
 
-**Missing**:
-- No circuit breaker on Google OAuth HTTP calls (`https://oauth2.googleapis.com/token`, `https://www.googleapis.com/oauth2/v2/userinfo`).
-- If Google API is degraded, every auth request will hang until `http.Client` timeout (10s).
-- Recommended: `sony/gobreaker` or `failsafe-go`.
+- Wrapped Google OAuth token exchange and userinfo API calls.
+- Fast-fails with HTTP 503 `apperr.ServiceUnavailable` when the external service is degraded or circuit breaker trips.
 
 ---
 

@@ -100,6 +100,14 @@ func TooManyRequests(msg string) *Error {
 	}
 }
 
+func ServiceUnavailable(msg string) *Error {
+	return &Error{
+		Code:    "SERVICE_UNAVAILABLE",
+		Message: msg,
+		Status:  http.StatusServiceUnavailable,
+	}
+}
+
 // MapDBError converts raw PostgreSQL & pgx database errors into clean domain apperr.Errors.
 func MapDBError(err error, notFoundMsg, conflictMsg string) *Error {
 	if err == nil {

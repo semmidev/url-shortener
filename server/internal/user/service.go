@@ -19,6 +19,7 @@ import (
 	db "github.com/semmidev/url-shortener/server/db/sqlc"
 	"github.com/semmidev/url-shortener/server/internal/config"
 	"github.com/semmidev/url-shortener/server/internal/platform/apperr"
+	"github.com/semmidev/url-shortener/server/internal/platform/breaker"
 	"github.com/semmidev/url-shortener/server/internal/platform/cache"
 	"github.com/semmidev/url-shortener/server/internal/platform/crypto"
 	"github.com/semmidev/url-shortener/server/internal/platform/logger"
@@ -43,6 +44,7 @@ type Service struct {
 	cfg           config.Config
 	appLogger     *logger.Logger
 	cache         cache.Cache
+	googleBreaker *breaker.CircuitBreaker
 	oneTimeCodes  sync.Map // fallback in-memory store
 	emailAttempts sync.Map // fallback in-memory store
 	httpClient    *http.Client
@@ -50,12 +52,13 @@ type Service struct {
 
 func NewService(store db.Store, tokenMaker *token.JWTMaker, cfg config.Config, appLogger *logger.Logger, c cache.Cache) *Service {
 	s := &Service{
-		store:      store,
-		tokenMaker: tokenMaker,
-		cfg:        cfg,
-		appLogger:  appLogger,
-		cache:      c,
-		httpClient: &http.Client{Timeout: 10 * time.Second},
+		store:         store,
+		tokenMaker:    tokenMaker,
+		cfg:           cfg,
+		appLogger:     appLogger,
+		cache:         c,
+		googleBreaker: breaker.NewCircuitBreaker("GoogleOAuth", 30*time.Second),
+		httpClient:    &http.Client{Timeout: 10 * time.Second},
 	}
 	go s.cleanupExpiredOneTimeCodes()
 	return s
@@ -279,34 +282,36 @@ func (s *Service) HandleGoogleCallback(ctx context.Context, req HandleGoogleCall
 	var gToken googleTokenResponse
 	var gUser googleUserInfo
 
-	// 1. Exchange code for Google Access Token with Retry on transient network errors
-	err := retry.Do(ctx, retry.DefaultConfig(), func() error {
-		data := url.Values{}
-		data.Set("code", req.Code)
-		data.Set("client_id", s.cfg.GoogleClientID)
-		data.Set("client_secret", s.cfg.GoogleClientSecret)
-		data.Set("redirect_uri", s.cfg.GoogleRedirectURI)
-		data.Set("grant_type", "authorization_code")
+	// 1. Exchange code for Google Access Token with Retry & Circuit Breaker protection
+	_, err := s.googleBreaker.Execute(func() (interface{}, error) {
+		return nil, retry.Do(ctx, retry.DefaultConfig(), func() error {
+			data := url.Values{}
+			data.Set("code", req.Code)
+			data.Set("client_id", s.cfg.GoogleClientID)
+			data.Set("client_secret", s.cfg.GoogleClientSecret)
+			data.Set("redirect_uri", s.cfg.GoogleRedirectURI)
+			data.Set("grant_type", "authorization_code")
 
-		tokenReq, err := http.NewRequestWithContext(ctx, http.MethodPost, "https://oauth2.googleapis.com/token", strings.NewReader(data.Encode()))
-		if err != nil {
-			return err
-		}
-		tokenReq.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+			tokenReq, err := http.NewRequestWithContext(ctx, http.MethodPost, "https://oauth2.googleapis.com/token", strings.NewReader(data.Encode()))
+			if err != nil {
+				return err
+			}
+			tokenReq.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
-		tokenResp, err := s.httpClient.Do(tokenReq)
-		if err != nil {
-			return err
-		}
-		defer func() {
-			_ = tokenResp.Body.Close()
-		}()
+			tokenResp, err := s.httpClient.Do(tokenReq)
+			if err != nil {
+				return err
+			}
+			defer func() {
+				_ = tokenResp.Body.Close()
+			}()
 
-		if tokenResp.StatusCode != http.StatusOK {
-			return apperr.Unauthorized("invalid or expired Google authorization code")
-		}
+			if tokenResp.StatusCode != http.StatusOK {
+				return apperr.Unauthorized("invalid or expired Google authorization code")
+			}
 
-		return json.NewDecoder(tokenResp.Body).Decode(&gToken)
+			return json.NewDecoder(tokenResp.Body).Decode(&gToken)
+		})
 	})
 	if err != nil {
 		var appErr *apperr.Error
@@ -316,27 +321,29 @@ func (s *Service) HandleGoogleCallback(ctx context.Context, req HandleGoogleCall
 		return nil, apperr.Internal("failed to contact Google token endpoint", err)
 	}
 
-	// 2. Fetch User Info from Google with Retry on transient network errors
-	err = retry.Do(ctx, retry.DefaultConfig(), func() error {
-		userReq, err := http.NewRequestWithContext(ctx, http.MethodGet, "https://www.googleapis.com/oauth2/v2/userinfo", nil)
-		if err != nil {
-			return err
-		}
-		userReq.Header.Set("Authorization", "Bearer "+gToken.AccessToken)
+	// 2. Fetch User Info from Google with Retry & Circuit Breaker protection
+	_, err = s.googleBreaker.Execute(func() (interface{}, error) {
+		return nil, retry.Do(ctx, retry.DefaultConfig(), func() error {
+			userReq, err := http.NewRequestWithContext(ctx, http.MethodGet, "https://www.googleapis.com/oauth2/v2/userinfo", nil)
+			if err != nil {
+				return err
+			}
+			userReq.Header.Set("Authorization", "Bearer "+gToken.AccessToken)
 
-		userResp, err := s.httpClient.Do(userReq)
-		if err != nil {
-			return err
-		}
-		defer func() {
-			_ = userResp.Body.Close()
-		}()
+			userResp, err := s.httpClient.Do(userReq)
+			if err != nil {
+				return err
+			}
+			defer func() {
+				_ = userResp.Body.Close()
+			}()
 
-		if userResp.StatusCode != http.StatusOK {
-			return apperr.Unauthorized("failed to retrieve Google user profile")
-		}
+			if userResp.StatusCode != http.StatusOK {
+				return apperr.Unauthorized("failed to retrieve Google user profile")
+			}
 
-		return json.NewDecoder(userResp.Body).Decode(&gUser)
+			return json.NewDecoder(userResp.Body).Decode(&gUser)
+		})
 	})
 	if err != nil {
 		var appErr *apperr.Error
