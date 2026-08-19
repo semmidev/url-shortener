@@ -69,8 +69,8 @@ linters:
             - pkg: "github.com/go-chi/chi"
               desc: "domain models and DTOs must not import chi"
 
-exclusions:
-  rules:
+issues:
+  exclude-rules:
     - path: _test\.go
       linters:
         - gocyclo
@@ -89,3 +89,4 @@ exclusions:
         - errcheck
         - gosec
         - misspell
+
