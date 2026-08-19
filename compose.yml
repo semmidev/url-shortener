@@ -115,6 +115,22 @@ services:
     networks:
       - url_shortener_network
 
+  nats:
+    image: nats:latest
+    container_name: url-shortener-nats
+    command: "-js"
+    ports:
+      - "127.0.0.1:4222:4222"
+      - "127.0.0.1:8222:8222"
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
+    networks:
+      - url_shortener_network
+
 volumes:
   postgres_data:
 

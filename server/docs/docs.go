@@ -707,6 +707,51 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/urls/{id}/restore": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "URLs"
+                ],
+                "summary": "Restore a soft-deleted short URL",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Short URL UUID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/url.URLResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/apperr.Error"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/apperr.Error"
+                        }
+                    }
+                }
+            }
+        },
         "/{code}": {
             "get": {
                 "tags": [

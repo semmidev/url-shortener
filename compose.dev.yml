@@ -41,6 +41,17 @@ services:
     networks:
       - url_shortener_dev_network
 
+  nats:
+    image: nats:latest
+    container_name: url-shortener-nats-dev
+    command: "-js"
+    ports:
+      - '4222:4222'
+      - '8222:8222'
+    restart: unless-stopped
+    networks:
+      - url_shortener_dev_network
+
 volumes:
   db_dev_data:
 

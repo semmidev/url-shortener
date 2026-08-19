@@ -13,15 +13,16 @@ RETURNING *;
 
 -- name: GetShortURLByCode :one
 SELECT * FROM short_urls
-WHERE short_code = $1 LIMIT 1;
+WHERE short_code = $1 AND deleted_at IS NULL LIMIT 1;
 
 -- name: GetShortURLByID :one
 SELECT * FROM short_urls
-WHERE id = $1 LIMIT 1;
+WHERE id = $1 AND deleted_at IS NULL LIMIT 1;
 
 -- name: ListUserShortURLs :many
 SELECT * FROM short_urls
 WHERE user_id = sqlc.arg('user_id')
+  AND deleted_at IS NULL
   AND (sqlc.narg('search')::text IS NULL OR (
       title ILIKE '%' || sqlc.narg('search')::text || '%' OR
       short_code ILIKE '%' || sqlc.narg('search')::text || '%' OR
@@ -44,6 +45,7 @@ LIMIT sqlc.arg('limit_val') OFFSET sqlc.arg('offset_val');
 -- name: CountUserShortURLs :one
 SELECT COUNT(*) FROM short_urls
 WHERE user_id = sqlc.arg('user_id')
+  AND deleted_at IS NULL
   AND (sqlc.narg('search')::text IS NULL OR (
       title ILIKE '%' || sqlc.narg('search')::text || '%' OR
       short_code ILIKE '%' || sqlc.narg('search')::text || '%' OR
@@ -61,20 +63,27 @@ SET
     is_active = COALESCE(sqlc.narg('is_active'), is_active),
     expires_at = COALESCE(sqlc.narg('expires_at'), expires_at),
     updated_at = NOW()
-WHERE id = $1 AND (user_id = sqlc.arg('user_id') OR sqlc.arg('user_id') IS NULL)
+WHERE id = $1 AND (user_id = sqlc.arg('user_id') OR sqlc.arg('user_id') IS NULL) AND deleted_at IS NULL
 RETURNING *;
 
 -- name: IncrementClickCount :exec
 UPDATE short_urls
 SET click_count = click_count + 1,
     updated_at = NOW()
-WHERE id = $1;
+WHERE id = $1 AND deleted_at IS NULL;
 
 -- name: DeleteShortURL :exec
-DELETE FROM short_urls
-WHERE id = $1 AND (user_id = sqlc.arg('user_id') OR sqlc.arg('user_id') IS NULL);
+UPDATE short_urls
+SET deleted_at = NOW(), is_active = FALSE, updated_at = NOW()
+WHERE id = $1 AND (user_id = sqlc.arg('user_id') OR sqlc.arg('user_id') IS NULL) AND deleted_at IS NULL;
+
+-- name: RestoreShortURL :one
+UPDATE short_urls
+SET deleted_at = NULL, is_active = TRUE, updated_at = NOW()
+WHERE id = $1 AND (user_id = sqlc.arg('user_id') OR sqlc.arg('user_id') IS NULL) AND deleted_at IS NOT NULL
+RETURNING *;
 
 -- name: DeactivateExpiredURLs :execresult
 UPDATE short_urls
 SET is_active = FALSE, updated_at = NOW()
-WHERE is_active = TRUE AND expires_at IS NOT NULL AND expires_at < NOW();
+WHERE is_active = TRUE AND deleted_at IS NULL AND expires_at IS NOT NULL AND expires_at < NOW();

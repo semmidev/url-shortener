@@ -271,7 +271,7 @@ func (s *Service) Delete(ctx context.Context, req DeleteURLRequest) (*DeleteURLR
 
 	userUUID := toPgUUID(&req.UserID)
 
-	// Perform deletion within an atomic database transaction
+	// Perform soft deletion within an atomic database transaction
 	err = s.store.ExecTx(ctx, func(q *db.Queries) error {
 		return q.DeleteShortURL(ctx, db.DeleteShortURLParams{
 			ID:     req.ID,
@@ -287,8 +287,32 @@ func (s *Service) Delete(ctx context.Context, req DeleteURLRequest) (*DeleteURLR
 	}
 
 	return &DeleteURLResponse{
-		Message: "short URL deleted successfully",
+		Message: "short URL soft-deleted successfully",
 	}, nil
+}
+
+func (s *Service) Restore(ctx context.Context, req RestoreURLRequest) (*URLResponse, error) {
+	userUUID := toPgUUID(&req.UserID)
+
+	var u db.ShortUrl
+	err := s.store.ExecTx(ctx, func(q *db.Queries) error {
+		var txErr error
+		u, txErr = q.RestoreShortURL(ctx, db.RestoreShortURLParams{
+			ID:     req.ID,
+			UserID: userUUID,
+		})
+		return txErr
+	})
+	if err != nil {
+		return nil, apperr.MapDBError(err, "deleted short URL not found or already restored", "")
+	}
+
+	if s.cache != nil {
+		_ = s.cache.Delete(ctx, fmt.Sprintf("url:code:%s", u.ShortCode))
+	}
+
+	res := s.toResponse(u)
+	return &res, nil
 }
 
 func (s *Service) IncrementClickCount(ctx context.Context, req IncrementClickCountRequest) error {

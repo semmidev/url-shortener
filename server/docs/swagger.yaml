@@ -763,6 +763,34 @@ paths:
       summary: Get QR Code image (PNG) for a short URL by ID
       tags:
       - URLs
+  /api/v1/urls/{id}/restore:
+    post:
+      parameters:
+      - description: Short URL UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/url.URLResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apperr.Error'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/apperr.Error'
+      security:
+      - BearerAuth: []
+      summary: Restore a soft-deleted short URL
+      tags:
+      - URLs
 securityDefinitions:
   BearerAuth:
     description: Input your Bearer token in the format "Bearer <token>".

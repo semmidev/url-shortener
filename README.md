@@ -132,6 +132,8 @@ All major architectural and code style decisions are formally documented in our 
 | **ADR-0014** | Product Features (Cleanup, Preview, QR, Dashboard Analytics) | [Read Record](server/docs/adr/0014-product-features-cleanup-preview-qr-dashboard.md) |
 | **ADR-0015** | Multi-Instance State Management with Redis | [Read Record](server/docs/adr/0015-multi-instance-redis-state.md) |
 | **ADR-0016** | Circuit Breaker Pattern for External Dependencies | [Read Record](server/docs/adr/0016-circuit-breaker-external-calls.md) |
+| **ADR-0017** | Database Soft Deletes for Short URLs | [Read Record](server/docs/adr/0017-soft-deletes.md) |
+| **ADR-0018** | Transactional Outbox Pattern & NATS JetStream Event Bus | [Read Record](server/docs/adr/0018-outbox-pattern-nats-event-bus.md) |
 
 ---
 

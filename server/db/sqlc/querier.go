@@ -14,11 +14,13 @@ import (
 
 type Querier interface {
 	CountUserShortURLs(ctx context.Context, arg CountUserShortURLsParams) (int64, error)
+	CreateOutboxEvent(ctx context.Context, arg CreateOutboxEventParams) (OutboxEvent, error)
 	CreateSession(ctx context.Context, arg CreateSessionParams) (Session, error)
 	CreateShortURL(ctx context.Context, arg CreateShortURLParams) (ShortUrl, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
 	DeactivateExpiredURLs(ctx context.Context) (pgconn.CommandTag, error)
 	DeleteShortURL(ctx context.Context, arg DeleteShortURLParams) error
+	GetPendingOutboxEvents(ctx context.Context, limit int32) ([]OutboxEvent, error)
 	GetSession(ctx context.Context, id uuid.UUID) (Session, error)
 	GetShortURLByCode(ctx context.Context, shortCode string) (ShortUrl, error)
 	GetShortURLByID(ctx context.Context, id uuid.UUID) (ShortUrl, error)
@@ -33,7 +35,9 @@ type Querier interface {
 	IncrementClickCount(ctx context.Context, id uuid.UUID) error
 	ListRecentClicksByUrlID(ctx context.Context, arg ListRecentClicksByUrlIDParams) ([]UrlAnalytic, error)
 	ListUserShortURLs(ctx context.Context, arg ListUserShortURLsParams) ([]ShortUrl, error)
+	MarkOutboxEventProcessed(ctx context.Context, id uuid.UUID) error
 	RecordClick(ctx context.Context, arg RecordClickParams) (UrlAnalytic, error)
+	RestoreShortURL(ctx context.Context, arg RestoreShortURLParams) (ShortUrl, error)
 	RevokeSession(ctx context.Context, id uuid.UUID) error
 	UpdateShortURL(ctx context.Context, arg UpdateShortURLParams) (ShortUrl, error)
 	UpdateUser(ctx context.Context, arg UpdateUserParams) (User, error)

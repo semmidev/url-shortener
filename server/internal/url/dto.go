@@ -113,6 +113,11 @@ type DeleteURLResponse struct {
 	Message string `json:"message"`
 }
 
+type RestoreURLRequest struct {
+	ID     uuid.UUID `json:"id"`
+	UserID uuid.UUID `json:"user_id"`
+}
+
 type IncrementClickCountRequest struct {
 	ID uuid.UUID `json:"id"`
 }

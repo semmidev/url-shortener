@@ -11,6 +11,17 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+type OutboxEvent struct {
+	ID            uuid.UUID          `json:"id"`
+	AggregateType string             `json:"aggregate_type"`
+	AggregateID   string             `json:"aggregate_id"`
+	EventType     string             `json:"event_type"`
+	Payload       []byte             `json:"payload"`
+	Status        string             `json:"status"`
+	CreatedAt     time.Time          `json:"created_at"`
+	ProcessedAt   pgtype.Timestamptz `json:"processed_at"`
+}
+
 type Session struct {
 	ID           uuid.UUID `json:"id"`
 	UserID       uuid.UUID `json:"user_id"`
@@ -33,6 +44,7 @@ type ShortUrl struct {
 	ExpiresAt   pgtype.Timestamptz `json:"expires_at"`
 	CreatedAt   time.Time          `json:"created_at"`
 	UpdatedAt   time.Time          `json:"updated_at"`
+	DeletedAt   pgtype.Timestamptz `json:"deleted_at"`
 }
 
 type UrlAnalytic struct {

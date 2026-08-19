@@ -22,6 +22,8 @@ This directory contains the Architecture Decision Records (ADRs) for the URL Sho
 | [ADR-0014](0014-product-features-cleanup-preview-qr-dashboard.md) | Product Features (Cleanup Worker, Preview & Safety, QR Code, Dashboard Analytics) | Accepted | 2026-08-19 |
 | [ADR-0015](0015-multi-instance-redis-state.md) | Multi-Instance State Management with Redis (Rate Limiting, OAuth Codes, Lockout) | Accepted | 2026-08-19 |
 | [ADR-0016](0016-circuit-breaker-external-calls.md) | Circuit Breaker Pattern for External Dependencies | Accepted | 2026-08-19 |
+| [ADR-0017](0017-soft-deletes.md) | Database Soft Deletes for Short URLs | Accepted | 2026-08-19 |
+| [ADR-0018](0018-outbox-pattern-nats-event-bus.md) | Transactional Outbox Pattern & NATS JetStream Event Bus | Accepted | 2026-08-19 |
 
 ---
 

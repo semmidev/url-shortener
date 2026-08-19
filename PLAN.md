@@ -190,13 +190,11 @@ tp := otel.GetTracerProvider()
 
 ---
 
-### ❌ Outbox Pattern / Event Streaming
-**Status**: Analytics click events are written synchronously in the redirect path.
+### ✅ Outbox Pattern / Event Streaming
+**Status**: Implemented transactional `outbox_events` table (migration `000004_create_outbox_events.up.sql`), NATS JetStream event bus (`platform/eventbus`), and background outbox worker (`platform/outbox`).
 
-**Missing**:
-- Writing to `url_analytics` in the redirect critical path adds latency.
-- No async event queue (in-memory channel, Kafka, NATS) to defer analytics writes.
-- Risk: if DB is slow, redirect latency degrades for the end user.
+- Decouples analytics click processing from HTTP redirect path.
+- Pluggable `EventPublisher` interface allows easy switching to Kafka or RabbitMQ in the future without changing business services.
 
 ---
 
@@ -227,13 +225,11 @@ tp := otel.GetTracerProvider()
 
 ## 🗄️ Database & Data Layer
 
-### ❌ Soft Deletes
-**Status**: `DeleteShortURL` is a hard delete (`DELETE FROM short_urls`).
+### ✅ Soft Deletes
+**Status**: Implemented migration `000003_add_soft_deletes.up.sql` (`deleted_at TIMESTAMPTZ`), partial index `idx_short_urls_deleted_at`, and `POST /api/v1/urls/{id}/restore` endpoint.
 
-**Missing**:
-- No soft delete (`deleted_at TIMESTAMPTZ`, `is_deleted BOOL`).
-- Analytics data for deleted URLs is cascade-deleted, losing historical data.
-- No ability to restore accidentally deleted short URLs.
+- `DeleteShortURL` sets `deleted_at = NOW(), is_active = FALSE` preserving analytics and audit history.
+- `RestoreShortURL` clears `deleted_at` and reactivates short URLs.
 
 ---
 
@@ -257,12 +253,11 @@ tp := otel.GetTracerProvider()
 
 ## 🏗️ Architecture & Code Quality
 
-### ❌ Domain Events / Event Bus
-**Status**: No internal event bus.
+### ✅ Domain Events / Event Bus
+**Status**: Implemented pluggable `EventPublisher` interface in `server/internal/platform/eventbus/eventbus.go` and `OutboxWorker` in `server/internal/platform/outbox/outbox_worker.go`.
 
-**Missing**:
-- No way to decouple cross-domain side effects (e.g. "when URL is deleted, also notify analytics service").
-- Tight coupling between redirect handler and analytics handler through direct function call.
+- Decouples cross-domain side effects via NATS JetStream and in-memory event publishing (`click.recorded`, outbox events).
+- Allows seamless future switching to Kafka/RabbitMQ without altering domain services.
 
 ---
 
@@ -326,13 +321,21 @@ tp := otel.GetTracerProvider()
 
 ---
 
-### ❌ CI/CD Pipeline
-**Status**: No CI/CD configuration.
+### ✅ CI Pipeline (Continuous Integration)
+**Status**: Implemented via [.github/workflows/ci.yml](file://.github/workflows/ci.yml).
+
+- Executes `golangci-lint` (using `golangci-lint-action@v8`), unit tests (`go test ./...`), E2E integration tests (`go test -tags=integration ./...`), and coverage artifact uploads on every `push` and `pull_request` to `main`.
+- Features concurrency cancellation (`cancel-in-progress: true`) for redundant workflow runs.
+
+---
+
+### ❌ CD Pipeline (Continuous Deployment)
+**Status**: No automated deployment configuration.
 
 **Missing**:
-- No GitHub Actions workflow (lint → test → build → push Docker image → deploy).
-- No automated integration test run on PR.
-- No image signing / SBOM generation.
+- No automated Docker image build & push to container registry (GHCR / DockerHub).
+- No deployment step (K8s / Helm / Cloud deployment trigger).
+- No image signing (Cosign) or SBOM generation (Syft/Trivy).
 
 ---
 

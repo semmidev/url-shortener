@@ -26,6 +26,7 @@ func (h *Handler) Mount(r chi.Router, authMw func(http.Handler) http.Handler) {
 		r.Get("/urls", h.list)
 		r.Get("/urls/{id}", h.getByID)
 		r.Get("/urls/{id}/qr", h.getQRByID)
+		r.Post("/urls/{id}/restore", h.restore)
 		r.Put("/urls/{id}", h.update)
 		r.Delete("/urls/{id}", h.delete)
 	})
@@ -256,4 +257,37 @@ func (h *Handler) getQRByID(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Cache-Control", "public, max-age=86400")
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write(pngBytes)
+}
+
+// restore handles restoring a soft-deleted short URL
+// @Summary Restore a soft-deleted short URL
+// @Tags URLs
+// @Security BearerAuth
+// @Produce json
+// @Param id path string true "Short URL UUID"
+// @Success 200 {object} URLResponse
+// @Failure 401 {object} apperr.Error
+// @Failure 404 {object} apperr.Error
+// @Router /api/v1/urls/{id}/restore [post]
+func (h *Handler) restore(w http.ResponseWriter, r *http.Request) {
+	userID, ok := web.UserID(r.Context())
+	if !ok {
+		web.Error(w, r, apperr.Unauthorized("unauthenticated"))
+		return
+	}
+
+	idStr := chi.URLParam(r, "id")
+	id, err := uuid.Parse(idStr)
+	if err != nil {
+		web.Error(w, r, apperr.Invalid("invalid URL ID"))
+		return
+	}
+
+	res, err := h.svc.Restore(r.Context(), RestoreURLRequest{ID: id, UserID: userID})
+	if err != nil {
+		web.Error(w, r, err)
+		return
+	}
+
+	web.JSON(w, http.StatusOK, res)
 }

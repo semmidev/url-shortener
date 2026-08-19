@@ -21,8 +21,10 @@ import (
 	"github.com/semmidev/url-shortener/server/internal/analytics"
 	"github.com/semmidev/url-shortener/server/internal/config"
 	"github.com/semmidev/url-shortener/server/internal/platform/cache"
+	"github.com/semmidev/url-shortener/server/internal/platform/eventbus"
 	"github.com/semmidev/url-shortener/server/internal/platform/logger"
 	customMw "github.com/semmidev/url-shortener/server/internal/platform/middleware"
+	"github.com/semmidev/url-shortener/server/internal/platform/outbox"
 	"github.com/semmidev/url-shortener/server/internal/platform/postgres"
 	"github.com/semmidev/url-shortener/server/internal/platform/token"
 	"github.com/semmidev/url-shortener/server/internal/platform/web"
@@ -141,6 +143,17 @@ func BuildRouter(cfg config.Config, pool *pgxpool.Pool, appLogger *logger.Logger
 		}
 	}
 
+	// Initialize Pluggable Event Publisher (NATS JetStream with InMemory fallback)
+	var eventPub eventbus.EventPublisher
+	natsPub, err := eventbus.NewNatsPublisher(cfg.NatsURL)
+	if err != nil {
+		appLogger.Warn(context.Background(), "nats jetstream connection skipped/failed, using in-memory event bus", "error", err)
+		eventPub = eventbus.NewInMemoryPublisher()
+	} else {
+		appLogger.Info(context.Background(), "nats jetstream connected successfully", "url", cfg.NatsURL)
+		eventPub = natsPub
+	}
+
 	// Initialize Services
 	userSvc := user.NewService(store, tokenMaker, cfg, appLogger, redisCache)
 	urlSvc := url.NewService(store, cfg, redisCache)
@@ -152,6 +165,10 @@ func BuildRouter(cfg config.Config, pool *pgxpool.Pool, appLogger *logger.Logger
 	urlH := url.NewHandler(urlSvc)
 	analyticsH := analytics.NewHandler(analyticsSvc)
 	redirectH := url.NewRedirectHandler(urlSvc, analyticsH)
+
+	// Start Outbox Worker for async background event streaming
+	outboxWorker := outbox.NewOutboxWorker(store, eventPub, analyticsH)
+	outboxWorker.Start(context.Background())
 
 	// Setup Router & Middleware
 	r := chi.NewRouter()

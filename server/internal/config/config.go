@@ -58,6 +58,9 @@ type Config struct {
 	RedisDB            int           `mapstructure:"REDIS_DB"`
 	CacheTTLShortURL   time.Duration `mapstructure:"CACHE_TTL_SHORT_URL"`
 	CacheControlMaxAge int           `mapstructure:"CACHE_CONTROL_MAX_AGE"`
+
+	// NATS Event Bus Settings
+	NatsURL string `mapstructure:"NATS_URL"`
 }
 
 // LoadConfig reads configuration from file or environment variables.
@@ -117,6 +120,8 @@ func LoadConfig(path string) (config Config, err error) {
 	viper.SetDefault("REDIS_DB", 0)
 	viper.SetDefault("CACHE_TTL_SHORT_URL", "1h")
 	viper.SetDefault("CACHE_CONTROL_MAX_AGE", 300)
+
+	viper.SetDefault("NATS_URL", "nats://127.0.0.1:4222")
 
 	viper.AutomaticEnv()
 

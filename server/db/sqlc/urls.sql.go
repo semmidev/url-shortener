@@ -16,6 +16,7 @@ import (
 const countUserShortURLs = `-- name: CountUserShortURLs :one
 SELECT COUNT(*) FROM short_urls
 WHERE user_id = $1
+  AND deleted_at IS NULL
   AND ($2::text IS NULL OR (
       title ILIKE '%' || $2::text || '%' OR
       short_code ILIKE '%' || $2::text || '%' OR
@@ -58,7 +59,7 @@ INSERT INTO short_urls (
 ) VALUES (
     $1, $2, $3, $4, $5, $6
 )
-RETURNING id, user_id, short_code, original_url, title, is_active, click_count, expires_at, created_at, updated_at
+RETURNING id, user_id, short_code, original_url, title, is_active, click_count, expires_at, created_at, updated_at, deleted_at
 `
 
 type CreateShortURLParams struct {
@@ -91,6 +92,7 @@ func (q *Queries) CreateShortURL(ctx context.Context, arg CreateShortURLParams) 
 		&i.ExpiresAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.DeletedAt,
 	)
 	return i, err
 }
@@ -98,7 +100,7 @@ func (q *Queries) CreateShortURL(ctx context.Context, arg CreateShortURLParams) 
 const deactivateExpiredURLs = `-- name: DeactivateExpiredURLs :execresult
 UPDATE short_urls
 SET is_active = FALSE, updated_at = NOW()
-WHERE is_active = TRUE AND expires_at IS NOT NULL AND expires_at < NOW()
+WHERE is_active = TRUE AND deleted_at IS NULL AND expires_at IS NOT NULL AND expires_at < NOW()
 `
 
 func (q *Queries) DeactivateExpiredURLs(ctx context.Context) (pgconn.CommandTag, error) {
@@ -106,8 +108,9 @@ func (q *Queries) DeactivateExpiredURLs(ctx context.Context) (pgconn.CommandTag,
 }
 
 const deleteShortURL = `-- name: DeleteShortURL :exec
-DELETE FROM short_urls
-WHERE id = $1 AND (user_id = $2 OR $2 IS NULL)
+UPDATE short_urls
+SET deleted_at = NOW(), is_active = FALSE, updated_at = NOW()
+WHERE id = $1 AND (user_id = $2 OR $2 IS NULL) AND deleted_at IS NULL
 `
 
 type DeleteShortURLParams struct {
@@ -121,8 +124,8 @@ func (q *Queries) DeleteShortURL(ctx context.Context, arg DeleteShortURLParams) 
 }
 
 const getShortURLByCode = `-- name: GetShortURLByCode :one
-SELECT id, user_id, short_code, original_url, title, is_active, click_count, expires_at, created_at, updated_at FROM short_urls
-WHERE short_code = $1 LIMIT 1
+SELECT id, user_id, short_code, original_url, title, is_active, click_count, expires_at, created_at, updated_at, deleted_at FROM short_urls
+WHERE short_code = $1 AND deleted_at IS NULL LIMIT 1
 `
 
 func (q *Queries) GetShortURLByCode(ctx context.Context, shortCode string) (ShortUrl, error) {
@@ -139,13 +142,14 @@ func (q *Queries) GetShortURLByCode(ctx context.Context, shortCode string) (Shor
 		&i.ExpiresAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.DeletedAt,
 	)
 	return i, err
 }
 
 const getShortURLByID = `-- name: GetShortURLByID :one
-SELECT id, user_id, short_code, original_url, title, is_active, click_count, expires_at, created_at, updated_at FROM short_urls
-WHERE id = $1 LIMIT 1
+SELECT id, user_id, short_code, original_url, title, is_active, click_count, expires_at, created_at, updated_at, deleted_at FROM short_urls
+WHERE id = $1 AND deleted_at IS NULL LIMIT 1
 `
 
 func (q *Queries) GetShortURLByID(ctx context.Context, id uuid.UUID) (ShortUrl, error) {
@@ -162,6 +166,7 @@ func (q *Queries) GetShortURLByID(ctx context.Context, id uuid.UUID) (ShortUrl, 
 		&i.ExpiresAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.DeletedAt,
 	)
 	return i, err
 }
@@ -170,7 +175,7 @@ const incrementClickCount = `-- name: IncrementClickCount :exec
 UPDATE short_urls
 SET click_count = click_count + 1,
     updated_at = NOW()
-WHERE id = $1
+WHERE id = $1 AND deleted_at IS NULL
 `
 
 func (q *Queries) IncrementClickCount(ctx context.Context, id uuid.UUID) error {
@@ -179,8 +184,9 @@ func (q *Queries) IncrementClickCount(ctx context.Context, id uuid.UUID) error {
 }
 
 const listUserShortURLs = `-- name: ListUserShortURLs :many
-SELECT id, user_id, short_code, original_url, title, is_active, click_count, expires_at, created_at, updated_at FROM short_urls
+SELECT id, user_id, short_code, original_url, title, is_active, click_count, expires_at, created_at, updated_at, deleted_at FROM short_urls
 WHERE user_id = $1
+  AND deleted_at IS NULL
   AND ($2::text IS NULL OR (
       title ILIKE '%' || $2::text || '%' OR
       short_code ILIKE '%' || $2::text || '%' OR
@@ -241,6 +247,7 @@ func (q *Queries) ListUserShortURLs(ctx context.Context, arg ListUserShortURLsPa
 			&i.ExpiresAt,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.DeletedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -252,6 +259,37 @@ func (q *Queries) ListUserShortURLs(ctx context.Context, arg ListUserShortURLsPa
 	return items, nil
 }
 
+const restoreShortURL = `-- name: RestoreShortURL :one
+UPDATE short_urls
+SET deleted_at = NULL, is_active = TRUE, updated_at = NOW()
+WHERE id = $1 AND (user_id = $2 OR $2 IS NULL) AND deleted_at IS NOT NULL
+RETURNING id, user_id, short_code, original_url, title, is_active, click_count, expires_at, created_at, updated_at, deleted_at
+`
+
+type RestoreShortURLParams struct {
+	ID     uuid.UUID   `json:"id"`
+	UserID pgtype.UUID `json:"user_id"`
+}
+
+func (q *Queries) RestoreShortURL(ctx context.Context, arg RestoreShortURLParams) (ShortUrl, error) {
+	row := q.db.QueryRow(ctx, restoreShortURL, arg.ID, arg.UserID)
+	var i ShortUrl
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.ShortCode,
+		&i.OriginalUrl,
+		&i.Title,
+		&i.IsActive,
+		&i.ClickCount,
+		&i.ExpiresAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.DeletedAt,
+	)
+	return i, err
+}
+
 const updateShortURL = `-- name: UpdateShortURL :one
 UPDATE short_urls
 SET
@@ -260,8 +298,8 @@ SET
     is_active = COALESCE($4, is_active),
     expires_at = COALESCE($5, expires_at),
     updated_at = NOW()
-WHERE id = $1 AND (user_id = $6 OR $6 IS NULL)
-RETURNING id, user_id, short_code, original_url, title, is_active, click_count, expires_at, created_at, updated_at
+WHERE id = $1 AND (user_id = $6 OR $6 IS NULL) AND deleted_at IS NULL
+RETURNING id, user_id, short_code, original_url, title, is_active, click_count, expires_at, created_at, updated_at, deleted_at
 `
 
 type UpdateShortURLParams struct {
@@ -294,6 +332,7 @@ func (q *Queries) UpdateShortURL(ctx context.Context, arg UpdateShortURLParams) 
 		&i.ExpiresAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.DeletedAt,
 	)
 	return i, err
 }
