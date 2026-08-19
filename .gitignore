@@ -57,4 +57,5 @@ tmp/
 .gemini/
 
 # Frontend Embed Dist
-server/internal/web/dist/
+server/internal/web/dist/*
+!server/internal/web/dist/.gitkeep
