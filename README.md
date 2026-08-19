@@ -52,6 +52,9 @@ Once the server is running (`http://localhost:8080`):
 
 ```bash
 make run               # Run backend API server locally
+make dev               # Run backend API server locally with Air live hot-reload
+make seed              # Seed database with sample users, short URLs, and analytics events
+make setup-hooks       # Install pre-commit git hooks
 make build             # Build production static binary in bin/api
 make lint              # Run golangci-lint code analysis (0 issues requirement)
 make up-dev            # Start local development infrastructure (PostgreSQL) via compose.dev.yml
@@ -125,6 +128,7 @@ All major architectural and code style decisions are formally documented in our 
 | **ADR-0010** | Configurable Graceful Shutdown | [Read Record](server/docs/adr/0010-graceful-shutdown.md) |
 | **ADR-0011** | Tiered Rate Limiting by Route Classification | [Read Record](server/docs/adr/0011-tiered-rate-limiting.md) |
 | **ADR-0012** | Redis Cache-Aside & Edge Cache-Control Headers | [Read Record](server/docs/adr/0012-redis-cache-aside-edge-cache-control.md) |
+| **ADR-0013** | Developer Experience & Tooling (Air, Pre-commit, Seed) | [Read Record](server/docs/adr/0013-developer-experience-tooling.md) |
 
 ---
 

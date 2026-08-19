@@ -8,11 +8,31 @@ DOCKER_CMD ?= $(shell command -v docker 2>/dev/null || command -v podman 2>/dev/
 GOLANGCI_LINT_CMD ?= $(shell command -v golangci-lint 2>/dev/null || echo "go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest")
 MIGRATE_CMD ?= $(shell command -v migrate 2>/dev/null || echo "go run github.com/golang-migrate/migrate/v4/cmd/migrate@latest")
 
-.PHONY: run build test test-integration test-all lint swagger sqlc new_migration migrateup migrateup1 migratedown migratedown1 createdb dropdb docker-up docker-down up-dev down-dev logs-dev clean
+.PHONY: run dev build test test-integration test-all lint seed setup-hooks swagger sqlc new_migration migrateup migrateup1 migratedown migratedown1 createdb dropdb docker-up docker-down up-dev down-dev logs-dev clean
 
 # Run backend API locally
 run:
 	go run $(LDFLAGS) ./server/cmd/api
+
+# Run backend API locally with Air live hot-reload
+dev:
+	air -c .air.toml
+
+# Seed database with sample users, short URLs, and analytics events
+seed:
+	go run ./server/cmd/seed
+
+# Setup pre-commit git hooks
+setup-hooks:
+	@if command -v pre-commit >/dev/null 2>&1; then \
+		pre-commit install; \
+		echo "✅ pre-commit hooks installed"; \
+	elif command -v lefthook >/dev/null 2>&1; then \
+		lefthook install; \
+		echo "✅ lefthook hooks installed"; \
+	else \
+		echo "⚠️ Neither pre-commit nor lefthook command found in PATH"; \
+	fi
 
 # Build static binary with ldflags version metadata injection
 build:

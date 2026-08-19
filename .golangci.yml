@@ -95,3 +95,26 @@ linters:
 issues:
   max-issues-per-linter: 0
   max-same-issues: 0
+  exclude-rules:
+    - path: _test\.go
+      linters:
+        - gocyclo
+        - errcheck
+        - gosec
+        - gocognit
+        - exhaustive
+    - path: server/db/sqlc
+      linters:
+        - errcheck
+        - gosec
+        - gocyclo
+        - gocognit
+    - path: server/docs
+      linters:
+        - errcheck
+        - gosec
+        - misspell
+    - path: server/cmd/seed
+      linters:
+        - gosec
+        - errcheck

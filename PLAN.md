@@ -350,22 +350,24 @@ tp := otel.GetTracerProvider()
 
 ## 📦 Developer Experience
 
-### ❌ Pre-commit Hooks
-**Missing**:
-- No `lefthook` or `pre-commit` hooks: auto-run `go fmt`, `golangci-lint`, `go test` before each commit.
+### ✅ Pre-commit Hooks
+**Status**: Implemented via `.pre-commit-config.yaml`, `.lefthook.yml`, and `make setup-hooks`.
+
+- Configured automatic pre-commit checks for `gofmt`, `golangci-lint`, and `go test`.
 
 ---
 
-### ❌ Local Development with Hot Reload
-**Missing**:
-- No `air` or `watchexec` integration for hot-reload on file changes.
-- Recommended: `cosmtrek/air` via `make dev` target.
+### ✅ Local Development with Hot Reload
+**Status**: Implemented via Air (`.air.toml`) and `make dev`.
+
+- Run `make dev` to automatically rebuild and restart the backend server on any source file modifications.
 
 ---
 
-### ❌ Mock/Seed Data Script
-**Missing**:
-- No `make seed` command to populate DB with realistic test data (users, short URLs, analytics events).
+### ✅ Mock/Seed Data Script
+**Status**: Implemented via `server/cmd/seed/main.go` and `make seed`.
+
+- Run `make seed` to populate PostgreSQL with realistic users, short URLs, and click analytics data.
 
 ---
 
