@@ -55,3 +55,6 @@ tmp/
 
 # AI / Agents Working Dirs
 .gemini/
+
+# Frontend Embed Dist
+server/internal/web/dist/
