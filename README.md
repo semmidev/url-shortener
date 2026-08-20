@@ -17,6 +17,7 @@ A clean, modern, high-performance URL Shortener REST API backend written in Go u
 - [🏗️ System Architecture & Data Flow](#️-system-architecture--data-flow)
 - [🛠️ Makefile Commands](#️-makefile-commands)
 - [🏗️ Architectural & Code Style Decisions (ADRs)](#-architectural--code-style-decisions-adrs)
+- [📦 Release & Deployment Workflow](#-release--deployment-workflow)
 - [🛠️ Implementing a New Feature (Workflow Guide)](#️-implementing-a-new-feature-workflow-guide)
 - [🧪 Testing Guide](#-testing-guide)
 - [⚙️ Environment Variables Reference](#️-environment-variables-reference)
@@ -242,9 +243,37 @@ All major architectural and code style decisions are formally documented in our 
 | **frontend-0001** | Single-Binary SPA Embedding with Go `embed.FS` | [Read Record](docs/adr/frontend-0001-single-binary-spa-embedding.md) |
 | **frontend-0002** | Browser HTML Navigation Redirection for Inactive/Expired URLs | [Read Record](docs/adr/frontend-0002-browser-html-navigation-redirection.md) |
 | **infra-0001** | Developer Experience & Tooling (Air, Pre-commit, Seed) | [Read Record](docs/adr/infra-0001-developer-experience-tooling.md) |
+| **infra-0002** | Release-Driven CD & Semantic Versioning Automation | [Read Record](docs/adr/infra-0002-release-driven-cd-and-semver-automation.md) |
 | **security-0001** | HTTP Security Headers Hardening & Route CSP | [Read Record](docs/adr/security-0001-http-security-headers-hardening-csp.md) |
 | **security-0002** | Security Audit Logging | [Read Record](docs/adr/security-0002-security-audit-logging.md) |
 | **testing-0001** | Benchmark Testing & k6 Performance Engineering | [Read Record](docs/adr/testing-0001-benchmarks-and-k6-load-testing.md) |
+
+---
+
+## 📦 Release & Deployment Workflow
+
+This project enforces a **Release-Driven CI/CD Strategy** following industry best practices:
+
+- **CI (`.github/workflows/ci.yml`)**: Runs linting (`golangci-lint`), unit tests, and integration tests on every `push` and `pull_request` to `main` / `master`.
+- **CD (`.github/workflows/cd.yml`)**: Triggers **ONLY when a Git release tag (`v*`) is pushed**. Builds and pushes multi-architecture Docker images to Docker Hub with Semantic Versioning tags (`1.0.0`, `1.0`, `1`, `latest`).
+- **Release Automation (`.goreleaser.yaml` & `.github/workflows/release.yml`)**: Triggers on Git tag push (`v*`). Builds cross-platform static Go binaries (embedding compiled React SPA assets), generates changelogs from Conventional Commits, and publishes artifacts to **GitHub Releases**.
+
+### How to Trigger a New Release (Docker Hub Image & GitHub Release)
+
+To publish a new production version (e.g. `v1.0.0`):
+
+```bash
+# 1. Create a semantic versioning Git tag locally
+git tag v1.0.0
+
+# 2. Push the tag to GitHub to trigger CI/CD & GoReleaser workflows
+git push origin v1.0.0
+```
+
+Once pushed, GitHub Actions automatically:
+1. Runs CI tests.
+2. Generates GitHub Release binaries (`.tar.gz`, `.zip`), checksums, and changelog notes.
+3. Builds and pushes versioned container images (`username/repository:1.0.0`, `1.0`, `1`, `latest`) to Docker Hub.
 
 ---
 

@@ -41,6 +41,7 @@ This directory contains the Architecture Decision Records (ADRs) for the URL Sho
 | ID | Title | Status | Date |
 | :--- | :--- | :--- | :--- |
 | [infra-0001](infra-0001-developer-experience-tooling.md) | Developer Experience & Tooling (Air, Pre-commit, Seed) | Accepted | 2026-08-19 |
+| [infra-0002](infra-0002-release-driven-cd-and-semver-automation.md) | Release-Driven Continuous Deployment & Semantic Versioning Automation | Accepted | 2026-08-20 |
 
 ### 🔒 Security (`security-*`)
 
