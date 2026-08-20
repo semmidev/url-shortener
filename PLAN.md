@@ -285,12 +285,8 @@ tp := otel.GetTracerProvider()
 
 ---
 
-### ❌ CD Pipeline (Continuous Deployment)
-**Status**: No automated CD pipeline.
-
-**Missing**:
-- No automated Docker image build & push to container registries (GHCR / DockerHub).
-- No automated deployment triggers.
+### ✅ CD Pipeline (Continuous Deployment)
+**Status**: Implemented automated Docker Hub build & push workflow via `.github/workflows/cd.yml` with version metadata injection.
 
 ---
 
