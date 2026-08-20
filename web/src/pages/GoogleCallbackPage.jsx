@@ -30,9 +30,10 @@ export default function GoogleCallbackPage() {
     const exchangeToken = async () => {
       try {
         const res = await client.post('/auth/google/token', { code });
-        const { access_token, refresh_token, session_id, user } = res.data;
-        setTokens({ accessToken: access_token, refreshToken: refresh_token, sessionId: session_id });
-        setUser(user);
+        const data = res.data?.data || res.data;
+        const user = data?.user || data;
+        setTokens();
+        if (user) setUser(user);
         useAuthStore.setState({ user, isAuthenticated: true, isLoading: false });
         toast.success('Successfully logged in with Google!');
         navigate('/dashboard');

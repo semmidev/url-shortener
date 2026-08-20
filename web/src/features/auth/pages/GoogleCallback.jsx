@@ -29,14 +29,13 @@ export default function GoogleCallback() {
     client.post('/auth/google/token', { code })
       .then((res) => {
         const data = res.data?.data || res.data;
-        if (data && data.access_token && data.refresh_token && data.session_id) {
-          const { access_token, refresh_token, session_id, user } = data;
+        if (data && (data.access_token || data.user)) {
+          const { user } = data;
 
-          setTokens({ accessToken: access_token, refreshToken: refresh_token, sessionId: session_id });
-          const userData = user;
-          if (userData) {
-            persistUser(userData);
-            useAuthStore.setState({ user: userData, isAuthenticated: true, isLoading: false });
+          setTokens();
+          if (user) {
+            persistUser(user);
+            useAuthStore.setState({ user, isAuthenticated: true, isLoading: false });
             navigate('/dashboard', { replace: true });
           } else {
             // Fallback: fetch /auth/me
