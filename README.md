@@ -4,11 +4,8 @@ A clean, modern, high-performance URL Shortener REST API backend written in Go u
 
 ### 📸 Previews
 
-#### 📊 Dashboard Analytics
+#### 📊 UI
 ![Dashboard Preview](docs/ss/dashboard.png)
-
-#### 🔗 URL Management
-![URL Management Preview](docs/ss/urls.png)
 
 #### 📖 Scalar API Documentation Reference UI
 ![API Documentation Preview](docs/ss/docs.png)
