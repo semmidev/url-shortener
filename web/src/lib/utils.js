@@ -23,6 +23,7 @@ export function toYouTubeEmbedUrl(url) {
     }
     return url;
   } catch {
+    return url;
   }
 }
 

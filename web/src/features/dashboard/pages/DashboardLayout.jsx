@@ -58,7 +58,7 @@ export default function DashboardLayout() {
 
   // Preset palette switch helper
   function switchThemePreset(themeId) {
-    document.documentElement.dataset.theme = themeId
+    document.documentElement.setAttribute('data-theme', themeId)
     localStorage.setItem("theme-preset", themeId)
     setActivePreset(themeId)
     setShowThemeMenu(false)

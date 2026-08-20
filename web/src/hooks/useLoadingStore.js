@@ -15,7 +15,7 @@ export const useLoadingStore = create((set) => ({
   },
 
   setProgress: (progress) => {
-    set((state) => {
+    set(() => {
       // Clamp progress between 0 and 100 if it is a number
       const nextProgress = typeof progress === 'number'
         ? Math.min(100, Math.max(0, progress))

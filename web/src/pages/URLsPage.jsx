@@ -67,6 +67,7 @@ export default function URLsPage() {
 
   useEffect(() => {
     fetchURLs();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [meta.page, sortBy, sortDirection, debouncedSearch]);
 
   const handleSearchSubmit = (e) => {
@@ -101,16 +102,6 @@ export default function URLsPage() {
       fetchURLs();
     } catch {
       toast.error('Failed to delete URL');
-    }
-  };
-
-  const handleRestore = async (id) => {
-    try {
-      await client.post(`/urls/${id}/restore`);
-      toast.success('Short URL restored successfully!');
-      fetchURLs();
-    } catch {
-      toast.error('Failed to restore URL');
     }
   };
 

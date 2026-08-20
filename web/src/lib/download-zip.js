@@ -51,6 +51,7 @@ async function addModuleFileToZip(zip, module, accessToken, activeOrgId) {
         return;
       }
     } catch {
+      // ignore network fetch error and fallback to reference file
     }
   }
 

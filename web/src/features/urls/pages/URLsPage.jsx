@@ -63,6 +63,7 @@ export default function URLs() {
 
   useEffect(() => {
     fetchUrls();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [debouncedSearch, activeFilter]);
 
   const handleCopy = (urlStr, id) => {

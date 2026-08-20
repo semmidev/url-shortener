@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { Zap, Mail, Lock, User, ArrowRight, ShieldCheck } from 'lucide-react';
 import { useAuthStore } from '../features/auth/store';
 import client from '../lib/client';
