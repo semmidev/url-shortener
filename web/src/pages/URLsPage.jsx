@@ -22,6 +22,8 @@ import EditURLModal from '../components/EditURLModal';
 import QRCodeModal from '../components/QRCodeModal';
 import PreviewModal from '../components/PreviewModal';
 
+import { useDebounce } from '../hooks/use-debounce';
+
 export default function URLsPage() {
   const [urls, setUrls] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -29,6 +31,7 @@ export default function URLsPage() {
 
   // Filters & Search
   const [search, setSearch] = useState('');
+  const debouncedSearch = useDebounce(search, 350);
   const [sortBy, setSortBy] = useState('created_at');
   const [sortDirection, setSortDirection] = useState('desc');
 
@@ -48,7 +51,7 @@ export default function URLsPage() {
         sort_by: sortBy,
         sort_direction: sortDirection,
       });
-      if (search.trim()) params.append('search', search.trim());
+      if (debouncedSearch.trim()) params.append('search', debouncedSearch.trim());
 
       const res = await client.get(`/urls?${params.toString()}`);
       setUrls(res.data.items || []);
@@ -64,7 +67,7 @@ export default function URLsPage() {
 
   useEffect(() => {
     fetchURLs();
-  }, [meta.page, sortBy, sortDirection]);
+  }, [meta.page, sortBy, sortDirection, debouncedSearch]);
 
   const handleSearchSubmit = (e) => {
     e.preventDefault();

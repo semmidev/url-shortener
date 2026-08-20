@@ -24,11 +24,14 @@ import QRCodeModal from '@/features/urls/components/QRCodeModal';
 import PreviewModal from '@/features/urls/components/PreviewModal';
 import DeleteConfirmModal from '@/features/urls/components/DeleteConfirmModal';
 
+import { useDebounce } from '@/hooks/use-debounce';
+
 export default function URLs() {
   const navigate = useNavigate();
   const [urls, setUrls] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const debouncedSearch = useDebounce(search, 350);
   const [activeFilter, setActiveFilter] = useState('all');
 
   // Modals
@@ -43,7 +46,7 @@ export default function URLs() {
     setLoading(true);
     try {
       let endpoint = `/urls?sort_by=created_at&sort_direction=desc`;
-      if (search.trim()) endpoint += `&search=${encodeURIComponent(search.trim())}`;
+      if (debouncedSearch.trim()) endpoint += `&search=${encodeURIComponent(debouncedSearch.trim())}`;
       if (activeFilter === 'active') endpoint += `&active=1`;
       else if (activeFilter === 'inactive') endpoint += `&active=0`;
       else if (activeFilter === 'all') endpoint += `&active=-1`;
@@ -60,7 +63,7 @@ export default function URLs() {
 
   useEffect(() => {
     fetchUrls();
-  }, [search, activeFilter]);
+  }, [debouncedSearch, activeFilter]);
 
   const handleCopy = (urlStr, id) => {
     navigator.clipboard.writeText(urlStr);

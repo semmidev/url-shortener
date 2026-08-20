@@ -4,11 +4,14 @@ import client from '../lib/client';
 import { formatDate, formatNumber } from '../lib/utils';
 import { toast } from 'sonner';
 
+import { useDebounce } from '../hooks/use-debounce';
+
 export default function AdminPage() {
   const [stats, setStats] = useState(null);
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const debouncedSearch = useDebounce(search, 300);
 
   const fetchAdminData = async () => {
     setLoading(true);
@@ -46,8 +49,8 @@ export default function AdminPage() {
 
   const filteredUsers = users.filter(
     (u) =>
-      u.email.toLowerCase().includes(search.toLowerCase()) ||
-      (u.full_name && u.full_name.toLowerCase().includes(search.toLowerCase()))
+      u.email.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
+      (u.full_name && u.full_name.toLowerCase().includes(debouncedSearch.toLowerCase()))
   );
 
   return (
