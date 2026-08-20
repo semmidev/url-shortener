@@ -97,10 +97,9 @@ export const useAuthStore = create((set) => ({
     }
   },
 
-  changePassword: async (currentPassword, newPassword) => {
+  changePassword: async (newPassword) => {
     try {
       const res = await client.put('/auth/password', {
-        current_password: currentPassword,
         new_password: newPassword,
       });
       const updatedUser = res.data?.data || res.data;

@@ -119,9 +119,8 @@ func (r *UpdateProfileRequest) Validate() error {
 }
 
 type ChangePasswordRequest struct {
-	UserID          uuid.UUID `json:"-"`
-	CurrentPassword string    `json:"current_password"`
-	NewPassword     string    `json:"new_password" validate:"required,min=6"`
+	UserID      uuid.UUID `json:"-"`
+	NewPassword string    `json:"new_password" validate:"required,min=6"`
 }
 
 func (r *ChangePasswordRequest) Validate() error {

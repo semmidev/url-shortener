@@ -572,20 +572,6 @@ func (s *Service) ChangePassword(ctx context.Context, req ChangePasswordRequest)
 		return nil, err
 	}
 
-	user, err := s.store.GetUserByID(ctx, req.UserID)
-	if err != nil {
-		return nil, apperr.MapDBError(err, "user not found", "")
-	}
-
-	if user.PasswordHash.Valid && user.PasswordHash.String != "" {
-		if req.CurrentPassword == "" {
-			return nil, apperr.Invalid("current_password is required")
-		}
-		if err := crypto.CheckPassword(req.CurrentPassword, user.PasswordHash.String); err != nil {
-			return nil, apperr.Unauthorized("invalid current password")
-		}
-	}
-
 	newHash, err := crypto.HashPassword(req.NewPassword)
 	if err != nil {
 		return nil, apperr.Internal("failed to process password", err)

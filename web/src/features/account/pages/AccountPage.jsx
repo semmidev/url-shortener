@@ -65,7 +65,6 @@ export default function Account() {
 
   // Password Form state
   const [passwordForm, setPasswordForm] = useState({
-    currentPassword: '',
     newPassword: '',
     confirmPassword: '',
   });
@@ -119,12 +118,12 @@ export default function Account() {
     setPasswordErrors({});
     setPasswordLoading(true);
 
-    const res = await changePassword(passwordForm.currentPassword, passwordForm.newPassword);
+    const res = await changePassword(passwordForm.newPassword);
     setPasswordLoading(false);
 
     if (res.success) {
       toast.success('Password berhasil diubah!');
-      setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
+      setPasswordForm({ newPassword: '', confirmPassword: '' });
     } else {
       toast.error(res.message || 'Gagal mengubah password');
       if (res.errors) setPasswordErrors(res.errors);
@@ -255,22 +254,6 @@ export default function Account() {
         </CardHeader>
         <CardContent>
           <form onSubmit={handlePasswordSubmit} className="space-y-4">
-            {hasPassword && (
-              <div className="space-y-1.5">
-                <Label htmlFor="password-current" className="text-xs font-medium">Password Saat Ini</Label>
-                <Input
-                  id="password-current"
-                  type="password"
-                  value={passwordForm.currentPassword}
-                  onChange={(e) => setPasswordForm((p) => ({ ...p, currentPassword: e.target.value }))}
-                  placeholder="Masukkan password saat ini"
-                  className="bg-background/80"
-                  autoComplete="current-password"
-                />
-                <FieldError error={passwordErrors.currentPassword || passwordErrors.current_password} />
-              </div>
-            )}
-
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <Label htmlFor="password-new" className="text-xs font-medium">Password Baru</Label>
