@@ -56,9 +56,8 @@ COPY --from=builder /etc/group /etc/group
 
 WORKDIR /app
 
-# Copy compiled API binary and default configuration
+# Copy compiled API binary
 COPY --from=builder /bin/api /app/api
-COPY --from=builder /app/.env.example /app/app.env
 
 EXPOSE 8080
 
