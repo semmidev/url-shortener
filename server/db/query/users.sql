@@ -47,3 +47,12 @@ SET
     updated_at = NOW()
 WHERE id = $1
 RETURNING *;
+
+-- name: UnlinkGoogleUser :one
+UPDATE users
+SET
+    google_id = NULL,
+    updated_at = NOW()
+WHERE id = $1
+RETURNING *;
+

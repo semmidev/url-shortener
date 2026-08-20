@@ -44,6 +44,7 @@ type Querier interface {
 	RestoreShortURL(ctx context.Context, arg RestoreShortURLParams) (ShortUrl, error)
 	RevokeSession(ctx context.Context, id uuid.UUID) error
 	SetUserSuspended(ctx context.Context, arg SetUserSuspendedParams) (SetUserSuspendedRow, error)
+	UnlinkGoogleUser(ctx context.Context, id uuid.UUID) (User, error)
 	UpdateShortURL(ctx context.Context, arg UpdateShortURLParams) (ShortUrl, error)
 	UpdateUser(ctx context.Context, arg UpdateUserParams) (User, error)
 	UpsertGoogleUser(ctx context.Context, arg UpsertGoogleUserParams) (User, error)

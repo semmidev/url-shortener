@@ -82,4 +82,59 @@ export const useAuthStore = create((set) => ({
       set({ user: null, isAuthenticated: false });
     }
   },
+
+  updateProfile: async (fullName) => {
+    try {
+      const res = await client.put('/auth/profile', { full_name: fullName });
+      const updatedUser = res.data?.data || res.data;
+      setUser(updatedUser);
+      set({ user: updatedUser });
+      return { success: true };
+    } catch (err) {
+      const message = err.response?.data?.message || 'Failed to update profile.';
+      const errors = err.response?.data?.errors || null;
+      return { success: false, message, errors };
+    }
+  },
+
+  changePassword: async (currentPassword, newPassword) => {
+    try {
+      const res = await client.put('/auth/password', {
+        current_password: currentPassword,
+        new_password: newPassword,
+      });
+      const updatedUser = res.data?.data || res.data;
+      setUser(updatedUser);
+      set({ user: updatedUser });
+      return { success: true };
+    } catch (err) {
+      const message = err.response?.data?.message || 'Failed to change password.';
+      const errors = err.response?.data?.errors || null;
+      return { success: false, message, errors };
+    }
+  },
+
+  unlinkGoogle: async () => {
+    try {
+      const res = await client.delete('/auth/google');
+      const updatedUser = res.data?.data || res.data;
+      setUser(updatedUser);
+      set({ user: updatedUser });
+      return { success: true };
+    } catch (err) {
+      const message = err.response?.data?.message || 'Failed to unlink Google account.';
+      return { success: false, message };
+    }
+  },
+
+  getGoogleLinkURL: async () => {
+    try {
+      const res = await client.get('/auth/google/url');
+      const url = res.data?.url || res.data?.data?.url;
+      return { success: true, url };
+    } catch (err) {
+      const message = err.response?.data?.message || 'Failed to get Google login URL.';
+      return { success: false, message };
+    }
+  },
 }));

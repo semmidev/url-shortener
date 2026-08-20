@@ -108,3 +108,27 @@ type LogoutRequest struct {
 	UserID    uuid.UUID `json:"-"`
 	SessionID uuid.UUID `json:"-"`
 }
+
+type UpdateProfileRequest struct {
+	UserID   uuid.UUID `json:"-"`
+	FullName string    `json:"full_name" validate:"required"`
+}
+
+func (r *UpdateProfileRequest) Validate() error {
+	return validator.Check(r)
+}
+
+type ChangePasswordRequest struct {
+	UserID          uuid.UUID `json:"-"`
+	CurrentPassword string    `json:"current_password"`
+	NewPassword     string    `json:"new_password" validate:"required,min=6"`
+}
+
+func (r *ChangePasswordRequest) Validate() error {
+	return validator.Check(r)
+}
+
+type UnlinkGoogleRequest struct {
+	UserID uuid.UUID `json:"-"`
+}
+

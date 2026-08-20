@@ -549,3 +549,76 @@ func (s *Service) Logout(ctx context.Context, req LogoutRequest) error {
 	)
 	return nil
 }
+
+func (s *Service) UpdateProfile(ctx context.Context, req UpdateProfileRequest) (*UserResponse, error) {
+	if err := req.Validate(); err != nil {
+		return nil, err
+	}
+
+	updated, err := s.store.UpdateUser(ctx, db.UpdateUserParams{
+		ID:       req.UserID,
+		FullName: pgtype.Text{String: req.FullName, Valid: true},
+	})
+	if err != nil {
+		return nil, apperr.MapDBError(err, "failed to update user profile", "")
+	}
+
+	res := toUserResponse(updated)
+	return &res, nil
+}
+
+func (s *Service) ChangePassword(ctx context.Context, req ChangePasswordRequest) (*UserResponse, error) {
+	if err := req.Validate(); err != nil {
+		return nil, err
+	}
+
+	user, err := s.store.GetUserByID(ctx, req.UserID)
+	if err != nil {
+		return nil, apperr.MapDBError(err, "user not found", "")
+	}
+
+	if user.PasswordHash.Valid && user.PasswordHash.String != "" {
+		if req.CurrentPassword == "" {
+			return nil, apperr.Invalid("current_password is required")
+		}
+		if err := crypto.CheckPassword(req.CurrentPassword, user.PasswordHash.String); err != nil {
+			return nil, apperr.Unauthorized("invalid current password")
+		}
+	}
+
+	newHash, err := crypto.HashPassword(req.NewPassword)
+	if err != nil {
+		return nil, apperr.Internal("failed to process password", err)
+	}
+
+	updated, err := s.store.UpdateUser(ctx, db.UpdateUserParams{
+		ID:           req.UserID,
+		PasswordHash: pgtype.Text{String: newHash, Valid: true},
+	})
+	if err != nil {
+		return nil, apperr.MapDBError(err, "failed to update password", "")
+	}
+
+	res := toUserResponse(updated)
+	return &res, nil
+}
+
+func (s *Service) UnlinkGoogle(ctx context.Context, req UnlinkGoogleRequest) (*UserResponse, error) {
+	user, err := s.store.GetUserByID(ctx, req.UserID)
+	if err != nil {
+		return nil, apperr.MapDBError(err, "user not found", "")
+	}
+
+	if !user.PasswordHash.Valid || user.PasswordHash.String == "" {
+		return nil, apperr.Invalid("cannot unlink Google account without setting a password first")
+	}
+
+	updated, err := s.store.UnlinkGoogleUser(ctx, req.UserID)
+	if err != nil {
+		return nil, apperr.MapDBError(err, "failed to unlink Google account", "")
+	}
+
+	res := toUserResponse(updated)
+	return &res, nil
+}
+

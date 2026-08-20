@@ -123,6 +123,33 @@ func (q *Queries) GetUserByID(ctx context.Context, id uuid.UUID) (User, error) {
 	return i, err
 }
 
+const unlinkGoogleUser = `-- name: UnlinkGoogleUser :one
+UPDATE users
+SET
+    google_id = NULL,
+    updated_at = NOW()
+WHERE id = $1
+RETURNING id, email, password_hash, google_id, avatar_url, full_name, role, created_at, updated_at, is_suspended
+`
+
+func (q *Queries) UnlinkGoogleUser(ctx context.Context, id uuid.UUID) (User, error) {
+	row := q.db.QueryRow(ctx, unlinkGoogleUser, id)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.Email,
+		&i.PasswordHash,
+		&i.GoogleID,
+		&i.AvatarUrl,
+		&i.FullName,
+		&i.Role,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.IsSuspended,
+	)
+	return i, err
+}
+
 const updateUser = `-- name: UpdateUser :one
 UPDATE users
 SET

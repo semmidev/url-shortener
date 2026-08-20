@@ -31,6 +31,9 @@ func (h *Handler) Mount(r chi.Router, authMw func(http.Handler) http.Handler) {
 	r.Group(func(r chi.Router) {
 		r.Use(authMw)
 		r.Get("/me", h.me)
+		r.Put("/profile", h.updateProfile)
+		r.Put("/password", h.changePassword)
+		r.Delete("/google", h.unlinkGoogle)
 		r.Post("/logout", h.logout)
 	})
 }
@@ -319,3 +322,66 @@ func (h *Handler) clearAuthCookies(w http.ResponseWriter) {
 		SameSite: http.SameSiteLaxMode,
 	})
 }
+
+func (h *Handler) updateProfile(w http.ResponseWriter, r *http.Request) {
+	userID, ok := web.UserID(r.Context())
+	if !ok {
+		web.Error(w, r, apperr.Unauthorized("unauthenticated"))
+		return
+	}
+
+	var req UpdateProfileRequest
+	if err := web.Decode(r, &req); err != nil {
+		web.Error(w, r, err)
+		return
+	}
+	req.UserID = userID
+
+	resp, err := h.svc.UpdateProfile(r.Context(), req)
+	if err != nil {
+		web.Error(w, r, err)
+		return
+	}
+
+	web.JSON(w, http.StatusOK, resp)
+}
+
+func (h *Handler) changePassword(w http.ResponseWriter, r *http.Request) {
+	userID, ok := web.UserID(r.Context())
+	if !ok {
+		web.Error(w, r, apperr.Unauthorized("unauthenticated"))
+		return
+	}
+
+	var req ChangePasswordRequest
+	if err := web.Decode(r, &req); err != nil {
+		web.Error(w, r, err)
+		return
+	}
+	req.UserID = userID
+
+	resp, err := h.svc.ChangePassword(r.Context(), req)
+	if err != nil {
+		web.Error(w, r, err)
+		return
+	}
+
+	web.JSON(w, http.StatusOK, resp)
+}
+
+func (h *Handler) unlinkGoogle(w http.ResponseWriter, r *http.Request) {
+	userID, ok := web.UserID(r.Context())
+	if !ok {
+		web.Error(w, r, apperr.Unauthorized("unauthenticated"))
+		return
+	}
+
+	resp, err := h.svc.UnlinkGoogle(r.Context(), UnlinkGoogleRequest{UserID: userID})
+	if err != nil {
+		web.Error(w, r, err)
+		return
+	}
+
+	web.JSON(w, http.StatusOK, resp)
+}
+
