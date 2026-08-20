@@ -15,7 +15,7 @@ We implemented Go benchmark tests and a k6 load testing suite:
    - `BenchmarkBase62Generate`: Verified Base62 code generation speed (`server/internal/url/url_benchmark_test.go`).
    - `BenchmarkPasswordHash`: Verified bcrypt security/performance bounds (`server/internal/platform/crypto/password_benchmark_test.go`).
    - `BenchmarkSyncMapCacheHit`: Verified in-memory lookup overhead (`server/internal/platform/cache/cache_benchmark_test.go`).
-2. **k6 Load & Stress Suite (`loadtest/`)**:
+2. **k6 Load & Stress Suite (`scripts/loadtest/`)**:
    - Configured SLO targets: `p(95) < 50ms`, `p(99) < 100ms`, `http_req_failed < 1%`.
    - `smoke_test.js`: Rapid validation (5 VUs, 30s).
    - `load_test.js`: Ramping load test up to 100 VUs.

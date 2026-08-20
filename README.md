@@ -5,13 +5,13 @@ A clean, modern, high-performance URL Shortener REST API backend written in Go u
 ### 📸 Previews
 
 #### 📊 Dashboard Analytics
-![Dashboard Preview](server/docs/ss/dashboard.png)
+![Dashboard Preview](docs/ss/dashboard.png)
 
 #### 🔗 URL Management
-![URL Management Preview](server/docs/ss/urls.png)
+![URL Management Preview](docs/ss/urls.png)
 
 #### 📖 Scalar API Documentation Reference UI
-![API Documentation Preview](server/docs/ss/docs.png)
+![API Documentation Preview](docs/ss/docs.png)
 
 ---
 
@@ -218,31 +218,36 @@ make clean             # Clean build artifacts
 
 ## 🏗️ Architectural & Code Style Decisions (ADRs)
 
-All major architectural and code style decisions are formally documented in our [Architecture Decision Records (`server/docs/adr`)](server/docs/adr/README.md).
+All major architectural and code style decisions are formally documented in our [Architecture Decision Records (`docs/adr`)](docs/adr/README.md).
 
 | ADR | Summary | Link |
 | :--- | :--- | :--- |
-| **ADR-0001** | Modular Monolith Architecture | [Read Record](server/docs/adr/0001-modular-monolith-architecture.md) |
-| **ADR-0002** | Uniform Service Signatures & DTO Encapsulation | [Read Record](server/docs/adr/0002-uniform-service-method-signatures.md) |
-| **ADR-0003** | Structured Wide Event Logging (`log/slog`) | [Read Record](server/docs/adr/0003-structured-wide-event-logging.md) |
-| **ADR-0004** | Secure Error Handling & Sensitive Masking | [Read Record](server/docs/adr/0004-secure-error-handling-redaction.md) |
-| **ADR-0005** | Standardized JSON Responses & Error Codes | [Read Record](server/docs/adr/0005-standardized-json-responses.md) |
-| **ADR-0006** | Universal Translator & Locale Input Validation | [Read Record](server/docs/adr/0006-locale-validation-universal-translator.md) |
-| **ADR-0007** | Modern Scalar API Reference UI & Swagger | [Read Record](server/docs/adr/0007-scalar-api-reference-swagger.md) |
-| **ADR-0008** | Database Error Mapping & Atomic Transactions | [Read Record](server/docs/adr/0008-db-error-mapping-atomic-transactions.md) |
-| **ADR-0009** | Automated Database Migrations & Retry Resiliency | [Read Record](server/docs/adr/0009-automated-migrations-retry-resiliency.md) |
-| **ADR-0010** | Configurable Graceful Shutdown | [Read Record](server/docs/adr/0010-graceful-shutdown.md) |
-| **ADR-0011** | Tiered Rate Limiting by Route Classification | [Read Record](server/docs/adr/0011-tiered-rate-limiting.md) |
-| **ADR-0012** | Redis Cache-Aside & Edge Cache-Control Headers | [Read Record](server/docs/adr/0012-redis-cache-aside-edge-cache-control.md) |
-| **ADR-0013** | Developer Experience & Tooling (Air, Pre-commit, Seed) | [Read Record](server/docs/adr/0013-developer-experience-tooling.md) |
-| **ADR-0014** | Product Features (Cleanup, Preview, QR, Dashboard Analytics) | [Read Record](server/docs/adr/0014-product-features-cleanup-preview-qr-dashboard.md) |
-| **ADR-0015** | Multi-Instance State Management with Redis | [Read Record](server/docs/adr/0015-multi-instance-redis-state.md) |
-| **ADR-0016** | Circuit Breaker Pattern for External Dependencies | [Read Record](server/docs/adr/0016-circuit-breaker-external-calls.md) |
-| **ADR-0017** | Database Soft Deletes for Short URLs | [Read Record](server/docs/adr/0017-soft-deletes.md) |
-| **ADR-0018** | Transactional Outbox Pattern & NATS JetStream Event Bus | [Read Record](server/docs/adr/0018-outbox-pattern-nats-event-bus.md) |
-| **ADR-0019** | Request Timeout Propagation & Deadline Handling | [Read Record](server/docs/adr/0019-request-timeout-propagation.md) |
-| **ADR-0020** | Admin API & Role-Based Access Control (RBAC) | [Read Record](server/docs/adr/0020-admin-api-backoffice-rbac.md) |
-| **ADR-0021** | Benchmark Testing & k6 Performance Engineering | [Read Record](server/docs/adr/0021-benchmarks-and-k6-load-testing.md) |
+| **backend-0001** | Modular Monolith Architecture | [Read Record](docs/adr/backend-0001-modular-monolith-architecture.md) |
+| **backend-0002** | Uniform Service Signatures & DTO Encapsulation | [Read Record](docs/adr/backend-0002-uniform-service-method-signatures.md) |
+| **backend-0003** | Structured Wide Event Logging (`log/slog`) | [Read Record](docs/adr/backend-0003-structured-wide-event-logging.md) |
+| **backend-0004** | Secure Error Handling & Sensitive Masking | [Read Record](docs/adr/backend-0004-secure-error-handling-redaction.md) |
+| **backend-0005** | Standardized JSON Responses & Error Codes | [Read Record](docs/adr/backend-0005-standardized-json-responses.md) |
+| **backend-0006** | Universal Translator & Locale Input Validation | [Read Record](docs/adr/backend-0006-locale-validation-universal-translator.md) |
+| **backend-0007** | Modern Scalar API Reference UI & Swagger | [Read Record](docs/adr/backend-0007-scalar-api-reference-swagger.md) |
+| **backend-0008** | Database Error Mapping & Atomic Transactions | [Read Record](docs/adr/backend-0008-db-error-mapping-atomic-transactions.md) |
+| **backend-0009** | Automated Database Migrations & Retry Resiliency | [Read Record](docs/adr/backend-0009-automated-migrations-retry-resiliency.md) |
+| **backend-0010** | Configurable Graceful Shutdown | [Read Record](docs/adr/backend-0010-graceful-shutdown.md) |
+| **backend-0011** | Tiered Rate Limiting by Route Classification | [Read Record](docs/adr/backend-0011-tiered-rate-limiting.md) |
+| **backend-0012** | Redis Cache-Aside & Edge Cache-Control Headers | [Read Record](docs/adr/backend-0012-redis-cache-aside-edge-cache-control.md) |
+| **backend-0013** | Product Features (Cleanup, Preview, QR, Dashboard Analytics) | [Read Record](docs/adr/backend-0013-product-features-cleanup-preview-qr-dashboard.md) |
+| **backend-0014** | Multi-Instance State Management with Redis | [Read Record](docs/adr/backend-0014-multi-instance-redis-state.md) |
+| **backend-0015** | Circuit Breaker Pattern for External Dependencies | [Read Record](docs/adr/backend-0015-circuit-breaker-external-calls.md) |
+| **backend-0016** | Database Soft Deletes for Short URLs | [Read Record](docs/adr/backend-0016-soft-deletes.md) |
+| **backend-0017** | Transactional Outbox Pattern & NATS JetStream Event Bus | [Read Record](docs/adr/backend-0017-outbox-pattern-nats-event-bus.md) |
+| **backend-0018** | Request Timeout Propagation & Deadline Handling | [Read Record](docs/adr/backend-0018-request-timeout-propagation.md) |
+| **backend-0019** | Admin API & Role-Based Access Control (RBAC) | [Read Record](docs/adr/backend-0019-admin-api-backoffice-rbac.md) |
+| **backend-0020** | Comprehensive Cache Invalidation Across Triggers | [Read Record](docs/adr/backend-0020-comprehensive-cache-invalidation.md) |
+| **frontend-0001** | Single-Binary SPA Embedding with Go `embed.FS` | [Read Record](docs/adr/frontend-0001-single-binary-spa-embedding.md) |
+| **frontend-0002** | Browser HTML Navigation Redirection for Inactive/Expired URLs | [Read Record](docs/adr/frontend-0002-browser-html-navigation-redirection.md) |
+| **infra-0001** | Developer Experience & Tooling (Air, Pre-commit, Seed) | [Read Record](docs/adr/infra-0001-developer-experience-tooling.md) |
+| **security-0001** | HTTP Security Headers Hardening & Route CSP | [Read Record](docs/adr/security-0001-http-security-headers-hardening-csp.md) |
+| **security-0002** | Security Audit Logging | [Read Record](docs/adr/security-0002-security-audit-logging.md) |
+| **testing-0001** | Benchmark Testing & k6 Performance Engineering | [Read Record](docs/adr/testing-0001-benchmarks-and-k6-load-testing.md) |
 
 ---
 

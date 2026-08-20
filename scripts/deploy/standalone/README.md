@@ -43,7 +43,7 @@ graph TD
 Agar kita tidak perlu menulis kredensial/domain secara manual di server atau repositori, variabel disalurkan secara dinamis saat deployment:
 
 ```
-[1] deploy/standalone/ansible/playbook.yml (vars)
+[1] scripts/deploy/standalone/ansible/playbook.yml (vars)
                 │
                 ▼ (Ansible deploy)
 [2] /home/deploy/caddy/.env (di dalam remote server)
@@ -52,7 +52,7 @@ Agar kita tidak perlu menulis kredensial/domain secara manual di server atau rep
 [3] Environment di dalam Kontainer Caddy
                 │
                 ▼ (Resolusi runtime Caddy)
-[4] deploy/standalone/caddy/Caddyfile (menggunakan sintaks {$VAR})
+[4] scripts/deploy/standalone/caddy/Caddyfile (menggunakan sintaks {$VAR})
 ```
 
 ---
@@ -60,7 +60,7 @@ Agar kita tidak perlu menulis kredensial/domain secara manual di server atau rep
 ## 3. Lokasi Kustomisasi Konfigurasi
 
 ### Skenario A: Anda ingin mengubah Domain atau Email Notifikasi SSL untuk Server
-**Jangan pernah mengubah `deploy/standalone/caddy/Caddyfile` atau `deploy/standalone/caddy/compose.yml` secara langsung.**
+**Jangan pernah mengubah `scripts/deploy/standalone/caddy/Caddyfile` atau `scripts/deploy/standalone/caddy/compose.yml` secara langsung.**
 
 Cukup ubah variabel pada file [ansible/playbook.yml](ansible/playbook.yml) di dalam blok `vars:`:
 
@@ -83,13 +83,13 @@ Jika dijalankan secara lokal tanpa Ansible, `Caddyfile` memiliki nilai default (
 * `{$APP_DOMAIN:url.local}` akan fallback ke: `url.local`
 
 Untuk menjalankan lokal dengan domain custom:
-1. Buat file `.env` di dalam direktori `deploy/standalone/caddy/`.
+1. Buat file `.env` di dalam direktori `scripts/deploy/standalone/caddy/`.
 2. Masukkan domain testing Anda:
    ```env
    APP_DOMAIN=local.mydev.com
    ACME_EMAIL=dev@mydev.com
    ```
-3. Jalankan `docker compose up -d` di dalam folder `deploy/standalone/caddy`.
+3. Jalankan `docker compose up -d` di dalam folder `scripts/deploy/standalone/caddy`.
 
 ---
 
@@ -125,7 +125,7 @@ Buka file [ansible/inventory](ansible/inventory) dan ganti IP default dengan IP 
 ### Langkah 2: Jalankan Playbook Sebagai Root (Hanya Pertama Kali)
 Karena user `deploy` belum ada di server baru, Anda harus menjalankan Ansible sebagai user default cloud (biasanya `root` atau `ubuntu`):
 ```bash
-cd deploy/standalone/ansible
+cd scripts/deploy/standalone/ansible
 ansible-playbook -i inventory playbook.yml -u root
 ```
 Perintah ini akan secara otomatis:
@@ -255,7 +255,7 @@ Ansible **secara otomatis membuat SSH Key (Ed25519) tanpa passphrase** untuk use
 
 ### Langkah 5: Update Caddyfile di VPS (Tanpa Downtime)
 
-Jika Anda mengubah file `deploy/standalone/caddy/Caddyfile` (misalnya setelah pull dari repo), ikuti langkah berikut untuk menerapkannya ke server **tanpa restart dan tanpa downtime**.
+Jika Anda mengubah file `scripts/deploy/standalone/caddy/Caddyfile` (misalnya setelah pull dari repo), ikuti langkah berikut untuk menerapkannya ke server **tanpa restart dan tanpa downtime**.
 
 > Caddy memisahkan config-nya di direktori `~/caddy/` (bukan langsung di `~/app/`).
 > Jadi setelah pull, Anda perlu copy manual ke sana sebelum reload.
@@ -263,7 +263,7 @@ Jika Anda mengubah file `deploy/standalone/caddy/Caddyfile` (misalnya setelah pu
 #### 1. Copy Caddyfile ke direktori Caddy
 
 ```bash
-cp ~/app/deploy/standalone/caddy/Caddyfile ~/caddy/Caddyfile
+cp ~/app/scripts/deploy/standalone/caddy/Caddyfile ~/caddy/Caddyfile
 ```
 
 #### 2. Validasi config terlebih dahulu (opsional tapi disarankan)

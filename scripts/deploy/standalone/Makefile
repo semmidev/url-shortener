@@ -23,4 +23,3 @@ caddy-reload: ## Copy Caddyfile, validate, and hot-reload Caddy in VPS without d
 	cp caddy/Caddyfile ~/caddy/Caddyfile
 	docker exec caddy-gateway-caddy-1 caddy validate --config /etc/caddy/Caddyfile
 	docker exec caddy-gateway-caddy-1 caddy reload --config /etc/caddy/Caddyfile
-

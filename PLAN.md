@@ -263,7 +263,7 @@ tp := otel.GetTracerProvider()
 ---
 
 ### ✅ Load & Stress Testing
-**Status**: Implemented k6 test suite in `loadtest/` directory (`make loadtest-smoke`, `make loadtest-load`, `make loadtest-stress`).
+**Status**: Implemented k6 test suite in `scripts/loadtest/` directory (`make loadtest-smoke`, `make loadtest-load`, `make loadtest-stress`).
 
 ---
 
