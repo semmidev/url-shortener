@@ -8,6 +8,9 @@ on:
       - master
     types:
       - completed
+  push:
+    tags:
+      - 'v*'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -17,7 +20,7 @@ jobs:
   build-and-push:
     name: Build and Push to Docker Hub
     runs-on: ubuntu-latest
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    if: ${{ github.event_name == 'push' || github.event.workflow_run.conclusion == 'success' }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -41,6 +44,9 @@ jobs:
         with:
           images: ${{ secrets.DOCKERHUB_USERNAME }}/${{ secrets.DOCKERHUB_REPOSITORY }}
           tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
             type=ref,event=branch
             type=sha,prefix=sha-,format=short
             type=raw,value=latest,enable={{is_default_branch}}
