@@ -17,6 +17,7 @@ tmp/
 .env
 .env.*
 *.env
+!.env.example
 *.pem
 *.key
 *.crt
