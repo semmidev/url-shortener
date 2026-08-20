@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { ThemeProvider } from 'next-themes';
 import { Toaster } from 'sonner';
 import { useAuthStore } from '@/features/auth/store';
+import TopLoadingBar from '@/components/TopLoadingBar';
 
 import Login from '@/features/auth/pages/Login';
 import Register from '@/features/auth/pages/Register';
@@ -68,6 +69,7 @@ export default function App() {
     <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false} storageKey="theme-mode">
       <Toaster position="top-right" richColors />
       <Router>
+        <TopLoadingBar />
         <Routes>
           {/* Root Redirect */}
           <Route path="/" element={<Navigate to="/dashboard" replace />} />

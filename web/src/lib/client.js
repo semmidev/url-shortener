@@ -8,6 +8,18 @@ const client = axios.create({
 
 let isRefreshing = false;
 let failedQueue = [];
+let activeRequests = 0;
+const loadingListeners = new Set();
+
+export function subscribeLoading(listener) {
+  loadingListeners.add(listener);
+  return () => loadingListeners.delete(listener);
+}
+
+function notifyLoading() {
+  const isLoading = activeRequests > 0;
+  loadingListeners.forEach((listener) => listener(isLoading, activeRequests));
+}
 
 function processQueue(error) {
   failedQueue.forEach((prom) => {
@@ -22,15 +34,22 @@ function processQueue(error) {
 
 client.interceptors.request.use(
   (config) => {
-    // No manual Authorization header injection.
-    // Relative endpoints share same-origin, so HTTP cookies are sent automatically.
+    activeRequests++;
+    notifyLoading();
     return config;
   },
-  (error) => Promise.reject(error)
+  (error) => {
+    activeRequests = Math.max(0, activeRequests - 1);
+    notifyLoading();
+    return Promise.reject(error);
+  }
 );
 
 client.interceptors.response.use(
   (response) => {
+    activeRequests = Math.max(0, activeRequests - 1);
+    notifyLoading();
+
     if (response.data && typeof response.data === 'object' && 'success' in response.data) {
       const payload = response.data.data;
       const meta = response.data.meta;
@@ -45,6 +64,8 @@ client.interceptors.response.use(
     return response;
   },
   async (error) => {
+    activeRequests = Math.max(0, activeRequests - 1);
+    notifyLoading();
     const originalRequest = error.config;
     const status = error.response?.status;
 
