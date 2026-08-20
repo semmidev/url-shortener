@@ -131,4 +131,3 @@ func (r *ChangePasswordRequest) Validate() error {
 type UnlinkGoogleRequest struct {
 	UserID uuid.UUID `json:"-"`
 }
-

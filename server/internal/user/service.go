@@ -609,4 +609,3 @@ func (s *Service) UnlinkGoogle(ctx context.Context, req UnlinkGoogleRequest) (*U
 	res := toUserResponse(updated)
 	return &res, nil
 }
-

@@ -384,4 +384,3 @@ func (h *Handler) unlinkGoogle(w http.ResponseWriter, r *http.Request) {
 
 	web.JSON(w, http.StatusOK, resp)
 }
-
