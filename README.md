@@ -1,5 +1,20 @@
 # URL Shortener API
 
+<p align="center">
+  <a href="https://github.com/semmidev/url-shortener/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/semmidev/url-shortener/ci.yml?branch=main&label=CI%20Build&style=for-the-badge&logo=githubactions&logoColor=white" alt="CI Status"></a>
+  <a href="https://github.com/semmidev/url-shortener/actions/workflows/cd.yml"><img src="https://img.shields.io/github/actions/workflow/status/semmidev/url-shortener/cd.yml?label=CD%20Deploy&style=for-the-badge&logo=docker&logoColor=white" alt="CD Status"></a>
+  <a href="https://github.com/semmidev/url-shortener/releases"><img src="https://img.shields.io/github/v/release/semmidev/url-shortener?style=for-the-badge&color=orange&logo=github" alt="Latest Release"></a>
+  <a href="https://github.com/semmidev/url-shortener/blob/main/LICENSE"><img src="https://img.shields.io/github/license/semmidev/url-shortener?style=for-the-badge&color=blue" alt="License"></a>
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/Backend-Go_1.26-00ADD8?style=for-the-badge&logo=go&logoColor=white" alt="Go Backend">
+  <img src="https://img.shields.io/badge/Frontend-React_19-61DAFB?style=for-the-badge&logo=react&logoColor=black" alt="React Frontend">
+  <img src="https://img.shields.io/badge/Database-PostgreSQL_18-4169E1?style=for-the-badge&logo=postgresql&logoColor=white" alt="PostgreSQL">
+  <img src="https://img.shields.io/badge/Styling-Tailwind_v4-06B6D4?style=for-the-badge&logo=tailwindcss&logoColor=white" alt="Tailwind CSS">
+  <img src="https://img.shields.io/badge/Container-Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white" alt="Docker">
+</p>
+
 A clean, modern, high-performance URL Shortener REST API backend written in Go using **Modular Monolith** architecture, **Go-Chi**, and **PostgreSQL 18**. Features interactive Scalar API Reference UI & Swagger documentation, automatic database migrations, structured wide-event logging, multi-language input validation, tiered rate limiting, and containerized testing support.
 
 ### 📸 Previews
