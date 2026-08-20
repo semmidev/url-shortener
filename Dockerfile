@@ -58,7 +58,6 @@ WORKDIR /app
 
 # Copy compiled API binary and default configuration
 COPY --from=builder /bin/api /app/api
-COPY --from=builder /app/.env.example /app/app.env
 
 EXPOSE 8080
 

@@ -290,6 +290,11 @@ tp := otel.GetTracerProvider()
 
 ---
 
+### ✅ Release Automation (GoReleaser & Semantic Versioning)
+**Status**: Implemented automated versioning, changelog generation, and multi-platform binary publishing via [.goreleaser.yaml](file://.goreleaser.yaml) and [.github/workflows/release.yml](file://.github/workflows/release.yml) (triggered on `v*` git tags).
+
+---
+
 ## 📦 Developer Experience
 
 ### ✅ Pre-commit Hooks & Air Live Reload
