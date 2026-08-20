@@ -86,14 +86,15 @@ type GetProfileRequest struct {
 }
 
 type UserResponse struct {
-	ID        uuid.UUID `json:"id"`
-	Email     string    `json:"email"`
-	FullName  string    `json:"full_name"`
-	AvatarURL string    `json:"avatar_url,omitempty"`
-	GoogleID  *string   `json:"google_id,omitempty"`
-	Role      string    `json:"role"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
+	ID          uuid.UUID `json:"id"`
+	Email       string    `json:"email"`
+	FullName    string    `json:"full_name"`
+	AvatarURL   string    `json:"avatar_url,omitempty"`
+	GoogleID    *string   `json:"google_id,omitempty"`
+	HasPassword bool      `json:"has_password"`
+	Role        string    `json:"role"`
+	CreatedAt   time.Time `json:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at"`
 }
 
 type LoginResponse struct {

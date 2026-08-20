@@ -130,7 +130,19 @@ export default function Account() {
     }
   };
 
+  const hasPassword = Boolean(user?.has_password || user?.password_hash);
+
   const handleUnlinkGoogle = async () => {
+    if (!hasPassword) {
+      toast.error('Anda harus membuat password terlebih dahulu sebelum memutuskan koneksi Google agar tetap bisa login!');
+      const passwordInput = document.getElementById('password-new');
+      if (passwordInput) {
+        passwordInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        passwordInput.focus();
+      }
+      return;
+    }
+
     if (!window.confirm('Apakah Anda yakin ingin memutuskan koneksi akun Google Anda?')) return;
     setGoogleLoading(true);
 
@@ -155,8 +167,6 @@ export default function Account() {
       toast.error(res.message || 'Gagal mendapatkan URL autentikasi Google.');
     }
   };
-
-  const hasPassword = Boolean(user.password_hash);
 
   return (
     <div className="space-y-6 max-w-4xl animate-in fade-in duration-200">
@@ -253,6 +263,14 @@ export default function Account() {
           </div>
         </CardHeader>
         <CardContent>
+          {!hasPassword && (
+            <div className="mb-4 p-3 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-600 dark:text-amber-400 text-xs flex items-center gap-2">
+              <AlertCircleIcon className="size-4 shrink-0" />
+              <span>
+                Akun Anda belum memiliki password. Buat password di bawah ini agar Anda tetap bisa login menggunakan email & password jika koneksi Google dilepas.
+              </span>
+            </div>
+          )}
           <form onSubmit={handlePasswordSubmit} className="space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1.5">

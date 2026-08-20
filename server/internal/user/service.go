@@ -147,15 +147,17 @@ func toUserResponse(u db.User) UserResponse {
 		gid := u.GoogleID.String
 		googleID = &gid
 	}
+	hasPassword := u.PasswordHash.Valid && u.PasswordHash.String != ""
 	return UserResponse{
-		ID:        u.ID,
-		Email:     u.Email,
-		FullName:  u.FullName,
-		AvatarURL: u.AvatarUrl,
-		GoogleID:  googleID,
-		Role:      u.Role,
-		CreatedAt: u.CreatedAt,
-		UpdatedAt: u.UpdatedAt,
+		ID:          u.ID,
+		Email:       u.Email,
+		FullName:    u.FullName,
+		AvatarURL:   u.AvatarUrl,
+		GoogleID:    googleID,
+		HasPassword: hasPassword,
+		Role:        u.Role,
+		CreatedAt:   u.CreatedAt,
+		UpdatedAt:   u.UpdatedAt,
 	}
 }
 
@@ -596,7 +598,7 @@ func (s *Service) UnlinkGoogle(ctx context.Context, req UnlinkGoogleRequest) (*U
 	}
 
 	if !user.PasswordHash.Valid || user.PasswordHash.String == "" {
-		return nil, apperr.Invalid("cannot unlink Google account without setting a password first")
+		return nil, apperr.Invalid("Anda harus membuat password terlebih dahulu sebelum memutuskan koneksi Google agar tetap bisa login.")
 	}
 
 	updated, err := s.store.UnlinkGoogleUser(ctx, req.UserID)
