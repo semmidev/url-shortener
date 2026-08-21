@@ -40,17 +40,15 @@ tp := otel.GetTracerProvider()
 
 ---
 
-### ❌ Metrics (Prometheus / OpenTelemetry Metrics)
-**Status**: No metrics instrumentation in Go services.
+### ✅ Metrics (Prometheus / OpenTelemetry Metrics)
+**Status**: Implemented using standard Prometheus client (`github.com/prometheus/client_golang`) in `server/internal/platform/metrics` and middleware `server/internal/platform/middleware/metrics.go`.
 
-**Missing**:
-- No `MeterProvider` initialized.
-- No HTTP request counter/histogram (request count, latency distribution, error rate).
-- No database pool metrics (active connections, wait count).
-- No business metrics (short URLs created per minute, redirect rate, auth failure rate).
-- No `/metrics` endpoint (Prometheus scrape target).
-
-**Recommended approach**: `go.opentelemetry.io/otel/metric` + Prometheus exporter (`prometheus/client_golang`).
+**Implemented**:
+- Standard Prometheus registry and collectors initialized.
+- HTTP metrics middleware capturing request counter (`http_requests_total`), duration histogram (`http_request_duration_seconds`), and in-flight request gauge (`http_requests_in_flight`) using Chi parameterized route patterns to keep low label cardinality.
+- Database pool metrics (`db_pool_total_conns`, `db_pool_acquired_conns`, `db_pool_idle_conns`, `db_pool_max_conns`, `db_pool_wait_count_total`, `db_pool_wait_duration_seconds_total`) sampled periodically from `pgxpool.Pool`.
+- Business and performance metrics (`short_urls_created_total`, `url_redirects_total`, `auth_attempts_total`, `cache_hits_total`, `cache_misses_total`).
+- Prometheus scrape target exposed at `GET /metrics`.
 
 ---
 
@@ -347,7 +345,7 @@ tp := otel.GetTracerProvider()
 | 🔴 **Critical** | Product | Inactive/Invalid URL frontend page & redirect | ✅ Completed |
 | 🔴 **Critical** | Deployment | CI Pipeline via GitHub Actions | ✅ Completed |
 | 🟠 **High** | Observability | Distributed Tracing (OpenTelemetry) | ❌ Missing |
-| 🟠 **High** | Observability | Metrics instrumentation & `/metrics` endpoint | ❌ Missing |
+| 🟠 **High** | Observability | Metrics instrumentation & `/metrics` endpoint | ✅ Completed |
 | 🟠 **High** | Testing | Service unit tests with mocked DB (`gomock`) | ❌ Missing |
 | 🟠 **High** | Deployment | Continuous Deployment (CD) & K8s/Helm manifests | ❌ Missing |
 | 🟡 **Medium** | Database | DB Read Replicas & Connection Pooling (`pgBouncer`) | ❌ Missing |

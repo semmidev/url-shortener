@@ -1,0 +1,51 @@
+# ─── Stage 0: Build ───────────────────────────────────────────────────────────
+FROM golang:1.26-alpine AS builder
+ARG VERSION=1.0.0
+ARG BUILD_TIME=unknown
+ARG GIT_COMMIT=unknown
+
+WORKDIR /app
+
+# Install ca-certificates for HTTPS and git/tzdata
+RUN apk add --no-cache git ca-certificates tzdata
+
+# Cache deps separately from source
+COPY go.mod go.sum ./
+RUN --mount=type=cache,target=/go/pkg/mod go mod download
+
+COPY . .
+
+# Build fully static worker binary with version metadata injection
+RUN --mount=type=cache,target=/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache/go-build \
+    CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
+    go build -ldflags="-s -w -extldflags '-static' \
+    -X 'github.com/semmidev/url-shortener/server/internal/config.Version=${VERSION}' \
+    -X 'github.com/semmidev/url-shortener/server/internal/config.BuildTime=${BUILD_TIME}' \
+    -X 'github.com/semmidev/url-shortener/server/internal/config.GitCommit=${GIT_COMMIT}'" \
+    -trimpath \
+    -o /bin/worker ./server/cmd/worker
+
+# Create non-root user/group with predictable UID/GID
+RUN addgroup -g 10001 -S appgroup && \
+    adduser -u 10001 -S appuser -G appgroup
+
+# ─── Stage 1: Minimal Production Runtime (scratch) ───────────────────────────
+FROM scratch
+
+# Copy TLS Certificates and Timezone data
+COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
+COPY --from=builder /usr/share/zoneinfo /usr/share/zoneinfo
+
+# Copy user/group entries for non-root execution
+COPY --from=builder /etc/passwd /etc/passwd
+COPY --from=builder /etc/group /etc/group
+
+WORKDIR /app
+
+# Copy compiled worker binary
+COPY --from=builder /bin/worker /app/worker
+
+USER appuser:appgroup
+
+ENTRYPOINT ["/app/worker"]

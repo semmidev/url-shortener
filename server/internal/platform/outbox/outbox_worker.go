@@ -22,10 +22,15 @@ type ClickRecorder interface {
 	RecordClick(ctx context.Context, urlID uuid.UUID, ip, userAgent, referrer string)
 }
 
+type LockAcquirer interface {
+	AcquireLock(ctx context.Context, key string, ttl time.Duration) (bool, error)
+}
+
 type OutboxWorker struct {
 	store     db.Store
 	publisher eventbus.EventPublisher
 	recorder  ClickRecorder
+	lock      LockAcquirer
 }
 
 func NewOutboxWorker(store db.Store, publisher eventbus.EventPublisher, recorder ClickRecorder) *OutboxWorker {
@@ -33,6 +38,12 @@ func NewOutboxWorker(store db.Store, publisher eventbus.EventPublisher, recorder
 		store:     store,
 		publisher: publisher,
 		recorder:  recorder,
+	}
+}
+
+func (w *OutboxWorker) SetLockAcquirer(l LockAcquirer) {
+	if w != nil {
+		w.lock = l
 	}
 }
 
@@ -66,6 +77,13 @@ func (w *OutboxWorker) Start(ctx context.Context) {
 }
 
 func (w *OutboxWorker) processPendingEvents(ctx context.Context) {
+	if w.lock != nil {
+		locked, err := w.lock.AcquireLock(ctx, "lock:cron:outbox_worker", 400*time.Millisecond)
+		if err != nil || !locked {
+			return
+		}
+	}
+
 	events, err := w.store.GetPendingOutboxEvents(ctx, 50)
 	if err != nil || len(events) == 0 {
 		return

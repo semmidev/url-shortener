@@ -14,12 +14,19 @@ import (
 	"github.com/semmidev/url-shortener/server/internal/config"
 	"github.com/semmidev/url-shortener/server/internal/platform/apperr"
 	"github.com/semmidev/url-shortener/server/internal/platform/cache"
+	"github.com/semmidev/url-shortener/server/internal/worker"
 )
 
+type MetricsRecorder interface {
+	RecordShortURLCreated(status string)
+}
+
 type Service struct {
-	store db.Store
-	cfg   config.Config
-	cache cache.Cache
+	store           db.Store
+	cfg             config.Config
+	cache           cache.Cache
+	metrics         MetricsRecorder
+	taskDistributor worker.TaskDistributor
 }
 
 func NewService(store db.Store, cfg config.Config, c cache.Cache) *Service {
@@ -27,6 +34,18 @@ func NewService(store db.Store, cfg config.Config, c cache.Cache) *Service {
 		store: store,
 		cfg:   cfg,
 		cache: c,
+	}
+}
+
+func (s *Service) SetMetricsRecorder(m MetricsRecorder) {
+	if s != nil {
+		s.metrics = m
+	}
+}
+
+func (s *Service) SetTaskDistributor(distributor worker.TaskDistributor) {
+	if s != nil {
+		s.taskDistributor = distributor
 	}
 }
 
@@ -104,6 +123,9 @@ func (s *Service) Create(ctx context.Context, req CreateURLRequest) (*URLRespons
 	}
 
 	res := s.toResponse(u)
+	if s.metrics != nil {
+		s.metrics.RecordShortURLCreated("success")
+	}
 	return &res, nil
 }
 
@@ -350,7 +372,19 @@ func (s *Service) StartExpirationCleanupWorker(ctx context.Context, interval tim
 				ticker.Stop()
 				return
 			case <-ticker.C:
-				_, _ = s.DeactivateExpiredURLs(ctx)
+				if s.cache != nil {
+					locked, err := s.cache.AcquireLock(ctx, "lock:cron:deactivate_expired_urls", 55*time.Second)
+					if err != nil || !locked {
+						continue
+					}
+				}
+				if s.taskDistributor != nil {
+					_ = s.taskDistributor.DistributeTaskDeactivateExpiredURLs(ctx, &worker.PayloadDeactivateExpiredURLs{
+						BatchSize: 100,
+					})
+				} else {
+					_, _ = s.DeactivateExpiredURLs(ctx)
+				}
 			}
 		}
 	}()

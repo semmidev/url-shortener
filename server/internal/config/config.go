@@ -43,6 +43,11 @@ type Config struct {
 	DBMaxConnIdleTime time.Duration `mapstructure:"DB_MAX_CONN_IDLE_TIME"`
 	DBMaxConnLifetime time.Duration `mapstructure:"DB_MAX_CONN_LIFETIME"`
 
+	// Worker Specific Settings
+	WorkerDBMaxConns  int32 `mapstructure:"WORKER_DB_MAX_CONNS"`
+	WorkerDBMinConns  int32 `mapstructure:"WORKER_DB_MIN_CONNS"`
+	WorkerConcurrency int   `mapstructure:"WORKER_CONCURRENCY"`
+
 	// JWT Security & Token Settings
 	JWTSecret            string        `mapstructure:"JWT_SECRET"`
 	AccessTokenDuration  time.Duration `mapstructure:"JWT_ACCESS_TOKEN_DURATION"`
@@ -108,6 +113,10 @@ func LoadConfig(path string) (config Config, err error) {
 	viper.SetDefault("DB_MIN_CONNS", 5)
 	viper.SetDefault("DB_MAX_CONN_IDLE_TIME", "15m")
 	viper.SetDefault("DB_MAX_CONN_LIFETIME", "1h")
+
+	viper.SetDefault("WORKER_DB_MAX_CONNS", 10)
+	viper.SetDefault("WORKER_DB_MIN_CONNS", 2)
+	viper.SetDefault("WORKER_CONCURRENCY", 10)
 
 	viper.SetDefault("JWT_SECRET", "super-secret-32-byte-key-for-jwt-signing!")
 	viper.SetDefault("JWT_ACCESS_TOKEN_DURATION", "15m")

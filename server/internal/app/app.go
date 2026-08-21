@@ -13,6 +13,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	chimw "github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
+	"github.com/hibiken/asynq"
 	"github.com/jackc/pgx/v5/pgxpool"
 	httpSwagger "github.com/swaggo/http-swagger/v2"
 
@@ -24,6 +25,7 @@ import (
 	"github.com/semmidev/url-shortener/server/internal/platform/cache"
 	"github.com/semmidev/url-shortener/server/internal/platform/eventbus"
 	"github.com/semmidev/url-shortener/server/internal/platform/logger"
+	"github.com/semmidev/url-shortener/server/internal/platform/metrics"
 	customMw "github.com/semmidev/url-shortener/server/internal/platform/middleware"
 	"github.com/semmidev/url-shortener/server/internal/platform/outbox"
 	"github.com/semmidev/url-shortener/server/internal/platform/postgres"
@@ -32,6 +34,7 @@ import (
 	"github.com/semmidev/url-shortener/server/internal/url"
 	"github.com/semmidev/url-shortener/server/internal/user"
 	spaweb "github.com/semmidev/url-shortener/server/internal/web"
+	"github.com/semmidev/url-shortener/server/internal/worker"
 )
 
 func Run(cfg config.Config) error {
@@ -131,6 +134,13 @@ func BuildRouter(cfg config.Config, pool *pgxpool.Pool, appLogger *logger.Logger
 		return nil, fmt.Errorf("token maker initialization failed: %w", err)
 	}
 
+	// Initialize Prometheus Metrics Registry & Collectors
+	appMetrics := metrics.New()
+	if pool != nil {
+		appMetrics.StartDBMetricsCollector(context.Background(), pool, 15*time.Second)
+		appMetrics.CollectDBStats(pool)
+	}
+
 	// Initialize Redis Cache
 	var redisCache cache.Cache
 	if cfg.RedisAddress != "" {
@@ -139,6 +149,7 @@ func BuildRouter(cfg config.Config, pool *pgxpool.Pool, appLogger *logger.Logger
 			appLogger.Warn(context.Background(), "redis connection skipped/failed", "error", err)
 		} else {
 			appLogger.Info(context.Background(), "redis cache connected successfully", "address", cfg.RedisAddress)
+			rc.SetMetrics(appMetrics)
 			redisCache = rc
 		}
 	}
@@ -154,10 +165,27 @@ func BuildRouter(cfg config.Config, pool *pgxpool.Pool, appLogger *logger.Logger
 		eventPub = natsPub
 	}
 
+	// Initialize Asynq Task Distributor
+	var taskDistributor worker.TaskDistributor
+	if cfg.RedisAddress != "" {
+		taskDistributor = worker.NewRedisTaskDistributor(asynq.RedisClientOpt{
+			Addr:     cfg.RedisAddress,
+			Password: cfg.RedisPassword,
+			DB:       cfg.RedisDB,
+		}, appLogger)
+	}
+
 	// Initialize Services
 	userSvc := user.NewService(store, tokenMaker, cfg, appLogger, redisCache)
+	userSvc.SetMetricsRecorder(appMetrics)
+
 	urlSvc := url.NewService(store, cfg, redisCache)
+	urlSvc.SetMetricsRecorder(appMetrics)
+	if taskDistributor != nil {
+		urlSvc.SetTaskDistributor(taskDistributor)
+	}
 	urlSvc.StartExpirationCleanupWorker(context.Background(), 1*time.Minute)
+
 	analyticsSvc := analytics.NewService(store)
 	adminSvc := admin.NewService(store, appLogger, redisCache)
 
@@ -172,10 +200,15 @@ func BuildRouter(cfg config.Config, pool *pgxpool.Pool, appLogger *logger.Logger
 	urlH := url.NewHandler(urlSvc)
 	analyticsH := analytics.NewHandler(analyticsSvc)
 	adminH := admin.NewHandler(adminSvc)
+
 	redirectH := url.NewRedirectHandler(urlSvc, analyticsH, spaHandler)
+	redirectH.SetMetricsRecorder(appMetrics)
 
 	// Start Outbox Worker for async background event streaming
 	outboxWorker := outbox.NewOutboxWorker(store, eventPub, analyticsH)
+	if rc, ok := redisCache.(*cache.RedisCache); ok {
+		outboxWorker.SetLockAcquirer(rc)
+	}
 	outboxWorker.Start(context.Background())
 
 	// Setup Router & Middleware
@@ -195,9 +228,13 @@ func BuildRouter(cfg config.Config, pool *pgxpool.Pool, appLogger *logger.Logger
 	r.Use(chimw.RealIP)
 	r.Use(chimw.Recoverer)
 	r.Use(customMw.RequestTimeout(10 * time.Second))
+	r.Use(customMw.Metrics(appMetrics))
 	r.Use(customMw.WideEventLogging(appLogger))
 
 	authMw := customMw.Auth(tokenMaker)
+
+	// Public Prometheus Metrics Endpoint
+	r.Handle("/metrics", appMetrics.Handler())
 
 	// Public Scalar API Reference UI Endpoint (Embedded HTML template from server/docs/scalar.html)
 	scalarHandler := func(w http.ResponseWriter, r *http.Request) {

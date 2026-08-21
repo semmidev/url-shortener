@@ -17,12 +17,27 @@ type Cache interface {
 	Set(ctx context.Context, key string, value interface{}, ttl time.Duration) error
 	Delete(ctx context.Context, keys ...string) error
 	Incr(ctx context.Context, key string, ttl time.Duration) (int64, error)
+	AcquireLock(ctx context.Context, key string, ttl time.Duration) (bool, error)
 	Close() error
+}
+
+// MetricsRecorder defines the interface for recording cache metrics.
+type MetricsRecorder interface {
+	RecordCacheHit(cacheType string)
+	RecordCacheMiss(cacheType string)
 }
 
 // RedisCache is a Redis implementation of Cache.
 type RedisCache struct {
-	client *redis.Client
+	client  *redis.Client
+	metrics MetricsRecorder
+}
+
+// SetMetrics sets the metrics recorder for cache hit/miss tracking.
+func (r *RedisCache) SetMetrics(m MetricsRecorder) {
+	if r != nil {
+		r.metrics = m
+	}
 }
 
 // NewRedisCache creates a new RedisCache client connection.
@@ -52,23 +67,38 @@ var ErrCacheMiss = errors.New("cache: key not found")
 
 func (r *RedisCache) Get(ctx context.Context, key string, dest interface{}) error {
 	if r == nil || r.client == nil {
+		if r != nil && r.metrics != nil {
+			r.metrics.RecordCacheMiss("redis")
+		}
 		return ErrCacheMiss
 	}
 
 	val, err := r.client.Get(ctx, key).Result()
 	if errors.Is(err, redis.Nil) {
+		if r.metrics != nil {
+			r.metrics.RecordCacheMiss("redis")
+		}
 		return ErrCacheMiss
 	}
 	if err != nil {
 		slog.WarnContext(ctx, "redis get error", "key", key, "error", err)
+		if r.metrics != nil {
+			r.metrics.RecordCacheMiss("redis")
+		}
 		return ErrCacheMiss
 	}
 
 	if err := json.Unmarshal([]byte(val), dest); err != nil {
 		slog.WarnContext(ctx, "redis unmarshal error", "key", key, "error", err)
+		if r.metrics != nil {
+			r.metrics.RecordCacheMiss("redis")
+		}
 		return ErrCacheMiss
 	}
 
+	if r.metrics != nil {
+		r.metrics.RecordCacheHit("redis")
+	}
 	return nil
 }
 
@@ -120,6 +150,20 @@ func (r *RedisCache) Incr(ctx context.Context, key string, ttl time.Duration) (i
 	}
 
 	return count, nil
+}
+
+func (r *RedisCache) AcquireLock(ctx context.Context, key string, ttl time.Duration) (bool, error) {
+	if r == nil || r.client == nil {
+		return true, nil
+	}
+
+	ok, err := r.client.SetNX(ctx, key, "locked", ttl).Result()
+	if err != nil {
+		slog.WarnContext(ctx, "redis setnx lock error", "key", key, "error", err)
+		return false, err
+	}
+
+	return ok, nil
 }
 
 func (r *RedisCache) Close() error {

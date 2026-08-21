@@ -21,10 +21,15 @@ type AnalyticsRecorder interface {
 	RecordClick(ctx context.Context, urlID uuid.UUID, ip, userAgent, referrer string)
 }
 
+type RedirectMetricsRecorder interface {
+	RecordURLRedirect(status string)
+}
+
 type RedirectHandler struct {
 	svc          *Service
 	analyticsRec AnalyticsRecorder
 	spaHandler   http.Handler
+	metrics      RedirectMetricsRecorder
 }
 
 func NewRedirectHandler(svc *Service, analyticsRec AnalyticsRecorder, spaHandler http.Handler) *RedirectHandler {
@@ -32,6 +37,12 @@ func NewRedirectHandler(svc *Service, analyticsRec AnalyticsRecorder, spaHandler
 		svc:          svc,
 		analyticsRec: analyticsRec,
 		spaHandler:   spaHandler,
+	}
+}
+
+func (h *RedirectHandler) SetMetricsRecorder(m RedirectMetricsRecorder) {
+	if h != nil {
+		h.metrics = m
 	}
 }
 
@@ -95,21 +106,30 @@ func (h *RedirectHandler) Redirect(w http.ResponseWriter, r *http.Request) {
 
 	res, err := h.svc.GetByCode(r.Context(), GetURLByCodeRequest{Code: shortCode})
 	if err != nil {
+		reason := "not_found"
+		errMsg := err.Error()
+		if strings.Contains(errMsg, "inactive") {
+			reason = "inactive"
+		} else if strings.Contains(errMsg, "expired") {
+			reason = "expired"
+		}
+
+		if h.metrics != nil {
+			h.metrics.RecordURLRedirect(reason)
+		}
+
 		// If browser HTML page navigation (Accept: text/html), redirect to the frontend invalid page.
 		if h.spaHandler != nil && strings.Contains(r.Header.Get("Accept"), "text/html") {
-			reason := "not_found"
-			errMsg := err.Error()
-			if strings.Contains(errMsg, "inactive") {
-				reason = "inactive"
-			} else if strings.Contains(errMsg, "expired") {
-				reason = "expired"
-			}
 			redirectURL := fmt.Sprintf("/invalid-url?code=%s&reason=%s", url.QueryEscape(shortCode), reason)
 			http.Redirect(w, r, redirectURL, http.StatusTemporaryRedirect)
 			return
 		}
 		web.Error(w, r, err)
 		return
+	}
+
+	if h.metrics != nil {
+		h.metrics.RecordURLRedirect("success")
 	}
 
 	logger.Enrich(r.Context(), "target_url", res.OriginalURL)

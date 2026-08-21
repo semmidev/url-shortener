@@ -38,12 +38,17 @@ const (
 	emailLockoutWindow    = 15 * time.Minute // lockout window duration
 )
 
+type MetricsRecorder interface {
+	RecordAuthAttempt(action, status string)
+}
+
 type Service struct {
 	store         db.Store
 	tokenMaker    *token.JWTMaker
 	cfg           config.Config
 	appLogger     *logger.Logger
 	cache         cache.Cache
+	metrics       MetricsRecorder
 	googleBreaker *breaker.CircuitBreaker
 	oneTimeCodes  sync.Map // fallback in-memory store
 	emailAttempts sync.Map // fallback in-memory store
@@ -62,6 +67,12 @@ func NewService(store db.Store, tokenMaker *token.JWTMaker, cfg config.Config, a
 	}
 	go s.cleanupExpiredOneTimeCodes()
 	return s
+}
+
+func (s *Service) SetMetricsRecorder(m MetricsRecorder) {
+	if s != nil {
+		s.metrics = m
+	}
 }
 
 func (s *Service) cleanupExpiredOneTimeCodes() {
@@ -199,7 +210,14 @@ func (s *Service) Register(ctx context.Context, req RegisterRequest) (*LoginResp
 		return txErr
 	})
 	if err != nil {
+		if s.metrics != nil {
+			s.metrics.RecordAuthAttempt("register", "failure")
+		}
 		return nil, apperr.MapDBError(err, "failed to register user", "email is already registered")
+	}
+
+	if s.metrics != nil {
+		s.metrics.RecordAuthAttempt("register", "success")
 	}
 
 	s.appLogger.Audit(ctx, logger.AuditActionUserRegister,
@@ -216,6 +234,9 @@ func (s *Service) Login(ctx context.Context, req LoginRequest) (*LoginResponse, 
 
 	// Per-email brute-force protection: check if email is locked out
 	if s.isEmailLocked(ctx, req.Email) {
+		if s.metrics != nil {
+			s.metrics.RecordAuthAttempt("login", "failure")
+		}
 		s.appLogger.Audit(ctx, logger.AuditActionUserLoginFailed,
 			"user.email", req.Email,
 			"reason", "account_locked_out",
@@ -225,21 +246,33 @@ func (s *Service) Login(ctx context.Context, req LoginRequest) (*LoginResponse, 
 
 	user, err := s.store.GetUserByEmail(ctx, req.Email)
 	if err != nil {
+		if s.metrics != nil {
+			s.metrics.RecordAuthAttempt("login", "failure")
+		}
 		s.recordFailedLogin(ctx, req.Email)
 		s.appLogger.Audit(ctx, logger.AuditActionUserLoginFailed, "user.email", req.Email, "reason", "user_not_found")
 		return nil, apperr.MapDBError(err, "invalid email or password", "")
 	}
 
 	if user.IsSuspended {
+		if s.metrics != nil {
+			s.metrics.RecordAuthAttempt("login", "failure")
+		}
 		s.appLogger.Audit(ctx, logger.AuditActionUserLoginFailed, "user.id", user.ID.String(), "reason", "account_suspended")
 		return nil, apperr.Forbidden("akun Anda ditangguhkan (suspended), silakan hubungi dukungan")
 	}
 
 	if !user.PasswordHash.Valid || user.PasswordHash.String == "" {
+		if s.metrics != nil {
+			s.metrics.RecordAuthAttempt("login", "failure")
+		}
 		return nil, apperr.Unauthorized("this account uses Google Login. Please sign in with Google")
 	}
 
 	if err := crypto.CheckPassword(req.Password, user.PasswordHash.String); err != nil {
+		if s.metrics != nil {
+			s.metrics.RecordAuthAttempt("login", "failure")
+		}
 		locked := s.recordFailedLogin(ctx, req.Email)
 		reason := "wrong_password"
 		if locked {
@@ -256,7 +289,14 @@ func (s *Service) Login(ctx context.Context, req LoginRequest) (*LoginResponse, 
 	s.resetEmailAttempts(ctx, req.Email)
 	resp, err := s.createSessionAndTokensWithQuerier(ctx, s.store, user, req.UserAgent, req.ClientIP)
 	if err != nil {
+		if s.metrics != nil {
+			s.metrics.RecordAuthAttempt("login", "failure")
+		}
 		return nil, err
+	}
+
+	if s.metrics != nil {
+		s.metrics.RecordAuthAttempt("login", "success")
 	}
 	s.appLogger.Audit(ctx, logger.AuditActionUserLogin,
 		"user.id", user.ID.String(),

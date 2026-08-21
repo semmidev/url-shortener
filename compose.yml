@@ -34,6 +34,39 @@ services:
     networks:
       - url_shortener_network
 
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+      args:
+        VERSION: ${VERSION:-1.0.0}
+        BUILD_TIME: ${BUILD_TIME:-unknown}
+        GIT_COMMIT: ${GIT_COMMIT:-unknown}
+    container_name: url-shortener-worker
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    env_file:
+      - path: .env
+        required: true
+    environment:
+      APP_ENV: production
+      DB_SOURCE: postgres://${DB_USER:-postgres}:${DB_PASSWORD:-postgres}@postgres:5432/${DB_NAME:-urlshortener}?sslmode=disable
+      REDIS_ADDRESS: redis:6379
+      WORKER_DB_MAX_CONNS: ${WORKER_DB_MAX_CONNS:-10}
+      WORKER_DB_MIN_CONNS: ${WORKER_DB_MIN_CONNS:-2}
+      WORKER_CONCURRENCY: ${WORKER_CONCURRENCY:-10}
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "5"
+    networks:
+      - url_shortener_network
+
   postgres:
     image: postgres:18-alpine
     container_name: url-shortener-postgres

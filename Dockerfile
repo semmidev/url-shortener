@@ -28,7 +28,7 @@ RUN --mount=type=cache,target=/go/pkg/mod go mod download
 COPY . .
 COPY --from=frontend-builder /app/web/dist ./server/internal/web/dist
 
-# Build fully static binary with version metadata injection
+# Build fully static binaries with version metadata injection
 RUN --mount=type=cache,target=/go/pkg/mod \
     --mount=type=cache,target=/root/.cache/go-build \
     CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
@@ -38,6 +38,16 @@ RUN --mount=type=cache,target=/go/pkg/mod \
     -X 'github.com/semmidev/url-shortener/server/internal/config.GitCommit=${GIT_COMMIT}'" \
     -trimpath \
     -o /bin/api ./server/cmd/api
+
+RUN --mount=type=cache,target=/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache/go-build \
+    CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
+    go build -ldflags="-s -w -extldflags '-static' \
+    -X 'github.com/semmidev/url-shortener/server/internal/config.Version=${VERSION}' \
+    -X 'github.com/semmidev/url-shortener/server/internal/config.BuildTime=${BUILD_TIME}' \
+    -X 'github.com/semmidev/url-shortener/server/internal/config.GitCommit=${GIT_COMMIT}'" \
+    -trimpath \
+    -o /bin/worker ./server/cmd/worker
 
 # Create non-root user/group with predictable UID/GID
 RUN addgroup -g 10001 -S appgroup && \
@@ -56,8 +66,9 @@ COPY --from=builder /etc/group /etc/group
 
 WORKDIR /app
 
-# Copy compiled API binary
+# Copy compiled API and worker binaries
 COPY --from=builder /bin/api /app/api
+COPY --from=builder /bin/worker /app/worker
 
 EXPOSE 8080
 

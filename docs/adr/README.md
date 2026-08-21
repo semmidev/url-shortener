@@ -28,6 +28,7 @@ This directory contains the Architecture Decision Records (ADRs) for the URL Sho
 | [backend-0018](backend-0018-request-timeout-propagation.md) | Request Timeout Propagation & Deadline Handling | Accepted | 2026-08-19 |
 | [backend-0019](backend-0019-admin-api-backoffice-rbac.md) | Admin API & Role-Based Access Control (RBAC) | Accepted | 2026-08-19 |
 | [backend-0020](backend-0020-comprehensive-cache-invalidation.md) | Comprehensive Cache Invalidation Across Deactivation, Expiry, and Admin Triggers | Accepted | 2026-08-19 |
+| [backend-0021](backend-0021-prometheus-metrics-instrumentation.md) | Prometheus Metrics Instrumentation & `/metrics` Scrape Endpoint | Accepted | 2026-08-21 |
 
 ### 🎨 Frontend (`frontend-*`)
 
@@ -42,6 +43,7 @@ This directory contains the Architecture Decision Records (ADRs) for the URL Sho
 | :--- | :--- | :--- | :--- |
 | [infra-0001](infra-0001-developer-experience-tooling.md) | Developer Experience & Tooling (Air, Pre-commit, Seed) | Accepted | 2026-08-19 |
 | [infra-0002](infra-0002-release-driven-cd-and-semver-automation.md) | Release-Driven Continuous Deployment & Semantic Versioning Automation | Accepted | 2026-08-20 |
+| [infra-0003](infra-0003-asynq-background-worker-and-task-deduplication.md) | Asynq Background Task Worker, Dockerfile.worker, & Redis Task Deduplication | Accepted | 2026-08-21 |
 
 ### 🔒 Security (`security-*`)
 
