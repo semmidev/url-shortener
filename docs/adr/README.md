@@ -36,6 +36,7 @@ This directory contains the Architecture Decision Records (ADRs) for the URL Sho
 | :--- | :--- | :--- | :--- |
 | [frontend-0001](frontend-0001-single-binary-spa-embedding.md) | Single-Binary SPA Embedding with Go `embed.FS` | Accepted | 2026-08-19 |
 | [frontend-0002](frontend-0002-browser-html-navigation-redirection.md) | Browser HTML Navigation Redirection for Inactive and Expired Short URLs | Accepted | 2026-08-19 |
+| [frontend-0003](frontend-0003-global-progress-indicator-and-debounced-search.md) | Global Progress Loading Indicator & Debounced Search Inputs | Accepted | 2026-08-21 |
 
 ### 🛠️ Infrastructure & DevEx (`infra-*`)
 
@@ -52,6 +53,7 @@ This directory contains the Architecture Decision Records (ADRs) for the URL Sho
 | :--- | :--- | :--- | :--- |
 | [security-0001](security-0001-http-security-headers-hardening-csp.md) | HTTP Security Headers Hardening & Route-Tailored Content Security Policy (CSP) | Accepted | 2026-08-19 |
 | [security-0002](security-0002-security-audit-logging.md) | Security Audit Logging | Accepted | 2026-08-19 |
+| [security-0003](security-0003-oauth-account-linking-and-password-governance.md) | OAuth Account Linking & Password Governance | Accepted | 2026-08-21 |
 
 ### 🧪 Testing (`testing-*`)
 
