@@ -3,6 +3,7 @@ package middleware
 import (
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -10,7 +11,7 @@ import (
 )
 
 // Metrics returns a chi HTTP middleware that records request counts, latency distributions, and active in-flight requests.
-// It uses Chi route patterns (e.g. /api/v1/urls/{id}) to maintain low label cardinality.
+// It only tracks API routes (starting with /api) and uses Chi route patterns to maintain low label cardinality.
 func Metrics(m *metrics.Metrics) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -19,8 +20,8 @@ func Metrics(m *metrics.Metrics) func(http.Handler) http.Handler {
 				return
 			}
 
-			// Don't record metrics for the Prometheus scrape endpoint itself
-			if r.URL.Path == "/metrics" {
+			// Only track API endpoints under /api; skip static SPA assets, embedded UI routes, docs, etc.
+			if !strings.HasPrefix(r.URL.Path, "/api") {
 				next.ServeHTTP(w, r)
 				return
 			}
