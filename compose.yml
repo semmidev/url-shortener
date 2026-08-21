@@ -11,7 +11,7 @@ services:
         GIT_COMMIT: ${GIT_COMMIT:-unknown}
     container_name: url-shortener-api
     depends_on:
-      postgres:
+      pgbouncer:
         condition: service_healthy
       redis:
         condition: service_healthy
@@ -20,7 +20,8 @@ services:
         required: true
     environment:
       APP_ENV: production
-      DB_SOURCE: postgres://${DB_USER:-postgres}:${DB_PASSWORD:-postgres}@postgres:5432/${DB_NAME:-urlshortener}?sslmode=disable
+      DB_SOURCE: postgres://${DB_USER:-postgres}:${DB_PASSWORD:-postgres}@pgbouncer:6432/${DB_NAME:-urlshortener}?sslmode=disable
+      DB_PGBOUNCER_ENABLED: "true"
       REDIS_ADDRESS: redis:6379
       MIGRATION_URL: file://server/db/migration
     restart: unless-stopped
@@ -44,7 +45,7 @@ services:
         GIT_COMMIT: ${GIT_COMMIT:-unknown}
     container_name: url-shortener-worker
     depends_on:
-      postgres:
+      pgbouncer:
         condition: service_healthy
       redis:
         condition: service_healthy
@@ -53,7 +54,8 @@ services:
         required: true
     environment:
       APP_ENV: production
-      DB_SOURCE: postgres://${DB_USER:-postgres}:${DB_PASSWORD:-postgres}@postgres:5432/${DB_NAME:-urlshortener}?sslmode=disable
+      DB_SOURCE: postgres://${DB_USER:-postgres}:${DB_PASSWORD:-postgres}@pgbouncer:6432/${DB_NAME:-urlshortener}?sslmode=disable
+      DB_PGBOUNCER_ENABLED: "true"
       REDIS_ADDRESS: redis:6379
       WORKER_DB_MAX_CONNS: ${WORKER_DB_MAX_CONNS:-10}
       WORKER_DB_MIN_CONNS: ${WORKER_DB_MIN_CONNS:-2}
