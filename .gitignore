@@ -15,6 +15,8 @@ coverage.out
 *.pem
 *.key
 *.crt
+server/db/pgbouncer/userlist.txt
+!server/db/pgbouncer/userlist.txt.example
 
 # ─── References & Local Docs ──────────────────────────────────────────────────
 references/

@@ -66,11 +66,12 @@ func Run(cfg config.Config) error {
 	)
 
 	pool, err := postgres.NewPool(ctx, postgres.Config{
-		Source:          cfg.DBSource,
-		MaxConns:        cfg.DBMaxConns,
-		MinConns:        cfg.DBMinConns,
-		MaxConnIdleTime: cfg.DBMaxConnIdleTime,
-		MaxConnLifetime: cfg.DBMaxConnLifetime,
+		Source:                cfg.DBSource,
+		MaxConns:              cfg.DBMaxConns,
+		MinConns:              cfg.DBMinConns,
+		MaxConnIdleTime:       cfg.DBMaxConnIdleTime,
+		MaxConnLifetime:       cfg.DBMaxConnLifetime,
+		DisableStatementCache: cfg.DBDisableStatementCache || cfg.DBPgBouncerEnabled,
 	})
 	if err != nil {
 		appLogger.Error(ctx, "database connection failed", "error", err)

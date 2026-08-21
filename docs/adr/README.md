@@ -44,6 +44,7 @@ This directory contains the Architecture Decision Records (ADRs) for the URL Sho
 | [infra-0001](infra-0001-developer-experience-tooling.md) | Developer Experience & Tooling (Air, Pre-commit, Seed) | Accepted | 2026-08-19 |
 | [infra-0002](infra-0002-release-driven-cd-and-semver-automation.md) | Release-Driven Continuous Deployment & Semantic Versioning Automation | Accepted | 2026-08-20 |
 | [infra-0003](infra-0003-asynq-background-worker-and-task-deduplication.md) | Asynq Background Task Worker, Dockerfile.worker, & Redis Task Deduplication | Accepted | 2026-08-21 |
+| [infra-0004](infra-0004-pgbouncer-connection-pooling.md) | PgBouncer Connection Pooling & `pgx/v5` Transaction-Pooling Compatibility | Accepted | 2026-08-21 |
 
 ### 🔒 Security (`security-*`)
 

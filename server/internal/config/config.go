@@ -37,11 +37,13 @@ type Config struct {
 	RateLimitPublicWindow   time.Duration `mapstructure:"RATE_LIMIT_PUBLIC_WINDOW"`
 
 	// Database Settings
-	DBSource          string        `mapstructure:"DB_SOURCE"`
-	DBMaxConns        int32         `mapstructure:"DB_MAX_CONNS"`
-	DBMinConns        int32         `mapstructure:"DB_MIN_CONNS"`
-	DBMaxConnIdleTime time.Duration `mapstructure:"DB_MAX_CONN_IDLE_TIME"`
-	DBMaxConnLifetime time.Duration `mapstructure:"DB_MAX_CONN_LIFETIME"`
+	DBSource                string        `mapstructure:"DB_SOURCE"`
+	DBMaxConns              int32         `mapstructure:"DB_MAX_CONNS"`
+	DBMinConns              int32         `mapstructure:"DB_MIN_CONNS"`
+	DBMaxConnIdleTime       time.Duration `mapstructure:"DB_MAX_CONN_IDLE_TIME"`
+	DBMaxConnLifetime       time.Duration `mapstructure:"DB_MAX_CONN_LIFETIME"`
+	DBPgBouncerEnabled      bool          `mapstructure:"DB_PGBOUNCER_ENABLED"`
+	DBDisableStatementCache bool          `mapstructure:"DB_DISABLE_STATEMENT_CACHE"`
 
 	// Worker Specific Settings
 	WorkerDBMaxConns  int32 `mapstructure:"WORKER_DB_MAX_CONNS"`
@@ -113,6 +115,8 @@ func LoadConfig(path string) (config Config, err error) {
 	viper.SetDefault("DB_MIN_CONNS", 5)
 	viper.SetDefault("DB_MAX_CONN_IDLE_TIME", "15m")
 	viper.SetDefault("DB_MAX_CONN_LIFETIME", "1h")
+	viper.SetDefault("DB_PGBOUNCER_ENABLED", false)
+	viper.SetDefault("DB_DISABLE_STATEMENT_CACHE", false)
 
 	viper.SetDefault("WORKER_DB_MAX_CONNS", 10)
 	viper.SetDefault("WORKER_DB_MIN_CONNS", 2)

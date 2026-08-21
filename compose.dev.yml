@@ -27,6 +27,37 @@ services:
     networks:
       - url_shortener_dev_network
 
+  pgbouncer:
+    image: edoburu/pgbouncer:latest
+    container_name: url-shortener-pgbouncer-dev
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DB_USER: ${POSTGRES_USER:-postgres}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      DB_HOST: postgres
+      DB_NAME: ${POSTGRES_DB:-urlshortener}
+    volumes:
+      - ./server/db/pgbouncer/pgbouncer.ini:/etc/pgbouncer/pgbouncer.ini:ro
+      - ./server/db/pgbouncer/userlist.txt.example:/etc/pgbouncer/userlist.txt:ro
+    ports:
+      - '6432:6432'
+    restart: unless-stopped
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -h 127.0.0.1 -p 6432 -U $${POSTGRES_USER:-postgres}']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: '3'
+    networks:
+      - url_shortener_dev_network
+
   redis:
     image: redis:7-alpine
     container_name: url-shortener-redis-dev

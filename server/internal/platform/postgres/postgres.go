@@ -5,16 +5,19 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 // Config holds PostgreSQL pool configuration options.
 type Config struct {
-	Source          string
-	MaxConns        int32
-	MinConns        int32
-	MaxConnIdleTime time.Duration
-	MaxConnLifetime time.Duration
+	Source                 string
+	MaxConns               int32
+	MinConns               int32
+	MaxConnIdleTime        time.Duration
+	MaxConnLifetime        time.Duration
+	StatementCacheCapacity int
+	DisableStatementCache  bool
 }
 
 // NewPool creates and validates a pgxpool.Pool connection to PostgreSQL using provided configuration.
@@ -35,6 +38,14 @@ func NewPool(ctx context.Context, cfg Config) (*pgxpool.Pool, error) {
 	}
 	if cfg.MaxConnLifetime > 0 {
 		poolConfig.MaxConnLifetime = cfg.MaxConnLifetime
+	}
+
+	// Disable server-side statement caching when operating in PgBouncer transaction-pooling mode
+	if cfg.DisableStatementCache || cfg.StatementCacheCapacity == 0 {
+		poolConfig.ConnConfig.DefaultQueryExecMode = pgx.QueryExecModeExec
+		poolConfig.ConnConfig.StatementCacheCapacity = 0
+	} else if cfg.StatementCacheCapacity > 0 {
+		poolConfig.ConnConfig.StatementCacheCapacity = cfg.StatementCacheCapacity
 	}
 
 	pool, err := pgxpool.NewWithConfig(ctx, poolConfig)

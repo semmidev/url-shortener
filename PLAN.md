@@ -136,14 +136,6 @@ tp := otel.GetTracerProvider()
 
 ---
 
-### ❌ Transient DB Query Retries
-**Status**: DB connection startup retry exists in `migration.go`, but runtime queries do not retry.
-
-**Missing**:
-- No automatic retry with exponential backoff on transient PostgreSQL network dropouts or deadlock errors (`40P01`).
-
----
-
 ### ✅ Request Timeout Propagation
 **Status**: Implemented via `RequestTimeout(10 * time.Second)` middleware in `server/internal/platform/middleware/timeout.go` and context error mapping in `apperr.MapDBError`.
 
@@ -200,12 +192,19 @@ tp := otel.GetTracerProvider()
 
 ---
 
+### ✅ Database Connection Pooling (`pgBouncer`)
+**Status**: Implemented via `server/db/pgbouncer/pgbouncer.ini`, `server/db/pgbouncer/userlist.txt`, and `pgbouncer` container service in `compose.yml` operating on port `6432`.
+
+- Configured transaction pooling mode (`pool_mode = transaction`) with optimal pool limits (`max_client_conn = 1000`, `default_pool_size = 20`, `max_db_connections = 50`).
+- Configured `pgxpool` with `DisableStatementCache = true` (`DB_PGBOUNCER_ENABLED=true`) to eliminate server-side prepared statement collisions under transaction pooling mode.
+
+---
+
 ### ❌ Database Read Replicas
 **Status**: Single connection pool pointing at primary PostgreSQL database.
 
 **Missing**:
 - No read/write pool splitting (writes to primary, read queries to read replicas).
-- No `pgBouncer` connection pooler configured in front of PostgreSQL for high concurrency.
 
 ---
 
@@ -348,7 +347,8 @@ tp := otel.GetTracerProvider()
 | 🟠 **High** | Observability | Metrics instrumentation & `/metrics` endpoint | ✅ Completed |
 | 🟠 **High** | Testing | Service unit tests with mocked DB (`gomock`) | ❌ Missing |
 | 🟠 **High** | Deployment | Continuous Deployment (CD) & K8s/Helm manifests | ❌ Missing |
-| 🟡 **Medium** | Database | DB Read Replicas & Connection Pooling (`pgBouncer`) | ❌ Missing |
+| 🟡 **Medium** | Database | Database Connection Pooling (`pgBouncer`) | ✅ Completed |
+| 🟡 **Medium** | Database | DB Read Replicas (Read/Write Splitting) | ❌ Missing |
 | 🟡 **Medium** | Database | Automated DB backups & Point-in-Time Recovery | ❌ Missing |
 | 🟡 **Medium** | Security | Centralized Secrets Manager integration | ❌ Missing |
 | 🟢 **Low** | Features | Custom multi-tenant domain support | ❌ Missing |

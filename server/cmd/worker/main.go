@@ -40,11 +40,12 @@ func main() {
 	)
 
 	pool, err := postgres.NewPool(ctx, postgres.Config{
-		Source:          cfg.DBSource,
-		MaxConns:        cfg.WorkerDBMaxConns,
-		MinConns:        cfg.WorkerDBMinConns,
-		MaxConnIdleTime: cfg.DBMaxConnIdleTime,
-		MaxConnLifetime: cfg.DBMaxConnLifetime,
+		Source:                cfg.DBSource,
+		MaxConns:              cfg.WorkerDBMaxConns,
+		MinConns:              cfg.WorkerDBMinConns,
+		MaxConnIdleTime:       cfg.DBMaxConnIdleTime,
+		MaxConnLifetime:       cfg.DBMaxConnLifetime,
+		DisableStatementCache: cfg.DBDisableStatementCache || cfg.DBPgBouncerEnabled,
 	})
 	if err != nil {
 		log.Fatalf("worker database connection failed: %v", err)
