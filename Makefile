@@ -10,11 +10,15 @@ MIGRATE_CMD ?= $(shell command -v migrate 2>/dev/null || echo "go run github.com
 
 BUN_CMD ?= $(shell command -v bun 2>/dev/null || echo "$(HOME)/.bun/bin/bun")
 
-.PHONY: run dev build build-frontend test test-integration test-all lint seed setup-hooks swagger sqlc new_migration migrateup migrateup1 migratedown migratedown1 createdb dropdb docker-up docker-down up-dev down-dev logs-dev clean
+.PHONY: run run-worker dev build build-frontend test test-integration test-all lint seed setup-hooks swagger sqlc new_migration migrateup migrateup1 migratedown migratedown1 createdb dropdb docker-up docker-down up-dev down-dev logs-dev clean
 
 # Run backend API locally (builds frontend first and embeds static dist)
 run: build-frontend
 	go run $(LDFLAGS) ./server/cmd/api
+
+# Run background outbox & async worker locally
+run-worker:
+	go run $(LDFLAGS) ./server/cmd/worker
 
 # Run backend API locally with Air live hot-reload
 dev:

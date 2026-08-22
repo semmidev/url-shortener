@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import client from '@/lib/client';
 import { toast } from 'sonner';
 import { useI18n } from '@/context/I18nContext';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ShieldCheckIcon, UserIcon } from 'lucide-react';
+import { getAdminUsers } from '@/features/admin/api';
 
 export default function AdminUsers() {
   const { t } = useI18n();
@@ -15,8 +15,8 @@ export default function AdminUsers() {
     const fetchUsers = async () => {
       setLoading(true);
       try {
-        const res = await client.get('/admin/users');
-        setUsers(res.data?.items || res.data || []);
+        const list = await getAdminUsers();
+        setUsers(list);
       } catch {
         toast.error('Failed to fetch system users');
       } finally {
@@ -63,13 +63,13 @@ export default function AdminUsers() {
                         <div className="text-xs text-muted-foreground">{u.email}</div>
                       </td>
                       <td className="py-3 px-2">
-                        <Badge variant={u.role === 'admin' ? 'default' : 'outline'} className="flex items-center gap-1 w-max">
+                        <Badge variant={u.role === 'admin' ? 'default' : 'secondary'} className="flex items-center gap-1 w-max">
                           {u.role === 'admin' ? <ShieldCheckIcon className="size-3" /> : <UserIcon className="size-3" />}
                           {u.role}
                         </Badge>
                       </td>
                       <td className="py-3 px-2">
-                        <Badge variant="secondary" className="text-[10px]">Active</Badge>
+                        <Badge variant="outline" className="text-[10px] border-emerald-500/30 text-emerald-600 bg-emerald-500/10">Active</Badge>
                       </td>
                       <td className="py-3 px-2 text-xs text-muted-foreground">
                         {u.created_at ? new Date(u.created_at).toLocaleDateString() : 'N/A'}

@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import client from '@/lib/client';
+import axios from 'axios';
 import {
   getUser,
   getIsAuthenticated,
@@ -7,11 +7,23 @@ import {
   setUser,
   clearTokens,
 } from '@/lib/tokenStorage';
+import {
+  loginRequest,
+  registerRequest,
+  logoutRequest,
+  getCurrentUser,
+  getGoogleAuthURL,
+} from '@/features/auth/api';
+import {
+  updateProfile as updateProfileApi,
+  changePassword as changePasswordApi,
+  unlinkGoogleAccount as unlinkGoogleApi,
+} from '@/features/account/api';
 
 export const useAuthStore = create((set) => ({
   user: getUser(),
   isAuthenticated: getIsAuthenticated(),
-  isLoading: true,   // only used for initialize() — auth hydration
+  isLoading: true,     // used for initialize() — auth hydration
   isSubmitting: false, // used for login/register form submissions
 
   initialize: async () => {
@@ -22,25 +34,38 @@ export const useAuthStore = create((set) => ({
     }
 
     try {
-      const res = await client.get('/auth/me');
+      const res = await getCurrentUser();
       const userData = res.data?.data || res.data;
       setUser(userData);
       set({ user: userData, isAuthenticated: true, isLoading: false });
     } catch {
-      clearTokens();
-      set({ user: null, isAuthenticated: false, isLoading: false });
+      // Fallback: If initial /auth/me call fails (e.g. Safari cookie timing), attempt refresh once
+      try {
+        const resRefresh = await axios.post('/api/v1/auth/refresh', {}, { withCredentials: true });
+        const refreshPayload = resRefresh.data?.data || resRefresh.data;
+        if (refreshPayload?.access_token) {
+          setTokens(refreshPayload.access_token, refreshPayload.refresh_token);
+        }
+        const res = await getCurrentUser();
+        const userData = res.data?.data || res.data;
+        setUser(userData);
+        set({ user: userData, isAuthenticated: true, isLoading: false });
+      } catch {
+        clearTokens();
+        set({ user: null, isAuthenticated: false, isLoading: false });
+      }
     }
   },
 
   login: async (email, password) => {
     set({ isSubmitting: true });
     try {
-      const res = await client.post('/auth/login', { email, password });
+      const res = await loginRequest({ email, password });
       const payload = res.data?.data || res.data;
-      const { user } = payload;
-      setTokens();
-      setUser(user);
+      const { user, access_token, refresh_token } = payload || {};
+      setUser(user, access_token, refresh_token);
       set({ user, isAuthenticated: true, isSubmitting: false });
+      await new Promise((r) => setTimeout(r, 50));
       return { success: true };
     } catch (err) {
       set({ isSubmitting: false });
@@ -50,19 +75,15 @@ export const useAuthStore = create((set) => ({
     }
   },
 
-  register: async (email, password, fullName) => {
+  register: async (data) => {
     set({ isSubmitting: true });
     try {
-      const res = await client.post('/auth/register', {
-        email,
-        password,
-        full_name: fullName,
-      });
+      const res = await registerRequest(data);
       const payload = res.data?.data || res.data;
-      const { user } = payload;
-      setTokens();
-      setUser(user);
+      const { user, access_token, refresh_token } = payload || {};
+      setUser(user, access_token, refresh_token);
       set({ user, isAuthenticated: true, isSubmitting: false });
+      await new Promise((r) => setTimeout(r, 50));
       return { success: true };
     } catch (err) {
       set({ isSubmitting: false });
@@ -74,9 +95,9 @@ export const useAuthStore = create((set) => ({
 
   logout: async () => {
     try {
-      await client.post('/auth/logout');
+      await logoutRequest();
     } catch {
-      // Ignore logout errors
+      // Ignore logout network errors
     } finally {
       clearTokens();
       set({ user: null, isAuthenticated: false });
@@ -85,8 +106,8 @@ export const useAuthStore = create((set) => ({
 
   updateProfile: async (fullName) => {
     try {
-      const res = await client.put('/auth/profile', { full_name: fullName });
-      const updatedUser = res.data?.data || res.data;
+      const data = await updateProfileApi(fullName);
+      const updatedUser = data?.data || data;
       setUser(updatedUser);
       set({ user: updatedUser });
       return { success: true };
@@ -99,10 +120,8 @@ export const useAuthStore = create((set) => ({
 
   changePassword: async (newPassword) => {
     try {
-      const res = await client.put('/auth/password', {
-        new_password: newPassword,
-      });
-      const updatedUser = res.data?.data || res.data;
+      const data = await changePasswordApi(newPassword);
+      const updatedUser = data?.data || data;
       setUser(updatedUser);
       set({ user: updatedUser });
       return { success: true };
@@ -115,8 +134,8 @@ export const useAuthStore = create((set) => ({
 
   unlinkGoogle: async () => {
     try {
-      const res = await client.delete('/auth/google');
-      const updatedUser = res.data?.data || res.data;
+      const data = await unlinkGoogleApi();
+      const updatedUser = data?.data || data;
       setUser(updatedUser);
       set({ user: updatedUser });
       return { success: true };
@@ -128,7 +147,7 @@ export const useAuthStore = create((set) => ({
 
   getGoogleLinkURL: async () => {
     try {
-      const res = await client.get('/auth/google/url');
+      const res = await getGoogleAuthURL();
       const url = res.data?.url || res.data?.data?.url;
       return { success: true, url };
     } catch (err) {

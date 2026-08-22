@@ -1,14 +1,11 @@
 import { useEffect, useRef } from "react"
-import { useDashboardStore } from "../features/dashboard/store"
+import { toast } from "sonner"
 
 const INTERVAL = 2 * 60 * 1000 // Check every 2 minutes
 const VERSION_URL = "/api/v1/app/version"
 
 export function useVersionCheck() {
-  const showToastRef = useRef(useDashboardStore((s) => s.showToast))
-
   useEffect(() => {
-    const toast = showToastRef.current
     let isChecking = false
 
     async function check() {
@@ -27,7 +24,7 @@ export function useVersionCheck() {
 
         if (newVer !== versionRef.current) {
           versionRef.current = newVer
-          toast("Versi baru tersedia. Memuat ulang...", "success")
+          toast.success("Versi baru tersedia. Memuat ulang...")
           setTimeout(async () => {
             try {
               if ("serviceWorker" in navigator) {

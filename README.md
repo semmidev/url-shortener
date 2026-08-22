@@ -19,11 +19,17 @@ A clean, modern, high-performance URL Shortener REST API backend written in Go u
 
 ### 📸 Previews
 
-#### 📊 UI
-![Dashboard Preview](docs/ss/dashboard.png)
+#### 📊 Dashboard Overview
+![Dashboard Preview](docs/ss/1-dashboard.png)
 
-#### 📖 Scalar API Documentation Reference UI
-![API Documentation Preview](docs/ss/docs.png)
+#### 🔗 Short URLs Management
+![Short URLs Preview](docs/ss/2-urls.png)
+
+#### 📖 Interactive Scalar API Reference
+![Scalar API Reference Preview](docs/ss/3-docs.png)
+
+#### ⚡ Swagger Interactive API Docs
+![Swagger API Docs Preview](docs/ss/4-docs.png)
 
 ---
 
@@ -62,7 +68,10 @@ make up-dev
 # 4. Run backend API server (runs database migrations automatically on startup)
 make run
 
-# 5. Stop local PostgreSQL container
+# 5. (In a separate terminal) Run background outbox & async worker
+make run-worker
+
+# 6. Stop local PostgreSQL container
 make down-dev
 ```
 

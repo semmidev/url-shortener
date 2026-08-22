@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
-import client from '@/lib/client';
+import { useParams, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { useI18n } from '@/context/I18nContext';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -11,16 +10,12 @@ import {
   CopyIcon,
   CheckIcon,
   QrCodeIcon,
-  ExternalLinkIcon,
   MousePointerClickIcon,
   UsersIcon,
-  GlobeIcon,
-  SmartphoneIcon,
   CalendarIcon,
-  ShieldCheckIcon,
-  AlertTriangleIcon,
 } from 'lucide-react';
 import QRCodeModal from '@/features/urls/components/QRCodeModal';
+import { getShortUrlByID, getShortUrlAnalytics } from '@/features/urls/api';
 
 export default function URLDetailPage() {
   const { t } = useI18n();
@@ -37,18 +32,13 @@ export default function URLDetailPage() {
     const fetchDetails = async () => {
       setLoading(true);
       try {
-        const [urlRes, analyticsRes] = await Promise.all([
-          client.get(`/urls/${id}`),
-          client.get(`/urls/${id}/analytics`).catch(() => null),
+        const [item, stats] = await Promise.all([
+          getShortUrlByID(id),
+          getShortUrlAnalytics(id).catch(() => null),
         ]);
 
-        const item = urlRes.data?.data || urlRes.data;
         setUrlData(item);
-
-        if (analyticsRes) {
-          const stats = analyticsRes.data?.data || analyticsRes.data;
-          setAnalytics(stats);
-        }
+        if (stats) setAnalytics(stats);
       } catch {
         toast.error('Failed to load link details');
       } finally {
@@ -85,8 +75,6 @@ export default function URLDetailPage() {
       </div>
     );
   }
-
-  const isHttps = urlData.original_url?.startsWith('https://');
 
   return (
     <div className="space-y-6">

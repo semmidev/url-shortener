@@ -70,19 +70,19 @@ export function NavUser({ user }) {
         <DropdownMenu>
           <DropdownMenuTrigger
             render={
-              <SidebarMenuButton size="lg" className="aria-expanded:bg-muted" />
+              <SidebarMenuButton size="lg" className="aria-expanded:bg-muted group-data-[collapsible=icon]:p-0! group-data-[collapsible=icon]:justify-center!" />
             }>
-            <Avatar className="size-8 rounded-lg">
+            <Avatar className="size-8 rounded-lg shrink-0">
               <AvatarImage src={user.avatar_url || user.avatar} alt={user.name} />
               <AvatarFallback className="rounded-lg bg-primary/10 text-primary font-bold font-mono text-xs">{initials}</AvatarFallback>
             </Avatar>
-            <div className="grid flex-1 text-left text-sm leading-tight gap-0.5">
+            <div className="grid flex-1 text-left text-sm leading-tight gap-0.5 group-data-[collapsible=icon]:hidden">
               <span className="truncate font-medium">{user.name}</span>
               <span className="truncate text-xs text-foreground/70">
                 {user.email}
               </span>
             </div>
-            <EllipsisVerticalIcon className="ml-auto size-4" />
+            <EllipsisVerticalIcon className="ml-auto size-4 shrink-0 group-data-[collapsible=icon]:hidden" />
           </DropdownMenuTrigger>
 
           <DropdownMenuContent

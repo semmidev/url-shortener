@@ -6,6 +6,7 @@ import { Eye, EyeOff, Loader2, AlertCircle, Lock, User, Mail, Sparkles, Sun, Moo
 import { useAuthStore } from '../store';
 import { useI18n } from '@/context/I18nContext';
 import { LanguageToggle } from '@/components/LanguageToggle';
+import { ThemePresetPicker } from '@/components/ThemePresetPicker';
 import client from '@/lib/client';
 
 function FloatingOrb({ className, size, delay }) {
@@ -23,7 +24,7 @@ function PasswordInput({ id, name, value, onChange, error, placeholder = '••
   const [show, setShow] = useState(false);
   return (
     <div className="relative group">
-      <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-neutral-400">
+      <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-muted-foreground">
         <Lock className="w-4 h-4" />
       </span>
       <input
@@ -135,8 +136,9 @@ export default function Register() {
           </Link>
           <div className="flex items-center gap-1.5">
             <LanguageToggle />
+            <ThemePresetPicker />
             <button
-              type="button" aria-label="Toggle theme"
+              type="button" aria-label={t("common.toggleDarkMode")}
               onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
               className="cursor-pointer p-2 text-muted-foreground hover:text-foreground transition-colors rounded-lg hover:bg-muted/70"
             >
@@ -184,18 +186,37 @@ export default function Register() {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.4, delay: 0.15 }}
-        className="flex-1 flex items-center justify-center p-8 md:p-16 bg-background/40 backdrop-blur-sm"
+        className="flex-1 flex flex-col items-center justify-center p-6 sm:p-8 md:p-16 bg-background/40 backdrop-blur-sm"
       >
-        <div className="w-full max-w-[420px] space-y-8">
+        <div className="w-full max-w-[420px] space-y-6 sm:space-y-8">
+          {/* Mobile top header bar */}
+          <div className="md:hidden flex items-center justify-between w-full pb-4 border-b border-border/60">
+            <Link to="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
+              <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-primary/10 border border-primary/20 text-primary">
+                <ZapIcon className="w-4 h-4" />
+              </div>
+              <span className="text-sm font-bold tracking-tight text-foreground">{t("nav.urlShortener")}</span>
+            </Link>
+            <div className="flex items-center gap-1">
+              <LanguageToggle />
+              <ThemePresetPicker />
+              <button
+                type="button"
+                aria-label={t("common.toggleDarkMode")}
+                onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+                className="cursor-pointer p-2 text-muted-foreground hover:text-foreground transition-colors rounded-lg hover:bg-muted/70"
+              >
+                {theme === "dark" ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+              </button>
+            </div>
+          </div>
+
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4, delay: 0.2 }}
             className="flex flex-col items-center md:items-start text-center md:text-left gap-1.5 mb-2"
           >
-            <div className="md:hidden flex items-center justify-center w-12 h-12 rounded-xl bg-primary/10 border border-primary/20 text-primary mb-4">
-              <ZapIcon className="w-6 h-6" />
-            </div>
             <h1 className="text-2xl font-bold tracking-tight text-foreground">{t("auth.registerTitle")}</h1>
             <p className="text-sm text-muted-foreground">{t("auth.registerSubtitle")}</p>
           </motion.div>
@@ -204,10 +225,10 @@ export default function Register() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4, delay: 0.3 }}
-            className="bg-card border border-border rounded-2xl p-8 shadow-sm space-y-5"
+            className="bg-card border border-border rounded-2xl p-6 sm:p-8 shadow-sm space-y-5"
           >
             {serverError && (
-              <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="flex items-start gap-2.5 rounded-xl border border-red-200 bg-red-50 p-4 text-xs text-red-700">
+              <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="flex items-start gap-2.5 rounded-xl border border-destructive/20 bg-destructive/10 p-4 text-xs text-destructive">
                 <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
                 <p className="leading-normal font-medium">{serverError}</p>
               </motion.div>
@@ -216,40 +237,40 @@ export default function Register() {
             <form onSubmit={handleSubmit} noValidate className="space-y-4">
               {/* Full Name */}
               <div className="space-y-1.5">
-                <label htmlFor="fullName" className="text-xs font-bold text-muted-foreground block">{t("auth.fullNameLabel")} <span className="text-red-500">*</span></label>
+                <label htmlFor="fullName" className="text-xs font-bold text-muted-foreground block">{t("auth.fullNameLabel")} <span className="text-destructive">*</span></label>
                 <div className="relative">
-                  <span className="absolute inset-y-0 left-0 flex items-center pl-3.5 text-neutral-400"><User className="w-4 h-4" /></span>
+                  <span className="absolute inset-y-0 left-0 flex items-center pl-3.5 text-muted-foreground"><User className="w-4 h-4" /></span>
                   <input id="fullName" name="fullName" type="text" autoComplete="name" autoFocus value={values.fullName} onChange={handleChange} placeholder="Alex Morgan"
                     className={`w-full pl-10 rounded-xl border bg-muted/50 hover:bg-muted/80 focus:bg-card px-3.5 py-2.5 text-sm text-foreground placeholder:text-muted-foreground outline-hidden transition-all focus:ring-2 focus:ring-primary/20 focus:border-primary ${errors.fullName ? 'border-destructive' : 'border-border'}`}
                   />
                 </div>
-                {errors.fullName && <p className="text-xs text-red-500 font-medium">{errors.fullName}</p>}
+                {errors.fullName && <p className="text-xs text-destructive font-medium">{errors.fullName}</p>}
               </div>
 
               {/* Email */}
               <div className="space-y-1.5">
-                <label htmlFor="email" className="text-xs font-bold text-muted-foreground block">{t("auth.emailLabel")} <span className="text-red-500">*</span></label>
+                <label htmlFor="email" className="text-xs font-bold text-muted-foreground block">{t("auth.emailLabel")} <span className="text-destructive">*</span></label>
                 <div className="relative">
-                  <span className="absolute inset-y-0 left-0 flex items-center pl-3.5 text-neutral-400"><Mail className="w-4 h-4" /></span>
+                  <span className="absolute inset-y-0 left-0 flex items-center pl-3.5 text-muted-foreground"><Mail className="w-4 h-4" /></span>
                   <input id="email" name="email" type="email" autoComplete="email" value={values.email} onChange={handleChange} placeholder="name@example.com"
                     className={`w-full pl-10 rounded-xl border bg-muted/50 hover:bg-muted/80 focus:bg-card px-3.5 py-2.5 text-sm text-foreground placeholder:text-muted-foreground outline-hidden transition-all focus:ring-2 focus:ring-primary/20 focus:border-primary ${errors.email ? 'border-destructive' : 'border-border'}`}
                   />
                 </div>
-                {errors.email && <p className="text-xs text-red-500 font-medium">{errors.email}</p>}
+                {errors.email && <p className="text-xs text-destructive font-medium">{errors.email}</p>}
               </div>
 
               {/* Password */}
               <div className="space-y-1.5">
-                <label htmlFor="password" className="text-xs font-bold text-muted-foreground block">{t("auth.passwordLabel")} <span className="text-red-500">*</span></label>
+                <label htmlFor="password" className="text-xs font-bold text-muted-foreground block">{t("auth.passwordLabel")} <span className="text-destructive">*</span></label>
                 <PasswordInput id="password" name="password" value={values.password} onChange={handleChange} error={errors.password} autoComplete="new-password" />
-                {errors.password && <p className="text-xs text-red-500 font-medium">{errors.password}</p>}
+                {errors.password && <p className="text-xs text-destructive font-medium">{errors.password}</p>}
               </div>
 
               {/* Confirm Password */}
               <div className="space-y-1.5">
-                <label htmlFor="confirmPassword" className="text-xs font-bold text-muted-foreground block">{t("account.confirmNewPassword")} <span className="text-red-500">*</span></label>
+                <label htmlFor="confirmPassword" className="text-xs font-bold text-muted-foreground block">{t("account.confirmNewPassword")} <span className="text-destructive">*</span></label>
                 <PasswordInput id="confirmPassword" name="confirmPassword" value={values.confirmPassword} onChange={handleChange} error={errors.confirmPassword} placeholder="••••••••" autoComplete="new-password" />
-                {errors.confirmPassword && <p className="text-xs text-red-500 font-medium">{errors.confirmPassword}</p>}
+                {errors.confirmPassword && <p className="text-xs text-destructive font-medium">{errors.confirmPassword}</p>}
               </div>
 
               <motion.button

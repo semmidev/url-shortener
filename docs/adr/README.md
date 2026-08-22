@@ -41,6 +41,7 @@ This directory contains the Architecture Decision Records (ADRs) for the URL Sho
 | [frontend-0003](frontend-0003-global-progress-indicator-and-debounced-search.md) | Global Progress Loading Indicator & Debounced Search Inputs | Accepted | 2026-08-21 |
 | [frontend-0004](frontend-0004-i18n-internationalization-and-language-toggle.md) | Comprehensive i18n Internationalization & Language Toggle | Accepted | 2026-08-22 |
 | [frontend-0005](frontend-0005-bun-runtime-package-manager-and-vite-bundling.md) | Bun Runtime, Package Manager, & Vite Bundling | Accepted | 2026-08-22 |
+| [frontend-0006](frontend-0006-domain-driven-feature-architecture.md) | Domain-Driven Feature Modular Architecture for React Frontend | Accepted | 2026-08-22 |
 
 ### 🛠️ Infrastructure & DevEx (`infra-*`)
 

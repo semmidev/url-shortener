@@ -41,17 +41,20 @@ export function AppSidebar({ ...props }) {
 
   return (
     <Sidebar collapsible="icon" {...props}>
-      <SidebarHeader className="h-(--header-height) justify-center border-b border-border/40 px-2 shrink-0">
-        <SidebarMenu>
+      <SidebarHeader className="h-(--header-height) justify-center border-b border-border/40 px-2 shrink-0 group-data-[collapsible=icon]:px-0! group-data-[collapsible=icon]:justify-center!">
+        <SidebarMenu className="group-data-[collapsible=icon]:items-center">
           <SidebarMenuItem>
             <SidebarMenuButton
-              className="data-[slot=sidebar-menu-button]:p-1.5!"
+              size="lg"
+              className="group-data-[collapsible=icon]:size-8! group-data-[collapsible=icon]:p-0! group-data-[collapsible=icon]:justify-center! hover:bg-sidebar-accent/50 transition-colors cursor-pointer"
               render={<button onClick={() => navigate("/dashboard")} />}
             >
-              <div className="flex aspect-square size-8 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground font-bold transition-all duration-200">
-                <ZapIcon className="size-5" />
+              <div className="flex aspect-square size-8 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground font-bold transition-transform duration-200 group-hover/menu-button:scale-105 shadow-xs">
+                <ZapIcon className="size-4 shrink-0" />
               </div>
-              <span className="text-base font-semibold">{t("nav.urlShortener")}</span>
+              <div className="grid flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden">
+                <span className="truncate font-bold text-foreground tracking-tight">{t("nav.urlShortener")}</span>
+              </div>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>

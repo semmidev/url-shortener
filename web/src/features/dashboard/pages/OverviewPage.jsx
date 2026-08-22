@@ -1,6 +1,5 @@
-import { useState, useEffect } from 'react';
-import { NavLink, Link } from 'react-router-dom';
-import client from '@/lib/client';
+import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
 import { useI18n } from '@/context/I18nContext';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -15,16 +14,36 @@ import {
   CopyIcon,
   CheckIcon,
   QrCodeIcon,
-  ExternalLinkIcon,
   ArrowRightIcon,
+  ArrowUpIcon,
+  ArrowDownIcon,
+  ArrowUpDownIcon,
 } from 'lucide-react';
 import QRCodeModal from '@/features/urls/components/QRCodeModal';
+import { getOverviewMetrics, quickCreateShortUrl } from '@/features/dashboard/api';
+
+function formatDate(dateStr) {
+  if (!dateStr) return '-';
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return '-';
+  return d.toLocaleDateString(undefined, {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
 
 export default function Overview() {
   const { t } = useI18n();
   const [stats, setStats] = useState({ totalUrls: 0, totalClicks: 0, activeUrls: 0 });
   const [recentUrls, setRecentUrls] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  // Sorting state for recent URLs table
+  const [sortBy, setSortBy] = useState('created_at');
+  const [sortDirection, setSortDirection] = useState('desc');
 
   // Quick shorten widget
   const [originalUrl, setOriginalUrl] = useState('');
@@ -39,9 +58,9 @@ export default function Overview() {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const res = await client.get('/urls?page=1&limit=5&sort_by=created_at&sort_direction=desc');
-      const items = res.data?.items || [];
-      const total = res.data?.meta?.total || items.length;
+      const res = await getOverviewMetrics();
+      const items = res?.items || [];
+      const total = res?.meta?.total || items.length;
 
       let clicks = 0;
       let active = 0;
@@ -73,11 +92,8 @@ export default function Overview() {
     setShortening(true);
 
     try {
-      const body = { original_url: originalUrl };
-      if (customCode.trim()) body.custom_code = customCode.trim();
-
-      const res = await client.post('/urls', body);
-      setCreatedUrl(res.data);
+      const data = await quickCreateShortUrl({ originalUrl, customCode });
+      setCreatedUrl(data);
       toast.success('Short URL created successfully!');
       setOriginalUrl('');
       setCustomCode('');
@@ -89,12 +105,56 @@ export default function Overview() {
     }
   };
 
-  const handleCopy = (urlStr) => {
-    navigator.clipboard.writeText(urlStr);
-    setCopied(true);
-    toast.success('Short URL copied to clipboard!');
-    setTimeout(() => setCopied(false), 2000);
+  const handleSort = (field) => {
+    if (sortBy === field) {
+      setSortDirection((prev) => (prev === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortBy(field);
+      setSortDirection('asc');
+    }
   };
+
+  const renderSortHeader = (label, field) => {
+    const isCurrent = sortBy === field;
+    return (
+      <button
+        type="button"
+        onClick={() => handleSort(field)}
+        className="flex items-center gap-1.5 hover:text-foreground transition-colors cursor-pointer font-semibold text-xs uppercase tracking-wider select-none group"
+      >
+        <span>{label}</span>
+        {isCurrent ? (
+          sortDirection === 'asc' ? (
+            <ArrowUpIcon className="size-3.5 text-primary shrink-0 transition-transform" />
+          ) : (
+            <ArrowDownIcon className="size-3.5 text-primary shrink-0 transition-transform" />
+          )
+        ) : (
+          <ArrowUpDownIcon className="size-3.5 text-muted-foreground/40 opacity-0 group-hover:opacity-100 shrink-0 transition-opacity" />
+        )}
+      </button>
+    );
+  };
+
+  const sortedRecentUrls = [...recentUrls].sort((a, b) => {
+    let valA = a[sortBy];
+    let valB = b[sortBy];
+
+    if (sortBy === 'created_at') {
+      valA = new Date(a.created_at || 0).getTime();
+      valB = new Date(b.created_at || 0).getTime();
+    } else if (sortBy === 'click_count') {
+      valA = a.click_count || 0;
+      valB = b.click_count || 0;
+    } else if (sortBy === 'title') {
+      valA = (a.title || a.short_code || '').toLowerCase();
+      valB = (b.title || b.short_code || '').toLowerCase();
+    }
+
+    if (valA < valB) return sortDirection === 'asc' ? -1 : 1;
+    if (valA > valB) return sortDirection === 'asc' ? 1 : -1;
+    return 0;
+  });
 
   return (
     <div className="space-y-6">
@@ -226,39 +286,79 @@ export default function Overview() {
           ) : recentUrls.length === 0 ? (
             <div className="py-8 text-center text-sm text-muted-foreground">{t("dashboard.noRecentUrls")}</div>
           ) : (
-            <div className="divide-y divide-border/40">
-              {recentUrls.map((item) => (
-                <div key={item.id} className="py-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-                  <div className="min-w-0 space-y-1">
-                    <div className="flex items-center gap-2">
-                      <span className="font-semibold text-sm">{item.title || item.short_code}</span>
-                      <Badge variant={item.is_active ? 'default' : 'secondary'} className="text-[10px]">
-                        {item.is_active ? t("common.active") : t("common.inactive")}
-                      </Badge>
-                    </div>
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <a href={item.short_url} target="_blank" rel="noreferrer" className="text-primary hover:underline font-mono">
-                        {item.short_url}
-                      </a>
-                      <span>•</span>
-                      <span className="truncate max-w-xs">{item.original_url}</span>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-3 shrink-0">
-                    <div className="text-right">
-                      <div className="text-sm font-bold">{item.click_count || 0}</div>
-                      <div className="text-[10px] text-muted-foreground">{t("dashboard.clicks")}</div>
-                    </div>
-                    <Button size="sm" variant="ghost" onClick={() => handleCopy(item.short_url)}>
-                      <CopyIcon className="size-4" />
-                    </Button>
-                    <Button size="sm" variant="ghost" onClick={() => setQrModal({ isOpen: true, url: item.short_url, code: item.short_code })}>
-                      <QrCodeIcon className="size-4" />
-                    </Button>
-                  </div>
-                </div>
-              ))}
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm">
+                <thead>
+                  <tr className="border-b border-border text-muted-foreground text-xs uppercase tracking-wider">
+                    <th className="py-3 px-3 text-center w-12 font-semibold">#</th>
+                    <th className="py-3 px-3">{renderSortHeader(t("urls.title"), 'title')}</th>
+                    <th className="py-3 px-3 font-semibold">{t("dashboard.originalUrl")}</th>
+                    <th className="py-3 px-3">{renderSortHeader(t("dashboard.created"), 'created_at')}</th>
+                    <th className="py-3 px-3">{renderSortHeader(t("dashboard.clicks"), 'click_count')}</th>
+                    <th className="py-3 px-3 font-semibold">{t("admin.statusHeader")}</th>
+                    <th className="py-3 px-3 text-right font-semibold">{t("common.actions")}</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border/40">
+                  {sortedRecentUrls.map((item, index) => (
+                    <tr key={item.id} className="group hover:bg-muted/30 transition-colors">
+                      <td className="py-3 px-3 text-center font-mono text-xs text-muted-foreground font-semibold">
+                        {index + 1}
+                      </td>
+                      <td className="py-3 px-3">
+                        <Link
+                          to={`/dashboard/urls/${item.id}`}
+                          className="font-semibold text-foreground hover:text-primary transition-colors cursor-pointer"
+                        >
+                          {item.title || item.short_code}
+                        </Link>
+                        <div>
+                          <a
+                            href={item.short_url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="font-mono text-xs text-primary hover:underline"
+                          >
+                            {item.short_url}
+                          </a>
+                        </div>
+                      </td>
+                      <td className="py-3 px-3 max-w-xs truncate text-muted-foreground text-xs">
+                        {item.original_url}
+                      </td>
+                      <td className="py-3 px-3 whitespace-nowrap text-xs text-muted-foreground font-mono">
+                        {formatDate(item.created_at)}
+                      </td>
+                      <td className="py-3 px-3">
+                        <Badge variant="outline" className="font-bold font-mono">
+                          {item.click_count || 0}
+                        </Badge>
+                      </td>
+                      <td className="py-3 px-3">
+                        <Badge
+                          className={`text-[11px] font-semibold border ${
+                            item.is_active
+                              ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20 dark:bg-emerald-500/20 dark:text-emerald-400 dark:border-emerald-500/30'
+                              : 'bg-rose-500/10 text-rose-600 border-rose-500/20 dark:bg-rose-500/20 dark:text-rose-400 dark:border-rose-500/30'
+                          }`}
+                        >
+                          {item.is_active ? t("common.active") : t("common.inactive")}
+                        </Badge>
+                      </td>
+                      <td className="py-3 px-3 text-right">
+                        <div className="flex items-center justify-end gap-1">
+                          <Button size="sm" variant="ghost" onClick={() => handleCopy(item.short_url)} title="Copy Short URL" className="cursor-pointer">
+                            <CopyIcon className="size-4" />
+                          </Button>
+                          <Button size="sm" variant="ghost" onClick={() => setQrModal({ isOpen: true, url: item.short_url, code: item.short_code })} title="View QR Code" className="cursor-pointer">
+                            <QrCodeIcon className="size-4" />
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           )}
         </CardContent>

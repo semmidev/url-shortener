@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"strings"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/semmidev/url-shortener/server/internal/platform/apperr"
@@ -63,7 +64,7 @@ func (h *Handler) register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	h.setAuthCookies(w, resp)
+	h.setAuthCookies(w, r, resp)
 	web.JSON(w, http.StatusCreated, resp)
 }
 
@@ -92,7 +93,7 @@ func (h *Handler) login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	h.setAuthCookies(w, resp)
+	h.setAuthCookies(w, r, resp)
 	web.JSON(w, http.StatusOK, resp)
 }
 
@@ -126,14 +127,14 @@ func (h *Handler) refresh(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Set updated access token in cookies
+	// #nosec G124 -- Cookie secure flag is dynamically evaluated based on HTTP vs HTTPS connection
 	http.SetCookie(w, &http.Cookie{
 		Name:     "access_token",
 		Value:    resp.AccessToken,
 		Path:     "/",
 		Expires:  resp.AccessTokenExpiresAt,
 		HttpOnly: true,
-		Secure:   true,
+		Secure:   isSecureRequest(r),
 		SameSite: http.SameSiteLaxMode,
 	})
 
@@ -212,7 +213,7 @@ func (h *Handler) googleExchangeToken(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	h.setAuthCookies(w, resp)
+	h.setAuthCookies(w, r, resp)
 	web.JSON(w, http.StatusOK, resp)
 }
 
@@ -265,60 +266,79 @@ func (h *Handler) logout(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	h.clearAuthCookies(w)
+	h.clearAuthCookies(w, r)
 	web.JSON(w, http.StatusOK, map[string]string{"message": "logged out successfully"})
 }
 
-func (h *Handler) setAuthCookies(w http.ResponseWriter, resp *LoginResponse) {
+func isSecureRequest(r *http.Request) bool {
+	if r.TLS != nil {
+		return true
+	}
+	if proto := r.Header.Get("X-Forwarded-Proto"); strings.EqualFold(proto, "https") {
+		return true
+	}
+	return false
+}
+
+func (h *Handler) setAuthCookies(w http.ResponseWriter, r *http.Request, resp *LoginResponse) {
+	isSecure := isSecureRequest(r)
+
+	// #nosec G124 -- Cookie secure flag is dynamically evaluated based on HTTP vs HTTPS connection
 	http.SetCookie(w, &http.Cookie{
 		Name:     "access_token",
 		Value:    resp.AccessToken,
 		Path:     "/",
 		Expires:  resp.AccessTokenExpiresAt,
 		HttpOnly: true,
-		Secure:   true,
+		Secure:   isSecure,
 		SameSite: http.SameSiteLaxMode,
 	})
 
+	// #nosec G124 -- Cookie secure flag is dynamically evaluated based on HTTP vs HTTPS connection
 	http.SetCookie(w, &http.Cookie{
 		Name:     "refresh_token",
 		Value:    resp.RefreshToken,
 		Path:     "/",
 		Expires:  resp.RefreshTokenExpiresAt,
 		HttpOnly: true,
-		Secure:   true,
+		Secure:   isSecure,
 		SameSite: http.SameSiteLaxMode,
 	})
 }
 
-func (h *Handler) clearAuthCookies(w http.ResponseWriter) {
+func (h *Handler) clearAuthCookies(w http.ResponseWriter, r *http.Request) {
+	isSecure := isSecureRequest(r)
+
+	// #nosec G124 -- Cookie secure flag is dynamically evaluated based on HTTP vs HTTPS connection
 	http.SetCookie(w, &http.Cookie{
 		Name:     "access_token",
 		Value:    "",
 		Path:     "/",
 		MaxAge:   -1,
 		HttpOnly: true,
-		Secure:   true,
+		Secure:   isSecure,
 		SameSite: http.SameSiteLaxMode,
 	})
 
+	// #nosec G124 -- Cookie secure flag is dynamically evaluated based on HTTP vs HTTPS connection
 	http.SetCookie(w, &http.Cookie{
 		Name:     "refresh_token",
 		Value:    "",
 		Path:     "/",
 		MaxAge:   -1,
 		HttpOnly: true,
-		Secure:   true,
+		Secure:   isSecure,
 		SameSite: http.SameSiteLaxMode,
 	})
 
+	// #nosec G124 -- Cookie secure flag is dynamically evaluated based on HTTP vs HTTPS connection
 	http.SetCookie(w, &http.Cookie{
 		Name:     "token",
 		Value:    "",
 		Path:     "/",
 		MaxAge:   -1,
 		HttpOnly: true,
-		Secure:   true,
+		Secure:   isSecure,
 		SameSite: http.SameSiteLaxMode,
 	})
 }

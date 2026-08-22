@@ -64,6 +64,8 @@ export default function App() {
 
   useEffect(() => {
     initialize();
+    const savedPreset = localStorage.getItem("theme-preset") || "claude";
+    document.documentElement.setAttribute('data-theme', savedPreset);
   }, [initialize]);
 
   return (

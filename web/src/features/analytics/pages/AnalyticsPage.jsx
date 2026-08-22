@@ -1,9 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import client from '@/lib/client';
 import { toast } from 'sonner';
 import { useI18n } from '@/context/I18nContext';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   AreaChart,
   Area,
@@ -13,7 +11,8 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from 'recharts';
-import { MousePointerClickIcon, GlobeIcon, LaptopIcon, SmartphoneIcon } from 'lucide-react';
+import { MousePointerClickIcon, GlobeIcon, LaptopIcon } from 'lucide-react';
+import { getDashboardAnalytics } from '@/features/analytics/api';
 
 export default function Analytics() {
   const { t } = useI18n();
@@ -24,8 +23,8 @@ export default function Analytics() {
     const fetchAnalytics = async () => {
       setLoading(true);
       try {
-        const res = await client.get('/analytics/dashboard');
-        setData(res.data);
+        const stats = await getDashboardAnalytics();
+        setData(stats);
       } catch {
         toast.error('Failed to load analytics metrics');
       } finally {

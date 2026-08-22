@@ -171,7 +171,7 @@ export default function Account() {
   };
 
   return (
-    <div className="space-y-6 max-w-4xl animate-in fade-in duration-200">
+    <div className="space-y-6 animate-in fade-in duration-200">
       <div>
         <h1 className="text-2xl font-bold tracking-tight">{t("account.title")}</h1>
         <p className="text-sm text-muted-foreground">{t("account.subtitle")}</p>

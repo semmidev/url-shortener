@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuthStore } from '@/features/auth/store';
 import { setTokens, setUser as persistUser } from '@/lib/tokenStorage';
-import client from '@/lib/client';
+import { googleTokenExchange, getCurrentUser } from '@/features/auth/api';
 import { Loader2, CheckCircle2, XCircle } from 'lucide-react';
 
 export default function GoogleCallback() {
@@ -26,7 +26,7 @@ export default function GoogleCallback() {
       return;
     }
 
-    client.post('/auth/google/token', { code })
+    googleTokenExchange(code)
       .then((res) => {
         const data = res.data?.data || res.data;
         if (data && (data.access_token || data.user)) {
@@ -38,8 +38,7 @@ export default function GoogleCallback() {
             useAuthStore.setState({ user, isAuthenticated: true, isLoading: false });
             navigate('/dashboard', { replace: true });
           } else {
-            // Fallback: fetch /auth/me
-            client.get('/auth/me')
+            getCurrentUser()
               .then((meRes) => {
                 const meUser = meRes.data?.data || meRes.data;
                 if (meUser) {

@@ -1,9 +1,10 @@
 import axios from 'axios';
-import { setTokens, clearTokens } from './tokenStorage';
+import { getAccessToken, getRefreshToken, setTokens, clearTokens } from './tokenStorage';
 
 const client = axios.create({
   baseURL: '/api/v1',
   headers: { 'Content-Type': 'application/json' },
+  withCredentials: true,
 });
 
 let isRefreshing = false;
@@ -36,6 +37,12 @@ client.interceptors.request.use(
   (config) => {
     activeRequests++;
     notifyLoading();
+
+    const token = getAccessToken();
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+
     return config;
   },
   (error) => {
@@ -92,11 +99,22 @@ client.interceptors.response.use(
     originalRequest._retry = true;
     isRefreshing = true;
 
-    try {
-      // POST to refresh endpoint. Refresh token is passed automatically via HTTP cookies.
-      await axios.post('/api/v1/auth/refresh');
+    // Small delay (100ms) to allow WebKit cookie jar to commit Set-Cookie headers
+    await new Promise((resolve) => setTimeout(resolve, 100));
 
-      setTokens(); // Updates the is_authenticated flag in localStorage
+    try {
+      const refreshToken = getRefreshToken();
+      const body = {};
+      if (refreshToken) body.refresh_token = refreshToken;
+
+      const res = await axios.post('/api/v1/auth/refresh', body, { withCredentials: true });
+      const payload = res.data?.data || res.data;
+      if (payload?.access_token) {
+        setTokens(payload.access_token, payload.refresh_token);
+      } else {
+        setTokens();
+      }
+
       processQueue(null);
       return client(originalRequest);
     } catch (refreshError) {
