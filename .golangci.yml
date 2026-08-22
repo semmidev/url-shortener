@@ -54,6 +54,22 @@ linters:
         linters:
           - gosec
           - errcheck
+      - path: web/
+        linters:
+          - gocognit
+          - gocyclo
+          - errcheck
+          - gosec
+          - staticcheck
+          - govet
+          - misspell
+          - unconvert
+          - unparam
+          - prealloc
+          - bodyclose
+          - exhaustive
+          - nilerr
+          - depguard
 
   settings:
     govet:
