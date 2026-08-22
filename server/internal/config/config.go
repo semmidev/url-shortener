@@ -27,6 +27,10 @@ type Config struct {
 	ServerIdleTimeout     time.Duration `mapstructure:"SERVER_IDLE_TIMEOUT"`
 	ServerShutdownTimeout time.Duration `mapstructure:"SERVER_SHUTDOWN_TIMEOUT"`
 
+	// Internal Management & Observability Server Settings (Metrics & Pprof)
+	ManagementEnabled bool   `mapstructure:"MANAGEMENT_ENABLED"`
+	ManagementAddress string `mapstructure:"MANAGEMENT_ADDRESS"`
+
 	// Rate Limiting Settings
 	RateLimitEnabled        bool          `mapstructure:"RATE_LIMIT_ENABLED"`
 	RateLimitAuthRequests   int           `mapstructure:"RATE_LIMIT_AUTH_REQUESTS"`
@@ -101,6 +105,9 @@ func LoadConfig(path string) (config Config, err error) {
 	viper.SetDefault("SERVER_WRITE_TIMEOUT", "15s")
 	viper.SetDefault("SERVER_IDLE_TIMEOUT", "60s")
 	viper.SetDefault("SERVER_SHUTDOWN_TIMEOUT", "10s")
+
+	viper.SetDefault("MANAGEMENT_ENABLED", true)
+	viper.SetDefault("MANAGEMENT_ADDRESS", "127.0.0.1:9090")
 
 	viper.SetDefault("RATE_LIMIT_ENABLED", true)
 	viper.SetDefault("RATE_LIMIT_AUTH_REQUESTS", 10)

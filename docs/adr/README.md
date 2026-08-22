@@ -29,6 +29,8 @@ This directory contains the Architecture Decision Records (ADRs) for the URL Sho
 | [backend-0019](backend-0019-admin-api-backoffice-rbac.md) | Admin API & Role-Based Access Control (RBAC) | Accepted | 2026-08-19 |
 | [backend-0020](backend-0020-comprehensive-cache-invalidation.md) | Comprehensive Cache Invalidation Across Deactivation, Expiry, and Admin Triggers | Accepted | 2026-08-19 |
 | [backend-0021](backend-0021-prometheus-metrics-instrumentation.md) | Prometheus Metrics Instrumentation & `/metrics` Scrape Endpoint | Accepted | 2026-08-21 |
+| [backend-0022](backend-0022-go-127-upgrade-and-generic-methods.md) | Go 1.27 Upgrade & Generic Methods Integration | Accepted | 2026-08-22 |
+| [backend-0023](backend-0023-strict-api-only-http-request-logging-filter.md) | Strict API-Only HTTP Request Logging Filter | Accepted | 2026-08-22 |
 
 ### 🎨 Frontend (`frontend-*`)
 
@@ -37,6 +39,8 @@ This directory contains the Architecture Decision Records (ADRs) for the URL Sho
 | [frontend-0001](frontend-0001-single-binary-spa-embedding.md) | Single-Binary SPA Embedding with Go `embed.FS` | Accepted | 2026-08-19 |
 | [frontend-0002](frontend-0002-browser-html-navigation-redirection.md) | Browser HTML Navigation Redirection for Inactive and Expired Short URLs | Accepted | 2026-08-19 |
 | [frontend-0003](frontend-0003-global-progress-indicator-and-debounced-search.md) | Global Progress Loading Indicator & Debounced Search Inputs | Accepted | 2026-08-21 |
+| [frontend-0004](frontend-0004-i18n-internationalization-and-language-toggle.md) | Comprehensive i18n Internationalization & Language Toggle | Accepted | 2026-08-22 |
+| [frontend-0005](frontend-0005-bun-runtime-package-manager-and-vite-bundling.md) | Bun Runtime, Package Manager, & Vite Bundling | Accepted | 2026-08-22 |
 
 ### 🛠️ Infrastructure & DevEx (`infra-*`)
 
@@ -54,6 +58,7 @@ This directory contains the Architecture Decision Records (ADRs) for the URL Sho
 | [security-0001](security-0001-http-security-headers-hardening-csp.md) | HTTP Security Headers Hardening & Route-Tailored Content Security Policy (CSP) | Accepted | 2026-08-19 |
 | [security-0002](security-0002-security-audit-logging.md) | Security Audit Logging | Accepted | 2026-08-19 |
 | [security-0003](security-0003-oauth-account-linking-and-password-governance.md) | OAuth Account Linking & Password Governance | Accepted | 2026-08-21 |
+| [security-0004](security-0004-internal-management-server-isolation.md) | Dedicated Internal Management Server Isolation for Observability & Profiling | Accepted | 2026-08-22 |
 
 ### 🧪 Testing (`testing-*`)
 

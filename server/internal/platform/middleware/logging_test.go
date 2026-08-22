@@ -50,3 +50,49 @@ func TestWideEventLoggingWithRedactedRequestBody(t *testing.T) {
 	assert.Contains(t, logOutput, `"password":"[REDACTED]"`)
 	assert.NotContains(t, logOutput, `"secret123"`)
 }
+
+func TestWideEventLogging_SkipsStaticAssetsAndSPARoutes(t *testing.T) {
+	buf := new(bytes.Buffer)
+	appLogger := logger.NewWithConfig(logger.Config{
+		Level:  "info",
+		Format: "json",
+		Out:    buf,
+	})
+
+	r := chi.NewRouter()
+	r.Use(WideEventLogging(appLogger))
+	r.Get("/assets/vendor-motion.js", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("console.log('motion')"))
+	})
+	r.Get("/dashboard/urls/{id}", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("<html>SPA</html>"))
+	})
+
+	// Test 1: Static asset
+	req1 := httptest.NewRequest(http.MethodGet, "/assets/vendor-motion.js", nil)
+	rw1 := httptest.NewRecorder()
+	r.ServeHTTP(rw1, req1)
+	assert.Equal(t, http.StatusOK, rw1.Code)
+	assert.Empty(t, buf.String(), "Static asset requests should not generate http_request log lines")
+
+	// Test 2: SPA Dashboard Route
+	buf.Reset()
+	req2 := httptest.NewRequest(http.MethodGet, "/dashboard/urls/01a0283a-208a-75e3-8097-2c6de3364d2e", nil)
+	rw2 := httptest.NewRecorder()
+	r.ServeHTTP(rw2, req2)
+	assert.Equal(t, http.StatusOK, rw2.Code)
+	assert.Empty(t, buf.String(), "SPA page navigation requests should not generate http_request log lines")
+
+	// Test 3: Public Redirection /Yt9Cide (Non-API route)
+	buf.Reset()
+	r.Get("/{code}", func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "https://github.com/semmidev/", http.StatusTemporaryRedirect)
+	})
+	req3 := httptest.NewRequest(http.MethodGet, "/Yt9Cide", nil)
+	rw3 := httptest.NewRecorder()
+	r.ServeHTTP(rw3, req3)
+	assert.Equal(t, http.StatusTemporaryRedirect, rw3.Code)
+	assert.Empty(t, buf.String(), "Non-API public redirection requests should not generate http_request log lines")
+}

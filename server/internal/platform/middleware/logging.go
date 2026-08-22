@@ -5,6 +5,7 @@ import (
 	"io"
 	"math/rand/v2"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -31,6 +32,17 @@ func (rw *responseWriter) Write(b []byte) (int, error) {
 	return n, err
 }
 
+func isAPIRequest(path string) bool {
+	lowerPath := strings.ToLower(path)
+
+	// Log strictly API endpoints, health checks, version info, docs, and swagger
+	return strings.HasPrefix(lowerPath, "/api/") ||
+		strings.HasPrefix(lowerPath, "/health") ||
+		strings.HasPrefix(lowerPath, "/version") ||
+		strings.HasPrefix(lowerPath, "/docs") ||
+		strings.HasPrefix(lowerPath, "/swagger")
+}
+
 // WideEventLogging returns a chi HTTP middleware that captures request lifecycle into a single Wide Event log line.
 // It also extracts trace_id and span_id from the W3C traceparent header (if present) and injects them into the log.
 func WideEventLogging(appLogger *logger.Logger) func(http.Handler) http.Handler {
@@ -43,6 +55,10 @@ func WideEventLogging(appLogger *logger.Logger) func(http.Handler) http.Handler 
 func WideEventLoggingWithSampling(appLogger *logger.Logger, sampleRate float64) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if !isAPIRequest(r.URL.Path) {
+				next.ServeHTTP(w, r)
+				return
+			}
 			reqID := r.Header.Get("X-Request-ID")
 			if reqID == "" {
 				reqID = uuid.NewString()

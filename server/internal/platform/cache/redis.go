@@ -102,6 +102,18 @@ func (r *RedisCache) Get(ctx context.Context, key string, dest interface{}) erro
 	return nil
 }
 
+// GetTyped leverages Go 1.27 generic method syntax to retrieve and decode a typed value from Redis.
+func (r *RedisCache) GetTyped[T any](ctx context.Context, key string) (T, error) {
+	var dest T
+	err := r.Get(ctx, key, &dest)
+	return dest, err
+}
+
+// SetTyped leverages Go 1.27 generic method syntax to store a typed value in Redis.
+func (r *RedisCache) SetTyped[T any](ctx context.Context, key string, val T, ttl time.Duration) error {
+	return r.Set(ctx, key, val, ttl)
+}
+
 func (r *RedisCache) Set(ctx context.Context, key string, value interface{}, ttl time.Duration) error {
 	if r == nil || r.client == nil {
 		return nil

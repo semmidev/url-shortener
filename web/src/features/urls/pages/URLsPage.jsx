@@ -25,8 +25,10 @@ import PreviewModal from '@/features/urls/components/PreviewModal';
 import DeleteConfirmModal from '@/features/urls/components/DeleteConfirmModal';
 
 import { useDebounce } from '@/hooks/use-debounce';
+import { useI18n } from '@/context/I18nContext';
 
 export default function URLs() {
+  const { t } = useI18n();
   const navigate = useNavigate();
   const [urls, setUrls] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -122,12 +124,12 @@ export default function URLs() {
       {/* Top Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Short Links Management</h1>
-          <p className="text-sm text-muted-foreground">Create, manage, toggle status, and inspect your custom short links.</p>
+          <h1 className="text-2xl font-bold tracking-tight">{t("urls.title")}</h1>
+          <p className="text-sm text-muted-foreground">{t("urls.subtitle")}</p>
         </div>
         <Button onClick={() => setIsCreateOpen(true)} className="cursor-pointer">
           <PlusIcon className="size-4 shrink-0" />
-          <span>Create Short Link</span>
+          <span>{t("dashboard.createUrlBtn")}</span>
         </Button>
       </div>
 
@@ -138,7 +140,7 @@ export default function URLs() {
             <div className="relative flex-1">
               <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
               <Input
-                placeholder="Search links by title, code, or destination..."
+                placeholder={t("urls.searchPlaceholder")}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="pl-9"
@@ -146,12 +148,12 @@ export default function URLs() {
             </div>
             <Select value={activeFilter} onValueChange={setActiveFilter}>
               <SelectTrigger className="sm:w-44">
-                <SelectValue placeholder="Status Filter" />
+                <SelectValue placeholder={t("urls.filterStatus")} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Links</SelectItem>
-                <SelectItem value="active">Active Only</SelectItem>
-                <SelectItem value="inactive">Inactive Only</SelectItem>
+                <SelectItem value="all">{t("urls.allStatuses")}</SelectItem>
+                <SelectItem value="active">{t("common.active")}</SelectItem>
+                <SelectItem value="inactive">{t("common.inactive")}</SelectItem>
               </SelectContent>
             </Select>
             <Button variant="outline" onClick={fetchUrls} title="Refresh Links" className="cursor-pointer">
@@ -164,24 +166,24 @@ export default function URLs() {
       {/* Links List / Data Table */}
       <Card>
         <CardHeader>
-          <CardTitle>Links Directory</CardTitle>
-          <CardDescription>Total {urls.length} short URLs displayed.</CardDescription>
+          <CardTitle>{t("nav.links")}</CardTitle>
+          <CardDescription>Total {urls.length} {t("nav.shortUrls")}.</CardDescription>
         </CardHeader>
         <CardContent>
           {loading ? (
-            <div className="py-12 text-center text-sm text-muted-foreground">Loading links...</div>
+            <div className="py-12 text-center text-sm text-muted-foreground">{t("common.loading")}</div>
           ) : urls.length === 0 ? (
-            <div className="py-12 text-center text-sm text-muted-foreground">No short URLs found. Click "Create Short Link" above to generate your first link!</div>
+            <div className="py-12 text-center text-sm text-muted-foreground">{t("dashboard.noRecentUrls")}</div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-left text-sm">
                 <thead>
                   <tr className="border-b border-border text-muted-foreground text-xs uppercase tracking-wider">
-                    <th className="py-3 px-2">Link Details</th>
-                    <th className="py-3 px-2">Original Destination</th>
-                    <th className="py-3 px-2">Clicks</th>
-                    <th className="py-3 px-2">Status</th>
-                    <th className="py-3 px-2 text-right">Actions</th>
+                    <th className="py-3 px-2">{t("urls.title")}</th>
+                    <th className="py-3 px-2">{t("dashboard.originalUrl")}</th>
+                    <th className="py-3 px-2">{t("dashboard.clicks")}</th>
+                    <th className="py-3 px-2">{t("admin.statusHeader")}</th>
+                    <th className="py-3 px-2 text-right">{t("common.actions")}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border/40">

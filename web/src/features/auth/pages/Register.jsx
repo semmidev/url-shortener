@@ -4,6 +4,8 @@ import { useTheme } from 'next-themes';
 import { motion } from 'motion/react';
 import { Eye, EyeOff, Loader2, AlertCircle, Lock, User, Mail, Sparkles, Sun, Moon, ZapIcon, Link2, BarChart3, ShieldCheck } from 'lucide-react';
 import { useAuthStore } from '../store';
+import { useI18n } from '@/context/I18nContext';
+import { LanguageToggle } from '@/components/LanguageToggle';
 import client from '@/lib/client';
 
 function FloatingOrb({ className, size, delay }) {
@@ -42,12 +44,13 @@ function PasswordInput({ id, name, value, onChange, error, placeholder = '••
 }
 
 const perks = [
-  { icon: Link2,       text: 'Create branded short links in seconds' },
-  { icon: BarChart3,   text: 'Track clicks, referrers, and device analytics' },
-  { icon: ShieldCheck, text: 'Secure, private, and encrypted links' },
-]
+  { icon: Link2, key: 'auth.regPerk1' },
+  { icon: BarChart3, key: 'auth.regPerk2' },
+  { icon: ShieldCheck, key: 'auth.regPerk3' },
+];
 
 export default function Register() {
+  const { t } = useI18n();
   const navigate = useNavigate();
   const { theme, setTheme } = useTheme();
   const { register, isSubmitting } = useAuthStore();
@@ -70,20 +73,30 @@ export default function Register() {
     setServerError('');
 
     const newErrors = {};
-    if (!values.fullName) newErrors.fullName = 'Full name is required';
-    if (!values.email) newErrors.email = 'Email is required';
-    if (!values.password || values.password.length < 8) newErrors.password = 'Password must be at least 8 characters';
-    if (values.confirmPassword && values.password !== values.confirmPassword) newErrors.confirmPassword = 'Passwords do not match';
-    if (Object.keys(newErrors).length > 0) { setErrors(newErrors); return; }
+    if (!values.fullName.trim()) newErrors.fullName = 'Full name is required';
+    if (!values.email.trim()) newErrors.email = 'Email is required';
+    if (!values.password) newErrors.password = 'Password is required';
+    if (values.password !== values.confirmPassword) newErrors.confirmPassword = 'Passwords do not match';
 
-    const res = await register(values.email, values.password, values.fullName);
-    if (res.success) { navigate('/dashboard', { replace: true }); return; }
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      return;
+    }
 
-    if (res.errors) {
+    const res = await register({
+      full_name: values.fullName.trim(),
+      email: values.email.trim(),
+      password: values.password,
+    });
+
+    if (res.success) {
+      navigate('/dashboard');
+    } else if (res.errors) {
       const mappedErrors = {};
-      Object.keys(res.errors).forEach((key) => {
-        const mappedKey = key === 'full_name' ? 'fullName' : key;
-        mappedErrors[mappedKey] = res.errors[key];
+      res.errors.forEach((err) => {
+        if (err.field === 'full_name') mappedErrors.fullName = err.message;
+        if (err.field === 'email') mappedErrors.email = err.message;
+        if (err.field === 'password') mappedErrors.password = err.message;
       });
       setErrors(mappedErrors);
     } else {
@@ -118,15 +131,18 @@ export default function Register() {
             <motion.div whileHover={{ scale: 1.05 }} className="flex items-center justify-center w-9 h-9 rounded-lg bg-primary/10 border border-primary/20 text-primary">
               <ZapIcon className="w-5 h-5" />
             </motion.div>
-            <span className="text-base font-bold tracking-tight text-foreground">URL Shortener</span>
+            <span className="text-base font-bold tracking-tight text-foreground">{t("nav.urlShortener")}</span>
           </Link>
-          <button
-            type="button" aria-label="Toggle theme"
-            onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-            className="cursor-pointer p-2 text-muted-foreground hover:text-foreground transition-colors rounded-lg hover:bg-muted/70"
-          >
-            {theme === "dark" ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
-          </button>
+          <div className="flex items-center gap-1.5">
+            <LanguageToggle />
+            <button
+              type="button" aria-label="Toggle theme"
+              onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+              className="cursor-pointer p-2 text-muted-foreground hover:text-foreground transition-colors rounded-lg hover:bg-muted/70"
+            >
+              {theme === "dark" ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+            </button>
+          </div>
         </div>
 
         <motion.div
@@ -137,13 +153,13 @@ export default function Register() {
         >
           <div className="space-y-3">
             <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-[11px] font-semibold bg-primary/10 text-primary border border-primary/20">
-              <Sparkles className="w-3.5 h-3.5" /> Get Started Free
+              <Sparkles className="w-3.5 h-3.5" /> {t("auth.getStartedBadge")}
             </span>
             <h2 className="text-2xl lg:text-3xl font-extrabold tracking-tight leading-snug">
-              Start shortening links and tracking results.
+              {t("auth.getStartedTitle")}
             </h2>
             <p className="text-muted-foreground text-sm leading-relaxed">
-              Create your free account in seconds and start managing your links with powerful analytics.
+              {t("auth.getStartedSubtitle")}
             </p>
           </div>
           <div className="space-y-3 pt-5 border-t border-border">
@@ -152,7 +168,7 @@ export default function Register() {
                 <div className="w-6 h-6 rounded-md bg-primary/10 flex items-center justify-center text-primary shrink-0">
                   <p.icon className="w-3.5 h-3.5" />
                 </div>
-                <span className="font-medium">{p.text}</span>
+                <span className="font-medium">{t(p.key)}</span>
               </motion.div>
             ))}
           </div>
@@ -180,8 +196,8 @@ export default function Register() {
             <div className="md:hidden flex items-center justify-center w-12 h-12 rounded-xl bg-primary/10 border border-primary/20 text-primary mb-4">
               <ZapIcon className="w-6 h-6" />
             </div>
-            <h1 className="text-2xl font-bold tracking-tight text-foreground">Create an Account</h1>
-            <p className="text-sm text-muted-foreground">Fill in your details to get started today</p>
+            <h1 className="text-2xl font-bold tracking-tight text-foreground">{t("auth.registerTitle")}</h1>
+            <p className="text-sm text-muted-foreground">{t("auth.registerSubtitle")}</p>
           </motion.div>
 
           <motion.div
@@ -200,7 +216,7 @@ export default function Register() {
             <form onSubmit={handleSubmit} noValidate className="space-y-4">
               {/* Full Name */}
               <div className="space-y-1.5">
-                <label htmlFor="fullName" className="text-xs font-bold text-muted-foreground block">Full Name <span className="text-red-500">*</span></label>
+                <label htmlFor="fullName" className="text-xs font-bold text-muted-foreground block">{t("auth.fullNameLabel")} <span className="text-red-500">*</span></label>
                 <div className="relative">
                   <span className="absolute inset-y-0 left-0 flex items-center pl-3.5 text-neutral-400"><User className="w-4 h-4" /></span>
                   <input id="fullName" name="fullName" type="text" autoComplete="name" autoFocus value={values.fullName} onChange={handleChange} placeholder="Alex Morgan"
@@ -212,7 +228,7 @@ export default function Register() {
 
               {/* Email */}
               <div className="space-y-1.5">
-                <label htmlFor="email" className="text-xs font-bold text-muted-foreground block">Email Address <span className="text-red-500">*</span></label>
+                <label htmlFor="email" className="text-xs font-bold text-muted-foreground block">{t("auth.emailLabel")} <span className="text-red-500">*</span></label>
                 <div className="relative">
                   <span className="absolute inset-y-0 left-0 flex items-center pl-3.5 text-neutral-400"><Mail className="w-4 h-4" /></span>
                   <input id="email" name="email" type="email" autoComplete="email" value={values.email} onChange={handleChange} placeholder="name@example.com"
@@ -224,14 +240,14 @@ export default function Register() {
 
               {/* Password */}
               <div className="space-y-1.5">
-                <label htmlFor="password" className="text-xs font-bold text-muted-foreground block">Password <span className="text-red-500">*</span></label>
+                <label htmlFor="password" className="text-xs font-bold text-muted-foreground block">{t("auth.passwordLabel")} <span className="text-red-500">*</span></label>
                 <PasswordInput id="password" name="password" value={values.password} onChange={handleChange} error={errors.password} autoComplete="new-password" />
                 {errors.password && <p className="text-xs text-red-500 font-medium">{errors.password}</p>}
               </div>
 
               {/* Confirm Password */}
               <div className="space-y-1.5">
-                <label htmlFor="confirmPassword" className="text-xs font-bold text-muted-foreground block">Confirm Password <span className="text-red-500">*</span></label>
+                <label htmlFor="confirmPassword" className="text-xs font-bold text-muted-foreground block">{t("account.confirmNewPassword")} <span className="text-red-500">*</span></label>
                 <PasswordInput id="confirmPassword" name="confirmPassword" value={values.confirmPassword} onChange={handleChange} error={errors.confirmPassword} placeholder="••••••••" autoComplete="new-password" />
                 {errors.confirmPassword && <p className="text-xs text-red-500 font-medium">{errors.confirmPassword}</p>}
               </div>
@@ -241,13 +257,13 @@ export default function Register() {
                 whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.99 }}
                 className="mt-2 w-full flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 cursor-pointer bg-primary text-primary-foreground text-sm font-semibold shadow-xs hover:bg-primary/95 transition-all disabled:opacity-60 disabled:cursor-not-allowed focus:outline-hidden focus:ring-2 focus:ring-primary/30 focus:ring-offset-2 focus:ring-offset-background"
               >
-                {isSubmitting ? <><Loader2 className="w-4 h-4 animate-spin" /> Creating Account…</> : 'Create Account'}
+                {isSubmitting ? <><Loader2 className="w-4 h-4 animate-spin" /> {t("auth.registering")}</> : t("auth.registerBtn")}
               </motion.button>
             </form>
 
             <div className="relative">
               <div className="absolute inset-0 flex items-center"><span className="w-full border-t border-border" /></div>
-              <div className="relative flex justify-center text-xs"><span className="bg-card px-2 text-muted-foreground font-medium">or</span></div>
+              <div className="relative flex justify-center text-xs"><span className="bg-card px-2 text-muted-foreground font-medium">{t("auth.orContinueWith")}</span></div>
             </div>
 
             <motion.button
@@ -261,7 +277,7 @@ export default function Register() {
                 <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05" />
                 <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
               </svg>
-              {googleLoading ? 'Connecting…' : 'Sign up with Google'}
+              {googleLoading ? '...' : t("auth.googleRegister")}
             </motion.button>
           </motion.div>
 
@@ -269,9 +285,9 @@ export default function Register() {
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4, delay: 0.5 }}
             className="text-center text-sm text-muted-foreground"
           >
-            Already have an account?{' '}
-            <Link to="/login" className="font-semibold text-primary hover:underline underline-offset-4 transition-colors">
-              Sign In
+            {t("auth.alreadyHaveAccount")}{' '}
+            <Link to="/login" className="font-semibold text-primary hover:underline">
+              {t("auth.signInLink")}
             </Link>
           </motion.p>
         </div>

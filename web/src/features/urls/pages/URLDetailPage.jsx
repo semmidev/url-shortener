@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import client from '@/lib/client';
 import { toast } from 'sonner';
+import { useI18n } from '@/context/I18nContext';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -22,6 +23,7 @@ import {
 import QRCodeModal from '@/features/urls/components/QRCodeModal';
 
 export default function URLDetailPage() {
+  const { t } = useI18n();
   const { id } = useParams();
   const navigate = useNavigate();
 
@@ -92,7 +94,7 @@ export default function URLDetailPage() {
       <div className="flex items-center gap-3">
         <Button variant="outline" size="sm" onClick={() => navigate('/dashboard/urls')} className="cursor-pointer">
           <ArrowLeftIcon className="size-4 shrink-0" />
-          <span>Back to Links</span>
+          <span>{t("urls.backToUrls")}</span>
         </Button>
       </div>
 
@@ -109,7 +111,7 @@ export default function URLDetailPage() {
                     : 'bg-rose-500/10 text-rose-600 border-rose-500/20 dark:bg-rose-500/20 dark:text-rose-400 dark:border-rose-500/30'
                 }`}
               >
-                {urlData.is_active ? 'Active' : 'Inactive'}
+                {urlData.is_active ? t("common.active") : t("common.inactive")}
               </Badge>
             </div>
             <CardDescription className="font-mono text-primary font-medium text-sm">
@@ -120,47 +122,32 @@ export default function URLDetailPage() {
           <div className="flex items-center gap-2">
             <Button size="sm" variant="outline" onClick={handleCopy} className="cursor-pointer">
               {copied ? <CheckIcon className="size-4 text-emerald-500 shrink-0" /> : <CopyIcon className="size-4 shrink-0" />}
-              <span>{copied ? 'Copied' : 'Copy'}</span>
+              <span>{copied ? t("common.copied") : t("common.copy")}</span>
             </Button>
             <Button size="sm" variant="outline" onClick={() => setIsQrOpen(true)} className="cursor-pointer">
               <QrCodeIcon className="size-4 shrink-0" />
-              <span>QR Code</span>
-            </Button>
-            <Button size="sm" asChild className="cursor-pointer">
-              <a href={urlData.original_url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5">
-                <span>Visit Destination</span>
-                <ExternalLinkIcon className="size-4 shrink-0" />
-              </a>
+              <span>{t("common.qrCode")}</span>
             </Button>
           </div>
         </CardHeader>
 
         <CardContent className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 pt-2">
           <div className="p-3 rounded-xl bg-muted/40 border border-border/40">
-            <div className="text-xs text-muted-foreground">Original Destination</div>
+            <div className="text-xs text-muted-foreground">{t("dashboard.originalUrl")}</div>
             <div className="text-sm font-medium break-all mt-1">{urlData.original_url}</div>
           </div>
 
           <div className="p-3 rounded-xl bg-muted/40 border border-border/40">
-            <div className="text-xs text-muted-foreground">Short Code</div>
+            <div className="text-xs text-muted-foreground">{t("dashboard.shortLink")}</div>
             <div className="text-sm font-bold font-mono text-primary mt-1">/{urlData.short_code}</div>
           </div>
 
           <div className="p-3 rounded-xl bg-muted/40 border border-border/40">
             <div className="text-xs text-muted-foreground flex items-center gap-1">
-              <CalendarIcon className="size-3" /> Created Date
+              <CalendarIcon className="size-3" /> {t("urls.createdOn")}
             </div>
             <div className="text-sm font-medium mt-1">
               {urlData.created_at ? new Date(urlData.created_at).toLocaleString() : 'N/A'}
-            </div>
-          </div>
-
-          <div className="p-3 rounded-xl bg-muted/40 border border-border/40">
-            <div className="text-xs text-muted-foreground flex items-center gap-1">
-              {isHttps ? <ShieldCheckIcon className="size-3 text-emerald-500" /> : <AlertTriangleIcon className="size-3 text-amber-500" />} Security Protocol
-            </div>
-            <div className="text-sm font-semibold mt-1">
-              {isHttps ? 'HTTPS Encrypted' : 'HTTP Standard'}
             </div>
           </div>
         </CardContent>
@@ -170,23 +157,21 @@ export default function URLDetailPage() {
       <div className="grid gap-4 md:grid-cols-2">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Clicks Recorded</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t("urls.totalClicksCount")}</CardTitle>
             <MousePointerClickIcon className="size-4 text-primary" />
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold">{analytics?.total_clicks ?? urlData.click_count ?? 0}</div>
-            <p className="text-xs text-muted-foreground mt-1">Total redirections logged for this link</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Unique Visitors</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t("analytics.uniqueVisitors")}</CardTitle>
             <UsersIcon className="size-4 text-emerald-500" />
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold">{analytics?.unique_visitors ?? 0}</div>
-            <p className="text-xs text-muted-foreground mt-1">Distinct IP addresses recorded</p>
           </CardContent>
         </Card>
       </div>
@@ -194,8 +179,7 @@ export default function URLDetailPage() {
       {/* Click Event Log Table */}
       <Card>
         <CardHeader>
-          <CardTitle>Recent Click Events Log</CardTitle>
-          <CardDescription>Detailed click telemetry and visitor information for this link.</CardDescription>
+          <CardTitle>{t("analytics.overview")}</CardTitle>
         </CardHeader>
         <CardContent>
           {!analytics?.recent_clicks || analytics.recent_clicks.length === 0 ? (

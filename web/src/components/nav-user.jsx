@@ -4,6 +4,7 @@ import {
   AvatarImage,
 } from "@/components/ui/avatar"
 import { useAuthStore } from "@/features/auth/store"
+import { useI18n } from "@/context/I18nContext"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -56,6 +57,7 @@ function getInitials(name) {
 }
 
 export function NavUser({ user }) {
+  const { t } = useI18n()
   const { isMobile, setOpenMobile } = useSidebar()
   const navigate = useNavigate()
   const { theme, setTheme } = useTheme()
@@ -101,42 +103,13 @@ export function NavUser({ user }) {
                     <span className="truncate font-medium">{user.name}</span>
                     <span className="truncate text-xs text-muted-foreground flex items-center gap-1">
                       {isAdmin
-                        ? <><ShieldCheckIcon className="size-3" /> Administrator</>
+                        ? <><ShieldCheckIcon className="size-3" /> {t("common.administrator")}</>
                         : <><UserIcon className="size-3" /> Member</>
                       }
                     </span>
                   </div>
                 </div>
               </DropdownMenuLabel>
-            </DropdownMenuGroup>
-
-            <DropdownMenuSeparator />
-
-            {/* Theme switcher */}
-            <DropdownMenuGroup>
-              <DropdownMenuSub>
-                <DropdownMenuSubTrigger className="cursor-pointer gap-2">
-                  <PaletteIcon className="size-4 text-muted-foreground shrink-0" />
-                  <span className="text-sm">Theme</span>
-                </DropdownMenuSubTrigger>
-                <DropdownMenuSubContent className="min-w-44 max-h-64 overflow-y-auto">
-                  <DropdownMenuGroup>
-                    <DropdownMenuLabel className="text-[10px] text-muted-foreground font-normal uppercase tracking-wide px-2 py-1">
-                      Available Themes
-                    </DropdownMenuLabel>
-                    {THEMES.map((t) => (
-                      <DropdownMenuItem
-                        key={t.id}
-                        onClick={() => setTheme(t.id)}
-                        className="cursor-pointer flex items-center justify-between text-xs"
-                      >
-                        <span>{t.name}</span>
-                        {theme === t.id && <CheckIcon className="size-3.5 text-primary" />}
-                      </DropdownMenuItem>
-                    ))}
-                  </DropdownMenuGroup>
-                </DropdownMenuSubContent>
-              </DropdownMenuSub>
             </DropdownMenuGroup>
 
             <DropdownMenuSeparator />
@@ -151,7 +124,7 @@ export function NavUser({ user }) {
                 }}
               >
                 <CircleUserRoundIcon />
-                Account Profile
+                {t("nav.accountProfile")}
               </DropdownMenuItem>
             </DropdownMenuGroup>
 
@@ -166,7 +139,7 @@ export function NavUser({ user }) {
               className="cursor-pointer text-destructive focus:text-destructive"
             >
               <LogOutIcon />
-              Sign Out
+              {t("common.logout")}
             </DropdownMenuItem>
 
           </DropdownMenuContent>

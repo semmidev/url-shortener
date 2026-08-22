@@ -121,6 +121,23 @@ func Decode(r *http.Request, dst any) error {
 	return nil
 }
 
+// DecodeTyped leverages Go 1.27 generic functions to decode request body into a strongly-typed value T.
+func DecodeTyped[T any](r *http.Request) (T, error) {
+	var dst T
+	if err := Decode(r, &dst); err != nil {
+		return dst, err
+	}
+	return dst, nil
+}
+
+// RequestParser demonstrates Go 1.27 Generic Methods on structs.
+type RequestParser struct{}
+
+// Parse is a Go 1.27 generic method declared on RequestParser struct.
+func (p RequestParser) Parse[T any](r *http.Request) (T, error) {
+	return DecodeTyped[T](r)
+}
+
 // WithUser adds user information to context and enriches wide event context.
 func WithUser(ctx context.Context, userID uuid.UUID, role string, sessionID uuid.UUID) context.Context {
 	ctx = context.WithValue(ctx, userIDKey, userID)

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import client from '@/lib/client';
 import { toast } from 'sonner';
+import { useI18n } from '@/context/I18nContext';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -15,6 +16,7 @@ import {
 import { MousePointerClickIcon, GlobeIcon, LaptopIcon, SmartphoneIcon } from 'lucide-react';
 
 export default function Analytics() {
+  const { t } = useI18n();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -43,46 +45,43 @@ export default function Analytics() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">Analytics & Reports</h1>
-        <p className="text-sm text-muted-foreground">Detailed traffic insights, click trends, and audience metrics.</p>
+        <h1 className="text-2xl font-bold tracking-tight">{t("analytics.title")}</h1>
+        <p className="text-sm text-muted-foreground">{t("analytics.subtitle")}</p>
       </div>
 
       {/* Stats Summary */}
       <div className="grid gap-4 md:grid-cols-3">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Clicks Recorded</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t("analytics.totalClicks")}</CardTitle>
             <MousePointerClickIcon className="size-4 text-primary" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{loading ? '...' : data?.total_clicks || 0}</div>
-            <p className="text-xs text-muted-foreground mt-1">Aggregated click interactions</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Top Referrer Domain</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t("analytics.topReferrers")}</CardTitle>
             <GlobeIcon className="size-4 text-primary" />
           </CardHeader>
           <CardContent>
             <div className="text-lg font-bold truncate">
-              {loading ? '...' : data?.top_referrers?.[0]?.referrer || 'Direct / Bookmark'}
+              {loading ? '...' : data?.top_referrers?.[0]?.referrer || t("analytics.directTraffic")}
             </div>
-            <p className="text-xs text-muted-foreground mt-1">Primary traffic source</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Primary Device</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t("analytics.deviceBreakdown")}</CardTitle>
             <LaptopIcon className="size-4 text-primary" />
           </CardHeader>
           <CardContent>
             <div className="text-lg font-bold capitalize">
               {loading ? '...' : data?.devices?.[0]?.device_type || 'Desktop Browser'}
             </div>
-            <p className="text-xs text-muted-foreground mt-1">Most used device class</p>
           </CardContent>
         </Card>
       </div>
@@ -90,8 +89,7 @@ export default function Analytics() {
       {/* Click Performance Area Chart */}
       <Card>
         <CardHeader>
-          <CardTitle>Click Performance Over Time</CardTitle>
-          <CardDescription>Daily click volume trends over the last 30 days.</CardDescription>
+          <CardTitle>{t("analytics.overview")}</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="h-72 w-full pt-4">

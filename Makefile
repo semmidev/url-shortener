@@ -8,6 +8,8 @@ DOCKER_CMD ?= $(shell command -v docker 2>/dev/null || command -v podman 2>/dev/
 GOLANGCI_LINT_CMD ?= $(shell command -v golangci-lint 2>/dev/null || echo "go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest")
 MIGRATE_CMD ?= $(shell command -v migrate 2>/dev/null || echo "go run github.com/golang-migrate/migrate/v4/cmd/migrate@latest")
 
+BUN_CMD ?= $(shell command -v bun 2>/dev/null || echo "$(HOME)/.bun/bin/bun")
+
 .PHONY: run dev build build-frontend test test-integration test-all lint seed setup-hooks swagger sqlc new_migration migrateup migrateup1 migratedown migratedown1 createdb dropdb docker-up docker-down up-dev down-dev logs-dev clean
 
 # Run backend API locally (builds frontend first and embeds static dist)
@@ -34,10 +36,10 @@ setup-hooks:
 		echo "⚠️ Neither pre-commit nor lefthook command found in PATH"; \
 	fi
 
-# Build React SPA frontend and copy to Go embed directory
+# Build React SPA frontend using Bun and copy to Go embed directory
 build-frontend:
-	@echo "🎨 Building React SPA frontend..."
-	@cd web && npm install && npm run build
+	@echo "🎨 Building React SPA frontend with Bun..."
+	@cd web && $(BUN_CMD) install && $(BUN_CMD) run build
 	@echo "📦 Copying frontend build to embed directory..."
 	@rm -rf server/internal/web/dist
 	@cp -r web/dist server/internal/web/dist
@@ -50,15 +52,15 @@ build: build-frontend
 
 # Run unit tests only (automatically skips integration build tag)
 test:
-	go test ./... -v
+	go test -race ./... -v
 
 # Run E2E integration tests using Testcontainers-Go (-tags=integration)
 test-integration:
-	go test -tags=integration ./... -v
+	go test -race -tags=integration ./... -v
 
 # Run all unit and integration tests
 test-all:
-	go test -tags=integration ./... -v
+	go test -race -tags=integration ./... -v
 
 # Run Go performance benchmark tests
 benchmark:

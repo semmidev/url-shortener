@@ -3,10 +3,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { useI18n } from '@/context/I18nContext';
 import client from '@/lib/client';
 import { toast } from 'sonner';
 
 export default function CreateURLModal({ isOpen, onClose, onSuccess }) {
+  const { t } = useI18n();
   const [title, setTitle] = useState('');
   const [originalUrl, setOriginalUrl] = useState('');
   const [customCode, setCustomCode] = useState('');
@@ -40,17 +42,16 @@ export default function CreateURLModal({ isOpen, onClose, onSuccess }) {
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Create Short URL</DialogTitle>
-          <DialogDescription>Generate a new shortened link with optional title and custom code.</DialogDescription>
+          <DialogTitle>{t("urls.createModalTitle")}</DialogTitle>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="originalUrl">Destination URL *</Label>
+            <Label htmlFor="originalUrl">{t("dashboard.originalUrl")} *</Label>
             <Input
               id="originalUrl"
               type="url"
-              placeholder="https://example.com/target-page"
+              placeholder={t("dashboard.originalUrlPlaceholder")}
               value={originalUrl}
               onChange={(e) => setOriginalUrl(e.target.value)}
               required
@@ -58,22 +59,22 @@ export default function CreateURLModal({ isOpen, onClose, onSuccess }) {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="title">Link Title (Optional)</Label>
+            <Label htmlFor="title">{t("dashboard.titlePlaceholder")}</Label>
             <Input
               id="title"
               type="text"
-              placeholder="e.g. Summer Campaign Landing Page"
+              placeholder={t("dashboard.titlePlaceholder")}
               value={title}
               onChange={(e) => setTitle(e.target.value)}
             />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="customCode">Custom Short Code (Optional)</Label>
+            <Label htmlFor="customCode">{t("dashboard.customCodePlaceholder")}</Label>
             <Input
               id="customCode"
               type="text"
-              placeholder="e.g. summer-2026"
+              placeholder={t("dashboard.customCodePlaceholder")}
               value={customCode}
               onChange={(e) => setCustomCode(e.target.value)}
             />
@@ -81,10 +82,10 @@ export default function CreateURLModal({ isOpen, onClose, onSuccess }) {
 
           <DialogFooter className="pt-2">
             <Button type="button" variant="outline" onClick={onClose}>
-              Cancel
+              {t("common.cancel")}
             </Button>
             <Button type="submit" disabled={loading}>
-              {loading ? 'Creating...' : 'Create Link'}
+              {loading ? t("dashboard.shorteningBtn") : t("dashboard.createUrlBtn")}
             </Button>
           </DialogFooter>
         </form>

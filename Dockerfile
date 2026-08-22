@@ -1,17 +1,17 @@
 # ─── Stage 0: Frontend Build ──────────────────────────────────────────────────
-FROM node:20-alpine AS frontend-builder
+FROM oven/bun:alpine AS frontend-builder
 ARG VERSION=1.0.0
 ENV VITE_APP_VERSION=$VERSION
 WORKDIR /app/web
 
-COPY web/package*.json ./
-RUN --mount=type=cache,target=/root/.npm npm ci
+COPY web/package.json web/bun.lock* ./
+RUN bun install --frozen-lockfile || bun install
 
 COPY web/ .
-RUN npm run build
+RUN bun run build
 
 # ─── Stage 1: Build ───────────────────────────────────────────────────────────
-FROM golang:1.26-alpine AS builder
+FROM golang:1.27-alpine AS builder
 ARG VERSION=1.0.0
 ARG BUILD_TIME=unknown
 ARG GIT_COMMIT=unknown

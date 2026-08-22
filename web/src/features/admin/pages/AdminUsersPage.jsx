@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import client from '@/lib/client';
 import { toast } from 'sonner';
+import { useI18n } from '@/context/I18nContext';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ShieldCheckIcon, UserIcon } from 'lucide-react';
 
 export default function AdminUsers() {
+  const { t } = useI18n();
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -28,18 +30,18 @@ export default function AdminUsers() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">System User Management</h1>
-        <p className="text-sm text-muted-foreground">Manage user accounts, roles, and administrative privileges.</p>
+        <h1 className="text-2xl font-bold tracking-tight">{t("admin.title")}</h1>
+        <p className="text-sm text-muted-foreground">{t("admin.subtitle")}</p>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>User Directory</CardTitle>
-          <CardDescription>Registered accounts in the system.</CardDescription>
+          <CardTitle>{t("nav.userManagement")}</CardTitle>
+          <CardDescription>{t("admin.totalUsers")}: {users.length}</CardDescription>
         </CardHeader>
         <CardContent>
           {loading ? (
-            <div className="py-12 text-center text-sm text-muted-foreground">Loading users...</div>
+            <div className="py-12 text-center text-sm text-muted-foreground">{t("common.loading")}</div>
           ) : users.length === 0 ? (
             <div className="py-12 text-center text-sm text-muted-foreground">No users found.</div>
           ) : (
@@ -47,10 +49,10 @@ export default function AdminUsers() {
               <table className="w-full text-left text-sm">
                 <thead>
                   <tr className="border-b border-border/60 text-xs text-muted-foreground uppercase">
-                    <th className="py-3 px-2">User</th>
-                    <th className="py-3 px-2">Role</th>
-                    <th className="py-3 px-2">Status</th>
-                    <th className="py-3 px-2">Registered At</th>
+                    <th className="py-3 px-2">{t("admin.userHeader")}</th>
+                    <th className="py-3 px-2">{t("admin.roleHeader")}</th>
+                    <th className="py-3 px-2">{t("admin.statusHeader")}</th>
+                    <th className="py-3 px-2">{t("admin.joinedHeader")}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border/40">

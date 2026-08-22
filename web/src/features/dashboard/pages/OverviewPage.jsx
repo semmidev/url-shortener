@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { NavLink, Link } from 'react-router-dom';
 import client from '@/lib/client';
 import { toast } from 'sonner';
+import { useI18n } from '@/context/I18nContext';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -20,6 +21,7 @@ import {
 import QRCodeModal from '@/features/urls/components/QRCodeModal';
 
 export default function Overview() {
+  const { t } = useI18n();
   const [stats, setStats] = useState({ totalUrls: 0, totalClicks: 0, activeUrls: 0 });
   const [recentUrls, setRecentUrls] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -98,9 +100,9 @@ export default function Overview() {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">Dashboard Overview</h1>
+        <h1 className="text-2xl font-bold tracking-tight">{t("dashboard.title")}</h1>
         <p className="text-sm text-muted-foreground">
-          Create short links, track click analytics, and monitor performance.
+          {t("dashboard.subtitle")}
         </p>
       </div>
 
@@ -108,34 +110,31 @@ export default function Overview() {
       <div className="grid gap-4 md:grid-cols-3">
         <Card className="border-border/60 bg-card/60 backdrop-blur-sm">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Short URLs</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t("dashboard.statsTotalUrls")}</CardTitle>
             <Link2Icon className="size-4 text-primary" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{loading ? '...' : stats.totalUrls}</div>
-            <p className="text-xs text-muted-foreground mt-1">Links created across your account</p>
           </CardContent>
         </Card>
 
         <Card className="border-border/60 bg-card/60 backdrop-blur-sm">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Clicks</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t("dashboard.statsTotalClicks")}</CardTitle>
             <MousePointerClickIcon className="size-4 text-primary" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{loading ? '...' : stats.totalClicks}</div>
-            <p className="text-xs text-muted-foreground mt-1">Total click redirections recorded</p>
           </CardContent>
         </Card>
 
         <Card className="border-border/60 bg-card/60 backdrop-blur-sm">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Active Links</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t("dashboard.statsActiveUrls")}</CardTitle>
             <ActivityIcon className="size-4 text-emerald-500" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{loading ? '...' : stats.activeUrls}</div>
-            <p className="text-xs text-muted-foreground mt-1">Currently active & redirecting</p>
           </CardContent>
         </Card>
       </div>
@@ -145,16 +144,16 @@ export default function Overview() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-lg">
             <SparklesIcon className="size-5 text-primary" />
-            Quick Shorten Link
+            {t("dashboard.quickShorten")}
           </CardTitle>
-          <CardDescription>Paste your destination URL below to generate a short link instantly.</CardDescription>
+          <CardDescription>{t("dashboard.quickShortenDesc")}</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleQuickShorten} className="space-y-4">
             <div className="flex flex-col sm:flex-row gap-3">
               <Input
                 type="url"
-                placeholder="https://example.com/very-long-destination-url"
+                placeholder={t("dashboard.originalUrlPlaceholder")}
                 value={originalUrl}
                 onChange={(e) => setOriginalUrl(e.target.value)}
                 required
@@ -162,13 +161,13 @@ export default function Overview() {
               />
               <Input
                 type="text"
-                placeholder="Custom code (optional)"
+                placeholder={t("dashboard.customCodePlaceholder")}
                 value={customCode}
                 onChange={(e) => setCustomCode(e.target.value)}
                 className="sm:w-56 bg-background"
               />
               <Button type="submit" disabled={shortening} className="cursor-pointer">
-                {shortening ? 'Shortening...' : 'Shorten URL'}
+                {shortening ? t("dashboard.shorteningBtn") : t("dashboard.shortenBtn")}
               </Button>
             </div>
           </form>
@@ -192,7 +191,7 @@ export default function Overview() {
               <div className="flex items-center gap-2 shrink-0">
                 <Button size="sm" variant="outline" onClick={() => handleCopy(createdUrl.short_url)}>
                   {copied ? <CheckIcon className="size-4 text-emerald-500 mr-1" /> : <CopyIcon className="size-4 mr-1" />}
-                  {copied ? 'Copied' : 'Copy'}
+                  {copied ? t("common.copied") : t("common.copy")}
                 </Button>
                 <Button
                   size="sm"
@@ -200,7 +199,7 @@ export default function Overview() {
                   onClick={() => setQrModal({ isOpen: true, url: createdUrl.short_url, code: createdUrl.short_code })}
                 >
                   <QrCodeIcon className="size-4 mr-1" />
-                  QR Code
+                  {t("common.qrCode")}
                 </Button>
               </div>
             </div>
@@ -212,21 +211,20 @@ export default function Overview() {
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <div>
-            <CardTitle>Recent Short URLs</CardTitle>
-            <CardDescription>Your latest created short codes and performance.</CardDescription>
+            <CardTitle>{t("dashboard.recentUrlsTitle")}</CardTitle>
           </div>
           <Button asChild size="sm" className="cursor-pointer font-semibold gap-2 bg-primary/10 text-primary hover:bg-primary hover:text-primary-foreground border border-primary/20 transition-all duration-200 shadow-2xs group">
             <Link to="/dashboard/urls" className="inline-flex items-center">
-              <span>View All Links</span>
+              <span>{t("common.view")} {t("nav.shortUrls")}</span>
               <ArrowRightIcon className="size-4 shrink-0 transition-transform duration-200 group-hover:translate-x-0.5" />
             </Link>
           </Button>
         </CardHeader>
         <CardContent>
           {loading ? (
-            <div className="py-8 text-center text-sm text-muted-foreground">Loading recent links...</div>
+            <div className="py-8 text-center text-sm text-muted-foreground">{t("common.loading")}</div>
           ) : recentUrls.length === 0 ? (
-            <div className="py-8 text-center text-sm text-muted-foreground">No short URLs created yet. Use the widget above to create your first link!</div>
+            <div className="py-8 text-center text-sm text-muted-foreground">{t("dashboard.noRecentUrls")}</div>
           ) : (
             <div className="divide-y divide-border/40">
               {recentUrls.map((item) => (
@@ -235,7 +233,7 @@ export default function Overview() {
                     <div className="flex items-center gap-2">
                       <span className="font-semibold text-sm">{item.title || item.short_code}</span>
                       <Badge variant={item.is_active ? 'default' : 'secondary'} className="text-[10px]">
-                        {item.is_active ? 'Active' : 'Inactive'}
+                        {item.is_active ? t("common.active") : t("common.inactive")}
                       </Badge>
                     </div>
                     <div className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -250,7 +248,7 @@ export default function Overview() {
                   <div className="flex items-center gap-3 shrink-0">
                     <div className="text-right">
                       <div className="text-sm font-bold">{item.click_count || 0}</div>
-                      <div className="text-[10px] text-muted-foreground">clicks</div>
+                      <div className="text-[10px] text-muted-foreground">{t("dashboard.clicks")}</div>
                     </div>
                     <Button size="sm" variant="ghost" onClick={() => handleCopy(item.short_url)}>
                       <CopyIcon className="size-4" />

@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { ThemeProvider } from 'next-themes';
 import { Toaster } from 'sonner';
+import { I18nProvider } from '@/context/I18nContext';
 import { useAuthStore } from '@/features/auth/store';
 import TopLoadingBar from '@/components/TopLoadingBar';
 
@@ -67,61 +68,63 @@ export default function App() {
 
   return (
     <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false} storageKey="theme-mode">
-      <Toaster position="top-right" richColors />
-      <Router>
-        <TopLoadingBar />
-        <Routes>
-          {/* Root Redirect */}
-          <Route path="/" element={<Navigate to="/dashboard" replace />} />
+      <I18nProvider>
+        <Toaster position="top-right" richColors />
+        <Router>
+          <TopLoadingBar />
+          <Routes>
+            {/* Root Redirect */}
+            <Route path="/" element={<Navigate to="/dashboard" replace />} />
 
-          {/* Public Auth Routes */}
-          <Route
-            path="/login"
-            element={
-              <PublicRoute>
-                <Login />
-              </PublicRoute>
-            }
-          />
-          <Route
-            path="/register"
-            element={
-              <PublicRoute>
-                <Register />
-              </PublicRoute>
-            }
-          />
-          <Route path="/auth/google/callback" element={<GoogleCallback />} />
-          <Route path="/invalid-url" element={<InvalidURLPage />} />
-
-          {/* Protected Dashboard Layout & Subroutes */}
-          <Route
-            path="/dashboard"
-            element={
-              <PrivateRoute>
-                <DashboardLayout />
-              </PrivateRoute>
-            }
-          >
-            <Route index element={<Overview />} />
-            <Route path="urls" element={<URLs />} />
-            <Route path="urls/:id" element={<URLDetailPage />} />
-            <Route path="analytics" element={<Analytics />} />
+            {/* Public Auth Routes */}
             <Route
-              path="admin"
+              path="/login"
               element={
-                <PrivateRoute adminOnly>
-                  <AdminUsers />
-                </PrivateRoute>
+                <PublicRoute>
+                  <Login />
+                </PublicRoute>
               }
             />
-            <Route path="account" element={<Account />} />
-          </Route>
+            <Route
+              path="/register"
+              element={
+                <PublicRoute>
+                  <Register />
+                </PublicRoute>
+              }
+            />
+            <Route path="/auth/google/callback" element={<GoogleCallback />} />
+            <Route path="/invalid-url" element={<InvalidURLPage />} />
 
-          {/* Fallback wildcard route */}
-          <Route path="*" element={<Navigate to="/dashboard" replace />} />
-        </Routes>
-      </Router>
+            {/* Protected Dashboard Layout & Subroutes */}
+            <Route
+              path="/dashboard"
+              element={
+                <PrivateRoute>
+                  <DashboardLayout />
+                </PrivateRoute>
+              }
+            >
+              <Route index element={<Overview />} />
+              <Route path="urls" element={<URLs />} />
+              <Route path="urls/:id" element={<URLDetailPage />} />
+              <Route path="analytics" element={<Analytics />} />
+              <Route
+                path="admin"
+                element={
+                  <PrivateRoute adminOnly>
+                    <AdminUsers />
+                  </PrivateRoute>
+                }
+              />
+              <Route path="account" element={<Account />} />
+            </Route>
+
+            {/* Fallback wildcard route */}
+            <Route path="*" element={<Navigate to="/dashboard" replace />} />
+          </Routes>
+        </Router>
+      </I18nProvider>
     </ThemeProvider>
   );
 }

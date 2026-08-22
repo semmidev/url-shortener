@@ -1,6 +1,7 @@
 import * as React from "react"
 import { useNavigate } from "react-router-dom"
 import { useAuthStore } from "@/features/auth/store"
+import { useI18n } from "@/context/I18nContext"
 import { NavMain } from "@/components/nav-main"
 import { NavUser } from "@/components/nav-user"
 import {
@@ -25,6 +26,7 @@ import {
 
 export function AppSidebar({ ...props }) {
   const user = useAuthStore((s) => s.user)
+  const { t } = useI18n()
   const navigate = useNavigate()
 
   const isAdmin = user?.role === "admin"
@@ -49,7 +51,7 @@ export function AppSidebar({ ...props }) {
               <div className="flex aspect-square size-8 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground font-bold transition-all duration-200">
                 <ZapIcon className="size-5" />
               </div>
-              <span className="text-base font-semibold">URL Shortener</span>
+              <span className="text-base font-semibold">{t("nav.urlShortener")}</span>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
@@ -57,33 +59,33 @@ export function AppSidebar({ ...props }) {
 
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel>Home</SidebarGroupLabel>
+          <SidebarGroupLabel>{t("nav.home")}</SidebarGroupLabel>
           <NavMain items={[
-            { title: "Dashboard", url: "/dashboard", icon: <LayoutDashboardIcon className="size-4" />, exact: true },
+            { title: t("nav.dashboard"), url: "/dashboard", icon: <LayoutDashboardIcon className="size-4" />, exact: true },
           ]} />
         </SidebarGroup>
 
         <SidebarGroup>
-          <SidebarGroupLabel>Links</SidebarGroupLabel>
+          <SidebarGroupLabel>{t("nav.links")}</SidebarGroupLabel>
           <NavMain items={[
-            { title: "Short URLs", url: "/dashboard/urls", icon: <Link2Icon className="size-4" /> },
-            { title: "Analytics", url: "/dashboard/analytics", icon: <BarChart3Icon className="size-4" /> },
+            { title: t("nav.shortUrls"), url: "/dashboard/urls", icon: <Link2Icon className="size-4" /> },
+            { title: t("nav.analytics"), url: "/dashboard/analytics", icon: <BarChart3Icon className="size-4" /> },
           ]} />
         </SidebarGroup>
 
         {isAdmin && (
           <SidebarGroup>
-            <SidebarGroupLabel>Administration</SidebarGroupLabel>
+            <SidebarGroupLabel>{t("nav.administration")}</SidebarGroupLabel>
             <NavMain items={[
-              { title: "User Management", url: "/dashboard/admin", icon: <ShieldCheckIcon className="size-4" /> },
+              { title: t("nav.userManagement"), url: "/dashboard/admin", icon: <ShieldCheckIcon className="size-4" /> },
             ]} />
           </SidebarGroup>
         )}
 
         <SidebarGroup>
-          <SidebarGroupLabel>Settings</SidebarGroupLabel>
+          <SidebarGroupLabel>{t("nav.settings")}</SidebarGroupLabel>
           <NavMain items={[
-            { title: "Account Profile", url: "/dashboard/account", icon: <UserIcon className="size-4" /> },
+            { title: t("nav.accountProfile"), url: "/dashboard/account", icon: <UserIcon className="size-4" /> },
           ]} />
         </SidebarGroup>
       </SidebarContent>

@@ -8,7 +8,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Backend-Go_1.26-00ADD8?style=for-the-badge&logo=go&logoColor=white" alt="Go Backend">
+  <img src="https://img.shields.io/badge/Backend-Go_1.27.0-00ADD8?style=for-the-badge&logo=go&logoColor=white" alt="Go Backend">
   <img src="https://img.shields.io/badge/Frontend-React_19-61DAFB?style=for-the-badge&logo=react&logoColor=black" alt="React Frontend">
   <img src="https://img.shields.io/badge/Database-PostgreSQL_18-4169E1?style=for-the-badge&logo=postgresql&logoColor=white" alt="PostgreSQL">
   <img src="https://img.shields.io/badge/Styling-Tailwind_v4-06B6D4?style=for-the-badge&logo=tailwindcss&logoColor=white" alt="Tailwind CSS">
@@ -42,7 +42,7 @@ A clean, modern, high-performance URL Shortener REST API backend written in Go u
 ## 🚀 Quick Start & Setup Guide
 
 ### 1. Prerequisites
-- **Go**: `v1.22+` (or latest `v1.26`)
+- **Go**: `v1.22+` (or latest `v1.27.0`)
 - **Docker** / **Podman**: Required for local PostgreSQL database container and Testcontainers E2E testing.
 - **Make**: Executing build, test, and container scripts.
 
@@ -255,12 +255,22 @@ All major architectural and code style decisions are formally documented in our 
 | **backend-0018** | Request Timeout Propagation & Deadline Handling | [Read Record](docs/adr/backend-0018-request-timeout-propagation.md) |
 | **backend-0019** | Admin API & Role-Based Access Control (RBAC) | [Read Record](docs/adr/backend-0019-admin-api-backoffice-rbac.md) |
 | **backend-0020** | Comprehensive Cache Invalidation Across Triggers | [Read Record](docs/adr/backend-0020-comprehensive-cache-invalidation.md) |
+| **backend-0021** | Prometheus Metrics Instrumentation & `/metrics` Scrape Endpoint | [Read Record](docs/adr/backend-0021-prometheus-metrics-instrumentation.md) |
+| **backend-0022** | Go 1.27 Upgrade & Generic Methods Integration | [Read Record](docs/adr/backend-0022-go-127-upgrade-and-generic-methods.md) |
+| **backend-0023** | Strict API-Only HTTP Request Logging Filter | [Read Record](docs/adr/backend-0023-strict-api-only-http-request-logging-filter.md) |
 | **frontend-0001** | Single-Binary SPA Embedding with Go `embed.FS` | [Read Record](docs/adr/frontend-0001-single-binary-spa-embedding.md) |
 | **frontend-0002** | Browser HTML Navigation Redirection for Inactive/Expired URLs | [Read Record](docs/adr/frontend-0002-browser-html-navigation-redirection.md) |
+| **frontend-0003** | Global Progress Loading Indicator & Debounced Search Inputs | [Read Record](docs/adr/frontend-0003-global-progress-indicator-and-debounced-search.md) |
+| **frontend-0004** | Comprehensive i18n Internationalization & Language Toggle | [Read Record](docs/adr/frontend-0004-i18n-internationalization-and-language-toggle.md) |
+| **frontend-0005** | Bun Runtime, Package Manager, & Vite Bundling | [Read Record](docs/adr/frontend-0005-bun-runtime-package-manager-and-vite-bundling.md) |
 | **infra-0001** | Developer Experience & Tooling (Air, Pre-commit, Seed) | [Read Record](docs/adr/infra-0001-developer-experience-tooling.md) |
 | **infra-0002** | Release-Driven CD & Semantic Versioning Automation | [Read Record](docs/adr/infra-0002-release-driven-cd-and-semver-automation.md) |
+| **infra-0003** | Asynq Background Task Worker & Deduplication | [Read Record](docs/adr/infra-0003-asynq-background-worker-and-task-deduplication.md) |
+| **infra-0004** | PgBouncer Connection Pooling & `pgx/v5` Compatibility | [Read Record](docs/adr/infra-0004-pgbouncer-connection-pooling.md) |
 | **security-0001** | HTTP Security Headers Hardening & Route CSP | [Read Record](docs/adr/security-0001-http-security-headers-hardening-csp.md) |
 | **security-0002** | Security Audit Logging | [Read Record](docs/adr/security-0002-security-audit-logging.md) |
+| **security-0003** | OAuth Account Linking & Password Governance | [Read Record](docs/adr/security-0003-oauth-account-linking-and-password-governance.md) |
+| **security-0004** | Dedicated Internal Management Server Isolation | [Read Record](docs/adr/security-0004-internal-management-server-isolation.md) |
 | **testing-0001** | Benchmark Testing & k6 Performance Engineering | [Read Record](docs/adr/testing-0001-benchmarks-and-k6-load-testing.md) |
 
 ---

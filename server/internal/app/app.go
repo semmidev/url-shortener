@@ -234,8 +234,23 @@ func BuildRouter(cfg config.Config, pool *pgxpool.Pool, appLogger *logger.Logger
 
 	authMw := customMw.Auth(tokenMaker)
 
-	// Public Prometheus Metrics Endpoint
-	r.Handle("/metrics", appMetrics.Handler())
+	// Internal Management & Observability Server (Private /metrics & Go 1.27 /debug/pprof)
+	if cfg.ManagementEnabled && cfg.ManagementAddress != "" {
+		mgmtRouter := BuildManagementRouter(appMetrics)
+		mgmtServer := &http.Server{
+			Addr:         cfg.ManagementAddress,
+			Handler:      mgmtRouter,
+			ReadTimeout:  5 * time.Second,
+			WriteTimeout: 5 * time.Second,
+			IdleTimeout:  30 * time.Second,
+		}
+		go func() {
+			appLogger.Info(context.Background(), "starting internal management server", "address", cfg.ManagementAddress)
+			if err := mgmtServer.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+				appLogger.Warn(context.Background(), "internal management server stopped", "error", err)
+			}
+		}()
+	}
 
 	// Public Scalar API Reference UI Endpoint (Embedded HTML template from server/docs/scalar.html)
 	scalarHandler := func(w http.ResponseWriter, r *http.Request) {
@@ -298,10 +313,9 @@ func BuildRouter(cfg config.Config, pool *pgxpool.Pool, appLogger *logger.Logger
 		web.Success(w, http.StatusOK, "Application version and build info", info, nil)
 	})
 
-	// Public Redirection Endpoint with sampling middleware for high-throughput logging control
+	// Public Redirection Endpoint
 	publicRateLimitMw := customMw.RedisRateLimiter(redisCache, "public", cfg.RateLimitPublicRequests, cfg.RateLimitPublicWindow)
 	redirectRouter := chi.NewRouter()
-	redirectRouter.Use(customMw.WideEventLoggingWithSampling(appLogger, cfg.LogRedirectSampleRate))
 
 	redirectRouter.With(publicRateLimitMw).Get("/{code}", redirectH.Redirect)
 	redirectRouter.With(publicRateLimitMw).Get("/{code}/preview", redirectH.Preview)
@@ -329,4 +343,15 @@ func BuildRouter(cfg config.Config, pool *pgxpool.Pool, appLogger *logger.Logger
 	})
 
 	return r, nil
+}
+
+// BuildManagementRouter constructs the private internal management router serving /metrics and Go 1.27 /debug/pprof endpoints.
+func BuildManagementRouter(appMetrics *metrics.Metrics) chi.Router {
+	mr := chi.NewRouter()
+	mr.Use(chimw.Recoverer)
+	if appMetrics != nil {
+		mr.Handle("/metrics", appMetrics.Handler())
+	}
+	mr.Mount("/debug", chimw.Profiler())
+	return mr
 }

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useAuthStore } from '@/features/auth/store';
+import { useI18n } from '@/context/I18nContext';
 import { toast } from 'sonner';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -50,6 +51,7 @@ function FieldError({ error }) {
 }
 
 export default function Account() {
+  const { t } = useI18n();
   const user = useAuthStore((s) => s.user);
   const updateProfile = useAuthStore((s) => s.updateProfile);
   const changePassword = useAuthStore((s) => s.changePassword);
@@ -171,8 +173,8 @@ export default function Account() {
   return (
     <div className="space-y-6 max-w-4xl animate-in fade-in duration-200">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">Pengaturan Akun</h1>
-        <p className="text-sm text-muted-foreground">Kelola informasi profil, keamanan password, dan koneksi akun Google Anda.</p>
+        <h1 className="text-2xl font-bold tracking-tight">{t("account.title")}</h1>
+        <p className="text-sm text-muted-foreground">{t("account.subtitle")}</p>
       </div>
 
       {/* Identity Card */}
@@ -184,7 +186,7 @@ export default function Account() {
                 {user.full_name ? user.full_name.charAt(0) : user.email.charAt(0)}
               </div>
               <div className="min-w-0">
-                <h2 className="text-lg font-bold truncate">{user.full_name || 'Pengguna'}</h2>
+                <h2 className="text-lg font-bold truncate">{user.full_name || 'User'}</h2>
                 <div className="flex items-center gap-1.5 text-xs text-muted-foreground truncate">
                   <CheckCircle2Icon className="size-3.5 text-emerald-500 shrink-0" />
                   <span className="truncate">{user.email}</span>
@@ -207,44 +209,34 @@ export default function Account() {
           <div className="flex items-center gap-2">
             <UserIcon className="size-5 text-blue-500 shrink-0" />
             <div>
-              <CardTitle className="text-base font-semibold">Informasi Profil</CardTitle>
-              <CardDescription className="text-xs">Perbarui nama lengkap dan data identitas Anda.</CardDescription>
+              <CardTitle className="text-base font-semibold">{t("account.personalDetails")}</CardTitle>
             </div>
           </div>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleProfileSubmit} className="space-y-4">
             <div className="space-y-1.5">
-              <Label htmlFor="profile-fullname" className="text-xs font-medium">Nama Lengkap</Label>
+              <Label htmlFor="profile-fullname" className="text-xs font-medium">{t("account.fullName")}</Label>
               <Input
                 id="profile-fullname"
                 value={profileForm.fullName}
                 onChange={(e) => setProfileForm({ fullName: e.target.value })}
-                placeholder="Masukkan nama lengkap Anda"
                 className="bg-background/80"
               />
               <FieldError error={profileErrors.fullName || profileErrors.full_name} />
             </div>
 
             <div className="space-y-1.5">
-              <Label className="text-xs font-medium">Email Address</Label>
+              <Label className="text-xs font-medium">{t("account.emailAddress")}</Label>
               <div className="flex items-center gap-2 h-9 px-3 rounded-md border border-dashed border-border/80 bg-muted/40 text-sm text-muted-foreground">
                 <CheckCircle2Icon className="size-3.5 text-emerald-500 shrink-0" />
                 <span className="truncate font-mono text-xs">{user.email}</span>
               </div>
-              <p className="text-[11px] text-muted-foreground">Alamat email terverifikasi dan tidak dapat diubah secara langsung.</p>
             </div>
 
             <div className="flex justify-end pt-2">
-              <Button type="submit" size="sm" disabled={profileLoading} className="cursor-pointer">
-                {profileLoading ? (
-                  <>
-                    <Loader2Icon className="size-3.5 animate-spin mr-1.5" />
-                    Menyimpan...
-                  </>
-                ) : (
-                  'Simpan Profil'
-                )}
+              <Button type="submit" disabled={profileLoading} className="cursor-pointer">
+                {profileLoading ? t("common.saving") : t("account.updateProfileBtn")}
               </Button>
             </div>
           </form>
