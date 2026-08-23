@@ -22,6 +22,9 @@ import {
   ShieldCheckIcon,
   UserIcon,
   ZapIcon,
+  ListFilterIcon,
+  UserCogIcon,
+  SlidersIcon,
 } from "lucide-react"
 
 export function AppSidebar({ ...props }) {
@@ -61,35 +64,86 @@ export function AppSidebar({ ...props }) {
       </SidebarHeader>
 
       <SidebarContent>
+        {/* Main Dashboard Section */}
         <SidebarGroup>
           <SidebarGroupLabel>{t("nav.home")}</SidebarGroupLabel>
-          <NavMain items={[
-            { title: t("nav.dashboard"), url: "/dashboard", icon: <LayoutDashboardIcon className="size-4" />, exact: true },
-          ]} />
+          <NavMain
+            items={[
+              {
+                title: t("nav.dashboard"),
+                url: "/dashboard",
+                icon: <LayoutDashboardIcon className="size-4" />,
+                exact: true,
+              },
+            ]}
+          />
         </SidebarGroup>
 
+        {/* Link Management Section with Sub-menu */}
         <SidebarGroup>
           <SidebarGroupLabel>{t("nav.links")}</SidebarGroupLabel>
-          <NavMain items={[
-            { title: t("nav.shortUrls"), url: "/dashboard/urls", icon: <Link2Icon className="size-4" /> },
-            { title: t("nav.analytics"), url: "/dashboard/analytics", icon: <BarChart3Icon className="size-4" /> },
-          ]} />
+          <NavMain
+            items={[
+              {
+                title: t("nav.links"),
+                icon: <Link2Icon className="size-4" />,
+                items: [
+                  {
+                    title: t("nav.shortUrls"),
+                    url: "/dashboard/urls",
+                    icon: <ListFilterIcon className="size-3.5" />,
+                  },
+                  {
+                    title: t("nav.analytics"),
+                    url: "/dashboard/analytics",
+                    icon: <BarChart3Icon className="size-3.5" />,
+                  },
+                ],
+              },
+            ]}
+          />
         </SidebarGroup>
 
+        {/* System Administration Section */}
         {isAdmin && (
           <SidebarGroup>
             <SidebarGroupLabel>{t("nav.administration")}</SidebarGroupLabel>
-            <NavMain items={[
-              { title: t("nav.userManagement"), url: "/dashboard/admin", icon: <ShieldCheckIcon className="size-4" /> },
-            ]} />
+            <NavMain
+              items={[
+                {
+                  title: t("nav.administration"),
+                  icon: <ShieldCheckIcon className="size-4" />,
+                  items: [
+                    {
+                      title: t("nav.userManagement"),
+                      url: "/dashboard/admin",
+                      icon: <UserCogIcon className="size-3.5" />,
+                    },
+                  ],
+                },
+              ]}
+            />
           </SidebarGroup>
         )}
 
+        {/* Settings & Profile Section */}
         <SidebarGroup>
           <SidebarGroupLabel>{t("nav.settings")}</SidebarGroupLabel>
-          <NavMain items={[
-            { title: t("nav.accountProfile"), url: "/dashboard/account", icon: <UserIcon className="size-4" /> },
-          ]} />
+          <NavMain
+            items={[
+              {
+                title: t("nav.settings"),
+                icon: <UserIcon className="size-4" />,
+                items: [
+                  {
+                    title: t("nav.accountProfile"),
+                    url: "/dashboard/account",
+                    icon: <SlidersIcon className="size-3.5" />,
+                  },
+                ],
+              },
+            ]}
+          />
         </SidebarGroup>
       </SidebarContent>
 
