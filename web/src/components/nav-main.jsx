@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react"
-import { Link, useLocation, useNavigate } from "react-router-dom"
+import { Link, useLocation } from "react-router-dom"
 import {
   SidebarGroupContent,
   SidebarMenu,
@@ -22,7 +22,6 @@ import { ChevronRightIcon } from "lucide-react"
 
 function NavMainItem({ item }) {
   const { pathname } = useLocation()
-  const navigate = useNavigate()
   const { setOpenMobile, isMobile, state } = useSidebar()
 
   const hasSubItems = Boolean(item.items && item.items.length > 0)
@@ -114,12 +113,7 @@ function NavMainItem({ item }) {
               return (
                 <DropdownMenuItem
                   key={subItem.title}
-                  onClick={(e) => {
-                    e.preventDefault()
-                    if (subItem.url && subItem.url !== "#") {
-                      navigate(subItem.url)
-                    }
-                  }}
+                  render={subItem.url && subItem.url !== "#" ? <Link to={subItem.url} /> : undefined}
                   className={`cursor-pointer gap-2 ${active ? "bg-primary/10 text-primary font-semibold" : ""}`}
                 >
                   {subItem.icon || <span className="size-1.5 rounded-full bg-current opacity-60" />}
@@ -145,11 +139,7 @@ function NavMainItem({ item }) {
         type="button"
         isActive={isActive}
         tooltip={item.title}
-        onClick={(e) => {
-          e.preventDefault()
-          e.stopPropagation()
-          setIsOpen((prev) => !prev)
-        }}
+        onClick={() => setIsOpen((prev) => !prev)}
         className={`w-full justify-between transition-colors duration-200 cursor-pointer ${
           isActive
             ? "bg-primary/10! text-primary! font-semibold border-l-2 border-l-primary rounded-l-none pl-3!"
