@@ -518,12 +518,20 @@ func (s *Service) createSessionAndTokensWithQuerier(ctx context.Context, q db.Qu
 		return nil, apperr.Internal("failed to create access token", err)
 	}
 
+	userResp := toUserResponse(user)
+	if perms, err := q.GetUserRolePermissions(ctx, user.ID); err == nil {
+		userResp.Permissions = perms
+	}
+	if userResp.Permissions == nil {
+		userResp.Permissions = []string{}
+	}
+
 	return &LoginResponse{
 		AccessToken:           accessTokenStr,
 		AccessTokenExpiresAt:  accessPayload.ExpiredAt,
 		RefreshToken:          refreshTokenStr,
 		RefreshTokenExpiresAt: refreshPayload.ExpiredAt,
-		User:                  toUserResponse(user),
+		User:                  userResp,
 	}, nil
 }
 
@@ -577,6 +585,16 @@ func (s *Service) GetProfile(ctx context.Context, req GetProfileRequest) (*UserR
 	}
 
 	res := toUserResponse(user)
+
+	// Fetch active permission codes for this user (used by FE RBAC context)
+	perms, err := s.store.GetUserRolePermissions(ctx, req.UserID)
+	if err == nil {
+		res.Permissions = perms
+	}
+	if res.Permissions == nil {
+		res.Permissions = []string{}
+	}
+
 	return &res, nil
 }
 

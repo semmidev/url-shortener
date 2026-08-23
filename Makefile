@@ -24,9 +24,8 @@ run-worker:
 dev:
 	air -c .air.toml
 
-# Seed database with sample users, short URLs, and analytics events
-seed:
-	go run ./server/cmd/seed
+# Seed database with initial schema & data via migrations
+seed: migrate-up
 
 # Setup pre-commit git hooks
 setup-hooks:

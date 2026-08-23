@@ -50,10 +50,6 @@ linters:
           - errcheck
           - gosec
           - misspell
-      - path: server/cmd/seed
-        linters:
-          - gosec
-          - errcheck
       - path: web/
         linters:
           - gocognit

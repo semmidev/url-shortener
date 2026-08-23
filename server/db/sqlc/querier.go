@@ -12,18 +12,35 @@ import (
 )
 
 type Querier interface {
+	AddRolePermission(ctx context.Context, arg AddRolePermissionParams) error
+	CheckUserPermission(ctx context.Context, arg CheckUserPermissionParams) (bool, error)
+	ClearRolePermissions(ctx context.Context, roleID uuid.UUID) error
 	CountAllUsers(ctx context.Context, search pgtype.Text) (int64, error)
+	CountAuditLogs(ctx context.Context, search pgtype.Text) (int64, error)
+	CountGlobalLinks(ctx context.Context, search pgtype.Text) (int64, error)
 	CountUserShortURLs(ctx context.Context, arg CountUserShortURLsParams) (int64, error)
+	CreateAuditLog(ctx context.Context, arg CreateAuditLogParams) (AuditLog, error)
+	CreateNavigationMenu(ctx context.Context, arg CreateNavigationMenuParams) (CreateNavigationMenuRow, error)
 	CreateOutboxEvent(ctx context.Context, arg CreateOutboxEventParams) (OutboxEvent, error)
+	CreateRole(ctx context.Context, arg CreateRoleParams) (Role, error)
 	CreateSession(ctx context.Context, arg CreateSessionParams) (Session, error)
 	CreateShortURL(ctx context.Context, arg CreateShortURLParams) (ShortUrl, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
 	DeactivateExpiredURLs(ctx context.Context) ([]string, error)
+	DeleteNavigationMenu(ctx context.Context, id uuid.UUID) error
+	DeleteRole(ctx context.Context, id uuid.UUID) error
+	DeleteSessionsByUserID(ctx context.Context, userID uuid.UUID) error
 	DeleteShortURL(ctx context.Context, arg DeleteShortURLParams) error
+	GetNavigationMenuByID(ctx context.Context, id uuid.UUID) (GetNavigationMenuByIDRow, error)
 	GetPendingOutboxEvents(ctx context.Context, limit int32) ([]OutboxEvent, error)
+	GetRecentAuditLogs(ctx context.Context, limit int32) ([]AuditLog, error)
+	GetRoleByID(ctx context.Context, id uuid.UUID) (Role, error)
+	GetRoleByName(ctx context.Context, name string) (Role, error)
+	GetRolePermissions(ctx context.Context, roleID uuid.UUID) ([]Permission, error)
 	GetSession(ctx context.Context, id uuid.UUID) (Session, error)
 	GetShortURLByCode(ctx context.Context, shortCode string) (ShortUrl, error)
 	GetShortURLByID(ctx context.Context, id uuid.UUID) (ShortUrl, error)
+	GetSystemConfigByKey(ctx context.Context, key string) (SystemConfig, error)
 	GetSystemStats(ctx context.Context) (GetSystemStatsRow, error)
 	GetURLAnalyticsSummary(ctx context.Context, urlID uuid.UUID) (GetURLAnalyticsSummaryRow, error)
 	GetURLClicksOverTime(ctx context.Context, urlID uuid.UUID) ([]GetURLClicksOverTimeRow, error)
@@ -34,20 +51,33 @@ type Querier interface {
 	GetUserCountryBreakdown(ctx context.Context, userID pgtype.UUID) ([]GetUserCountryBreakdownRow, error)
 	GetUserDashboardSummary(ctx context.Context, userID pgtype.UUID) (GetUserDashboardSummaryRow, error)
 	GetUserDeviceBreakdown(ctx context.Context, userID pgtype.UUID) ([]GetUserDeviceBreakdownRow, error)
+	GetUserRolePermissions(ctx context.Context, id uuid.UUID) ([]string, error)
 	GetUserTopReferrers(ctx context.Context, arg GetUserTopReferrersParams) ([]GetUserTopReferrersRow, error)
 	IncrementClickCount(ctx context.Context, id uuid.UUID) error
 	ListAllUsers(ctx context.Context, arg ListAllUsersParams) ([]ListAllUsersRow, error)
+	ListAuditLogs(ctx context.Context, arg ListAuditLogsParams) ([]AuditLog, error)
+	ListGlobalLinks(ctx context.Context, arg ListGlobalLinksParams) ([]ListGlobalLinksRow, error)
+	ListNavigationMenus(ctx context.Context) ([]ListNavigationMenusRow, error)
+	ListPermissions(ctx context.Context) ([]Permission, error)
 	ListRecentClicksByUrlID(ctx context.Context, arg ListRecentClicksByUrlIDParams) ([]UrlAnalytic, error)
+	ListRoles(ctx context.Context) ([]Role, error)
+	ListSystemConfigs(ctx context.Context) ([]SystemConfig, error)
 	ListUserShortURLs(ctx context.Context, arg ListUserShortURLsParams) ([]ShortUrl, error)
 	MarkOutboxEventProcessed(ctx context.Context, id uuid.UUID) error
 	RecordClick(ctx context.Context, arg RecordClickParams) (UrlAnalytic, error)
 	RestoreShortURL(ctx context.Context, arg RestoreShortURLParams) (ShortUrl, error)
 	RevokeSession(ctx context.Context, id uuid.UUID) error
+	SetURLActiveStatus(ctx context.Context, arg SetURLActiveStatusParams) (SetURLActiveStatusRow, error)
 	SetUserSuspended(ctx context.Context, arg SetUserSuspendedParams) (SetUserSuspendedRow, error)
 	UnlinkGoogleUser(ctx context.Context, id uuid.UUID) (User, error)
+	UpdateMenuOrderIndex(ctx context.Context, arg UpdateMenuOrderIndexParams) error
+	UpdateNavigationMenu(ctx context.Context, arg UpdateNavigationMenuParams) (UpdateNavigationMenuRow, error)
+	UpdateRole(ctx context.Context, arg UpdateRoleParams) (Role, error)
 	UpdateShortURL(ctx context.Context, arg UpdateShortURLParams) (ShortUrl, error)
 	UpdateUser(ctx context.Context, arg UpdateUserParams) (User, error)
+	UpdateUserRole(ctx context.Context, arg UpdateUserRoleParams) (UpdateUserRoleRow, error)
 	UpsertGoogleUser(ctx context.Context, arg UpsertGoogleUserParams) (User, error)
+	UpsertSystemConfig(ctx context.Context, arg UpsertSystemConfigParams) (SystemConfig, error)
 }
 
 var _ Querier = (*Queries)(nil)

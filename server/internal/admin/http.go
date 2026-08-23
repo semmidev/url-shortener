@@ -5,42 +5,77 @@ import (
 	"uuid"
 
 	"github.com/go-chi/chi/v5"
+
+	db "github.com/semmidev/url-shortener/server/db/sqlc"
 	"github.com/semmidev/url-shortener/server/internal/platform/apperr"
+	"github.com/semmidev/url-shortener/server/internal/platform/audit"
+	"github.com/semmidev/url-shortener/server/internal/platform/middleware"
 	"github.com/semmidev/url-shortener/server/internal/platform/web"
 )
 
 type Handler struct {
-	svc *Service
+	svc         *Service
+	queries     db.Querier
+	auditLogger *audit.Logger
 }
 
-func NewHandler(svc *Service) *Handler {
-	return &Handler{svc: svc}
+func NewHandler(svc *Service, queries db.Querier, auditLogger *audit.Logger) *Handler {
+	return &Handler{
+		svc:         svc,
+		queries:     queries,
+		auditLogger: auditLogger,
+	}
 }
 
-func (h *Handler) Mount(r chi.Router, authMw, roleAdminMw func(http.Handler) http.Handler) {
+func (h *Handler) Mount(r chi.Router, authMw func(http.Handler) http.Handler) {
+	requirePerm := func(code string) func(http.Handler) http.Handler {
+		return middleware.RequirePermission(h.queries, code)
+	}
+
 	r.Route("/admin", func(r chi.Router) {
 		r.Use(authMw)
-		r.Use(roleAdminMw)
 
-		r.Get("/users", h.listUsers)
-		r.Put("/users/{id}/suspend", h.suspendUser)
-		r.Delete("/urls/{id}", h.forceDeleteURL)
-		r.Get("/stats", h.getSystemStats)
+		// User menu endpoint accessible to any authenticated user
+		r.Get("/menus/my", h.getUserPermittedMenus)
+
+		// System stats overview
+		r.With(requirePerm("admin.dashboard.read")).Get("/stats/overview", h.getSystemStats)
+		r.With(requirePerm("admin.dashboard.read")).Get("/stats", h.getSystemStats) // alias
+
+		// User Management
+		r.With(requirePerm("users.read")).Get("/users", h.listUsers)
+		r.With(requirePerm("users.suspend")).Patch("/users/{id}/status", h.suspendUser)
+		r.With(requirePerm("users.suspend")).Put("/users/{id}/suspend", h.suspendUser) // alias
+		r.With(requirePerm("users.roles.update")).Patch("/users/{id}/role", h.updateUserRole)
+		r.With(requirePerm("users.sessions.revoke")).Delete("/users/{id}/sessions", h.revokeUserSessions)
+
+		// RBAC Roles & Permissions
+		r.With(requirePerm("roles.read")).Get("/roles", h.listRoles)
+		r.With(requirePerm("roles.create")).Post("/roles", h.createRole)
+		r.With(requirePerm("roles.permissions.update")).Put("/roles/{id}/permissions", h.updateRolePermissions)
+		r.With(requirePerm("roles.read")).Get("/permissions", h.listPermissions)
+
+		// Navigation Menu Builder
+		r.With(requirePerm("menus.read")).Get("/menus", h.listNavigationMenus)
+		r.With(requirePerm("menus.create")).Post("/menus", h.createNavigationMenu)
+		r.With(requirePerm("menus.update")).Put("/menus/reorder", h.reorderNavigationMenus)
+		r.With(requirePerm("menus.update")).Put("/menus/{id}", h.updateNavigationMenu)
+		r.With(requirePerm("menus.update")).Delete("/menus/{id}", h.deleteNavigationMenu)
+
+		// Global Link Control & Oversight
+		r.With(requirePerm("links.read")).Get("/links", h.listGlobalLinks)
+		r.With(requirePerm("links.ban")).Patch("/links/{id}/ban", h.banGlobalLink)
+		r.With(requirePerm("links.ban")).Delete("/urls/{id}", h.forceDeleteURL)
+
+		// Audit Logs
+		r.With(requirePerm("audit.read")).Get("/audit-logs", h.listAuditLogs)
+
+		// System Configuration & Feature Flags
+		r.With(requirePerm("system.config.read")).Get("/system/config", h.listSystemConfigs)
+		r.With(requirePerm("system.config.update")).Put("/system/config/{key}", h.updateSystemConfig)
 	})
 }
 
-// listUsers returns paginated users for admin
-// @Summary List all registered users
-// @Tags Admin
-// @Security BearerAuth
-// @Produce json
-// @Param page query int false "Page number"
-// @Param limit query int false "Items per page"
-// @Param search query string false "Search query"
-// @Success 200 {object} ListUsersResponse
-// @Failure 401 {object} apperr.Error
-// @Failure 403 {object} apperr.Error
-// @Router /api/v1/admin/users [get]
 func (h *Handler) listUsers(w http.ResponseWriter, r *http.Request) {
 	filter := web.NewFilterFromRequest(r)
 	res, err := h.svc.ListUsers(r.Context(), ListUsersRequest{Filter: filter})
@@ -48,23 +83,9 @@ func (h *Handler) listUsers(w http.ResponseWriter, r *http.Request) {
 		web.Error(w, r, err)
 		return
 	}
-
 	web.JSON(w, http.StatusOK, res)
 }
 
-// suspendUser suspends or unsuspends a user account
-// @Summary Suspend or unsuspend user account
-// @Tags Admin
-// @Security BearerAuth
-// @Accept json
-// @Produce json
-// @Param id path string true "User UUID"
-// @Param body body SuspendUserRequest true "Suspension payload"
-// @Success 200 {object} AdminUserResponse
-// @Failure 400 {object} apperr.Error
-// @Failure 401 {object} apperr.Error
-// @Failure 403 {object} apperr.Error
-// @Router /api/v1/admin/users/{id}/suspend [put]
 func (h *Handler) suspendUser(w http.ResponseWriter, r *http.Request) {
 	idStr := chi.URLParam(r, "id")
 	userID, err := uuid.Parse(idStr)
@@ -86,20 +107,308 @@ func (h *Handler) suspendUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	h.auditLogger.Log(r.Context(), r, audit.AuditParams{
+		Action:     "USER_SUSPEND_TOGGLE",
+		Resource:   "user",
+		ResourceID: userID.String(),
+		Payload:    res,
+	})
+
 	web.JSON(w, http.StatusOK, res)
 }
 
-// forceDeleteURL deletes any short URL by admin
-// @Summary Force delete any short URL
-// @Tags Admin
-// @Security BearerAuth
-// @Produce json
-// @Param id path string true "Short URL UUID"
-// @Success 200 {object} map[string]string
-// @Failure 401 {object} apperr.Error
-// @Failure 403 {object} apperr.Error
-// @Failure 404 {object} apperr.Error
-// @Router /api/v1/admin/urls/{id} [delete]
+func (h *Handler) updateUserRole(w http.ResponseWriter, r *http.Request) {
+	idStr := chi.URLParam(r, "id")
+	userID, err := uuid.Parse(idStr)
+	if err != nil {
+		web.Error(w, r, apperr.Invalid("invalid user ID"))
+		return
+	}
+
+	var req UpdateUserRoleRequest
+	if err := web.Decode(r, &req); err != nil {
+		web.Error(w, r, err)
+		return
+	}
+	req.UserID = userID
+
+	res, err := h.svc.UpdateUserRole(r.Context(), req)
+	if err != nil {
+		web.Error(w, r, err)
+		return
+	}
+
+	h.auditLogger.Log(r.Context(), r, audit.AuditParams{
+		Action:     "USER_ROLE_UPDATED",
+		Resource:   "user",
+		ResourceID: userID.String(),
+		Payload:    res,
+	})
+
+	web.JSON(w, http.StatusOK, res)
+}
+
+func (h *Handler) revokeUserSessions(w http.ResponseWriter, r *http.Request) {
+	idStr := chi.URLParam(r, "id")
+	userID, err := uuid.Parse(idStr)
+	if err != nil {
+		web.Error(w, r, apperr.Invalid("invalid user ID"))
+		return
+	}
+
+	if err := h.svc.RevokeUserSessions(r.Context(), userID); err != nil {
+		web.Error(w, r, err)
+		return
+	}
+
+	h.auditLogger.Log(r.Context(), r, audit.AuditParams{
+		Action:     "USER_SESSIONS_REVOKED",
+		Resource:   "user",
+		ResourceID: userID.String(),
+	})
+
+	web.JSON(w, http.StatusOK, map[string]string{"message": "all user sessions revoked successfully"})
+}
+
+func (h *Handler) getSystemStats(w http.ResponseWriter, r *http.Request) {
+	res, err := h.svc.GetSystemStats(r.Context())
+	if err != nil {
+		web.Error(w, r, err)
+		return
+	}
+	web.JSON(w, http.StatusOK, res)
+}
+
+func (h *Handler) listRoles(w http.ResponseWriter, r *http.Request) {
+	res, err := h.svc.ListRoles(r.Context())
+	if err != nil {
+		web.Error(w, r, err)
+		return
+	}
+	web.JSON(w, http.StatusOK, res)
+}
+
+func (h *Handler) createRole(w http.ResponseWriter, r *http.Request) {
+	var req CreateRoleRequest
+	if err := web.Decode(r, &req); err != nil {
+		web.Error(w, r, err)
+		return
+	}
+
+	res, err := h.svc.CreateRole(r.Context(), req)
+	if err != nil {
+		web.Error(w, r, err)
+		return
+	}
+
+	h.auditLogger.Log(r.Context(), r, audit.AuditParams{
+		Action:     "ROLE_CREATED",
+		Resource:   "role",
+		ResourceID: res.ID.String(),
+		Payload:    res,
+	})
+
+	web.JSON(w, http.StatusCreated, res)
+}
+
+func (h *Handler) updateRolePermissions(w http.ResponseWriter, r *http.Request) {
+	idStr := chi.URLParam(r, "id")
+	roleID, err := uuid.Parse(idStr)
+	if err != nil {
+		web.Error(w, r, apperr.Invalid("invalid role ID"))
+		return
+	}
+
+	var req UpdateRolePermissionsRequest
+	if err := web.Decode(r, &req); err != nil {
+		web.Error(w, r, err)
+		return
+	}
+
+	res, err := h.svc.UpdateRolePermissions(r.Context(), roleID, req)
+	if err != nil {
+		web.Error(w, r, err)
+		return
+	}
+
+	h.auditLogger.Log(r.Context(), r, audit.AuditParams{
+		Action:     "ROLE_PERMISSIONS_UPDATED",
+		Resource:   "role",
+		ResourceID: roleID.String(),
+		Payload:    res,
+	})
+
+	web.JSON(w, http.StatusOK, res)
+}
+
+func (h *Handler) listPermissions(w http.ResponseWriter, r *http.Request) {
+	res, err := h.svc.ListPermissions(r.Context())
+	if err != nil {
+		web.Error(w, r, err)
+		return
+	}
+	web.JSON(w, http.StatusOK, res)
+}
+
+func (h *Handler) listNavigationMenus(w http.ResponseWriter, r *http.Request) {
+	res, err := h.svc.ListNavigationMenus(r.Context())
+	if err != nil {
+		web.Error(w, r, err)
+		return
+	}
+	web.JSON(w, http.StatusOK, res)
+}
+
+func (h *Handler) getUserPermittedMenus(w http.ResponseWriter, r *http.Request) {
+	userID, ok := web.UserID(r.Context())
+	if !ok {
+		web.Error(w, r, apperr.Unauthorized("autentikasi diperlukan"))
+		return
+	}
+
+	res, err := h.svc.GetUserPermittedMenus(r.Context(), userID)
+	if err != nil {
+		web.Error(w, r, err)
+		return
+	}
+	web.JSON(w, http.StatusOK, res)
+}
+
+func (h *Handler) createNavigationMenu(w http.ResponseWriter, r *http.Request) {
+	var req CreateMenuRequest
+	if err := web.Decode(r, &req); err != nil {
+		web.Error(w, r, err)
+		return
+	}
+
+	res, err := h.svc.CreateNavigationMenu(r.Context(), req)
+	if err != nil {
+		web.Error(w, r, err)
+		return
+	}
+
+	h.auditLogger.Log(r.Context(), r, audit.AuditParams{
+		Action:     "MENU_CREATED",
+		Resource:   "navigation_menu",
+		ResourceID: res.ID.String(),
+		Payload:    res,
+	})
+
+	web.JSON(w, http.StatusCreated, res)
+}
+
+func (h *Handler) updateNavigationMenu(w http.ResponseWriter, r *http.Request) {
+	idStr := chi.URLParam(r, "id")
+	menuID, err := uuid.Parse(idStr)
+	if err != nil {
+		web.Error(w, r, apperr.Invalid("invalid menu ID"))
+		return
+	}
+
+	var req CreateMenuRequest
+	if err := web.Decode(r, &req); err != nil {
+		web.Error(w, r, err)
+		return
+	}
+
+	res, err := h.svc.UpdateNavigationMenu(r.Context(), menuID, req)
+	if err != nil {
+		web.Error(w, r, err)
+		return
+	}
+
+	h.auditLogger.Log(r.Context(), r, audit.AuditParams{
+		Action:     "MENU_UPDATED",
+		Resource:   "navigation_menu",
+		ResourceID: menuID.String(),
+		Payload:    res,
+	})
+
+	web.JSON(w, http.StatusOK, res)
+}
+
+func (h *Handler) reorderNavigationMenus(w http.ResponseWriter, r *http.Request) {
+	var req ReorderMenusRequest
+	if err := web.Decode(r, &req); err != nil {
+		web.Error(w, r, err)
+		return
+	}
+
+	if err := h.svc.ReorderNavigationMenus(r.Context(), req); err != nil {
+		web.Error(w, r, err)
+		return
+	}
+
+	h.auditLogger.Log(r.Context(), r, audit.AuditParams{
+		Action:   "MENUS_REORDERED",
+		Resource: "navigation_menu",
+		Payload:  req,
+	})
+
+	web.JSON(w, http.StatusOK, map[string]string{"message": "menus reordered successfully"})
+}
+
+func (h *Handler) deleteNavigationMenu(w http.ResponseWriter, r *http.Request) {
+	idStr := chi.URLParam(r, "id")
+	menuID, err := uuid.Parse(idStr)
+	if err != nil {
+		web.Error(w, r, apperr.Invalid("invalid menu ID"))
+		return
+	}
+
+	if err := h.svc.DeleteNavigationMenu(r.Context(), menuID); err != nil {
+		web.Error(w, r, err)
+		return
+	}
+
+	h.auditLogger.Log(r.Context(), r, audit.AuditParams{
+		Action:     "MENU_DELETED",
+		Resource:   "navigation_menu",
+		ResourceID: menuID.String(),
+	})
+
+	web.JSON(w, http.StatusOK, map[string]string{"message": "navigation menu deleted successfully"})
+}
+
+func (h *Handler) listGlobalLinks(w http.ResponseWriter, r *http.Request) {
+	filter := web.NewFilterFromRequest(r)
+	res, err := h.svc.ListGlobalLinks(r.Context(), filter)
+	if err != nil {
+		web.Error(w, r, err)
+		return
+	}
+	web.JSON(w, http.StatusOK, res)
+}
+
+func (h *Handler) banGlobalLink(w http.ResponseWriter, r *http.Request) {
+	idStr := chi.URLParam(r, "id")
+	urlID, err := uuid.Parse(idStr)
+	if err != nil {
+		web.Error(w, r, apperr.Invalid("invalid URL ID"))
+		return
+	}
+
+	var req BanURLRequest
+	if err := web.Decode(r, &req); err != nil {
+		web.Error(w, r, err)
+		return
+	}
+
+	if err := h.svc.SetURLActiveStatus(r.Context(), urlID, req.IsActive); err != nil {
+		web.Error(w, r, err)
+		return
+	}
+
+	h.auditLogger.Log(r.Context(), r, audit.AuditParams{
+		Action:     "LINK_BAN_TOGGLE",
+		Resource:   "short_url",
+		ResourceID: urlID.String(),
+		Payload:    req,
+	})
+
+	web.JSON(w, http.StatusOK, map[string]string{"message": "URL active status updated successfully"})
+}
+
 func (h *Handler) forceDeleteURL(w http.ResponseWriter, r *http.Request) {
 	idStr := chi.URLParam(r, "id")
 	urlID, err := uuid.Parse(idStr)
@@ -113,24 +422,59 @@ func (h *Handler) forceDeleteURL(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	h.auditLogger.Log(r.Context(), r, audit.AuditParams{
+		Action:     "LINK_FORCE_DELETED",
+		Resource:   "short_url",
+		ResourceID: urlID.String(),
+	})
+
 	web.JSON(w, http.StatusOK, map[string]string{"message": "short URL force deleted by admin"})
 }
 
-// getSystemStats returns global platform statistics
-// @Summary Get system-wide platform statistics
-// @Tags Admin
-// @Security BearerAuth
-// @Produce json
-// @Success 200 {object} SystemStatsResponse
-// @Failure 401 {object} apperr.Error
-// @Failure 403 {object} apperr.Error
-// @Router /api/v1/admin/stats [get]
-func (h *Handler) getSystemStats(w http.ResponseWriter, r *http.Request) {
-	res, err := h.svc.GetSystemStats(r.Context())
+func (h *Handler) listAuditLogs(w http.ResponseWriter, r *http.Request) {
+	filter := web.NewFilterFromRequest(r)
+	res, err := h.svc.ListAuditLogs(r.Context(), filter)
 	if err != nil {
 		web.Error(w, r, err)
 		return
 	}
+	web.JSON(w, http.StatusOK, res)
+}
+
+func (h *Handler) listSystemConfigs(w http.ResponseWriter, r *http.Request) {
+	res, err := h.svc.ListSystemConfigs(r.Context())
+	if err != nil {
+		web.Error(w, r, err)
+		return
+	}
+	web.JSON(w, http.StatusOK, res)
+}
+
+func (h *Handler) updateSystemConfig(w http.ResponseWriter, r *http.Request) {
+	key := chi.URLParam(r, "key")
+	if key == "" {
+		web.Error(w, r, apperr.Invalid("config key is required"))
+		return
+	}
+
+	var req UpdateSystemConfigRequest
+	if err := web.Decode(r, &req); err != nil {
+		web.Error(w, r, err)
+		return
+	}
+
+	res, err := h.svc.UpdateSystemConfig(r.Context(), key, req)
+	if err != nil {
+		web.Error(w, r, err)
+		return
+	}
+
+	h.auditLogger.Log(r.Context(), r, audit.AuditParams{
+		Action:     "SYSTEM_CONFIG_UPDATED",
+		Resource:   "system_config",
+		ResourceID: key,
+		Payload:    res,
+	})
 
 	web.JSON(w, http.StatusOK, res)
 }

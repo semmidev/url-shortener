@@ -11,15 +11,68 @@ import (
 	"uuid"
 )
 
+type AuditLog struct {
+	ID         uuid.UUID   `json:"id"`
+	ActorID    pgtype.UUID `json:"actor_id"`
+	ActorEmail string      `json:"actor_email"`
+	Action     string      `json:"action"`
+	Resource   string      `json:"resource"`
+	ResourceID string      `json:"resource_id"`
+	Payload    []byte      `json:"payload"`
+	IpAddress  string      `json:"ip_address"`
+	UserAgent  string      `json:"user_agent"`
+	CreatedAt  time.Time   `json:"created_at"`
+}
+
+type NavigationMenu struct {
+	ID             uuid.UUID   `json:"id"`
+	ParentID       pgtype.UUID `json:"parent_id"`
+	Title          string      `json:"title"`
+	Path           string      `json:"path"`
+	Icon           string      `json:"icon"`
+	OrderIndex     int32       `json:"order_index"`
+	IsActive       bool        `json:"is_active"`
+	IsExternal     bool        `json:"is_external"`
+	BadgeText      string      `json:"badge_text"`
+	PermissionCode pgtype.Text `json:"permission_code"`
+	CreatedAt      time.Time   `json:"created_at"`
+	UpdatedAt      time.Time   `json:"updated_at"`
+	IsGroup        bool        `json:"is_group"`
+}
+
 type OutboxEvent struct {
 	ID            uuid.UUID          `json:"id"`
 	AggregateType string             `json:"aggregate_type"`
 	AggregateID   string             `json:"aggregate_id"`
 	EventType     string             `json:"event_type"`
-	Payload       []byte             `json:"payload"`
+	Payload       string             `json:"payload"`
 	Status        string             `json:"status"`
 	CreatedAt     time.Time          `json:"created_at"`
 	ProcessedAt   pgtype.Timestamptz `json:"processed_at"`
+}
+
+type Permission struct {
+	ID          uuid.UUID `json:"id"`
+	Code        string    `json:"code"`
+	Module      string    `json:"module"`
+	Action      string    `json:"action"`
+	Description string    `json:"description"`
+	CreatedAt   time.Time `json:"created_at"`
+}
+
+type Role struct {
+	ID          uuid.UUID `json:"id"`
+	Name        string    `json:"name"`
+	DisplayName string    `json:"display_name"`
+	Description string    `json:"description"`
+	IsSystem    bool      `json:"is_system"`
+	CreatedAt   time.Time `json:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at"`
+}
+
+type RolePermission struct {
+	RoleID       uuid.UUID `json:"role_id"`
+	PermissionID uuid.UUID `json:"permission_id"`
 }
 
 type Session struct {
@@ -45,6 +98,13 @@ type ShortUrl struct {
 	CreatedAt   time.Time          `json:"created_at"`
 	UpdatedAt   time.Time          `json:"updated_at"`
 	DeletedAt   pgtype.Timestamptz `json:"deleted_at"`
+}
+
+type SystemConfig struct {
+	Key         string    `json:"key"`
+	Value       string    `json:"value"`
+	Description string    `json:"description"`
+	UpdatedAt   time.Time `json:"updated_at"`
 }
 
 type UrlAnalytic struct {

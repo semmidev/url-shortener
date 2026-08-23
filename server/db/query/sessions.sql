@@ -20,3 +20,7 @@ WHERE id = $1 LIMIT 1;
 UPDATE sessions
 SET is_blocked = TRUE
 WHERE id = $1;
+
+-- name: DeleteSessionsByUserID :exec
+DELETE FROM sessions
+WHERE user_id = $1;

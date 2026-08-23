@@ -22,6 +22,7 @@ import (
 	"github.com/semmidev/url-shortener/server/internal/admin"
 	"github.com/semmidev/url-shortener/server/internal/analytics"
 	"github.com/semmidev/url-shortener/server/internal/config"
+	"github.com/semmidev/url-shortener/server/internal/platform/audit"
 	"github.com/semmidev/url-shortener/server/internal/platform/cache"
 	"github.com/semmidev/url-shortener/server/internal/platform/eventbus"
 	"github.com/semmidev/url-shortener/server/internal/platform/logger"
@@ -188,7 +189,8 @@ func BuildRouter(cfg config.Config, pool *pgxpool.Pool, appLogger *logger.Logger
 	urlSvc.StartExpirationCleanupWorker(context.Background(), 1*time.Minute)
 
 	analyticsSvc := analytics.NewService(store)
-	adminSvc := admin.NewService(store, appLogger, redisCache)
+	auditLogger := audit.NewLogger(store)
+	adminSvc := admin.NewService(store)
 
 	// Initialize Embedded SPA Handler
 	spaHandler, err := spaweb.NewSPAHandler()
@@ -200,7 +202,7 @@ func BuildRouter(cfg config.Config, pool *pgxpool.Pool, appLogger *logger.Logger
 	userH := user.NewHandler(userSvc)
 	urlH := url.NewHandler(urlSvc)
 	analyticsH := analytics.NewHandler(analyticsSvc)
-	adminH := admin.NewHandler(adminSvc)
+	adminH := admin.NewHandler(adminSvc, store, auditLogger)
 
 	redirectH := url.NewRedirectHandler(urlSvc, analyticsH, spaHandler)
 	redirectH.SetMetricsRecorder(appMetrics)
@@ -337,8 +339,7 @@ func BuildRouter(cfg config.Config, pool *pgxpool.Pool, appLogger *logger.Logger
 			r.Use(apiRateLimitMw)
 			urlH.Mount(r, authMw)
 			analyticsH.Mount(r, authMw)
-			roleAdminMw := customMw.RequireRole("admin")
-			adminH.Mount(r, authMw, roleAdminMw)
+			adminH.Mount(r, authMw)
 		})
 	})
 

@@ -93,6 +93,7 @@ type UserResponse struct {
 	GoogleID    *string   `json:"google_id,omitempty"`
 	HasPassword bool      `json:"has_password"`
 	Role        string    `json:"role"`
+	Permissions []string  `json:"permissions"`
 	CreatedAt   time.Time `json:"created_at"`
 	UpdatedAt   time.Time `json:"updated_at"`
 }

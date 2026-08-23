@@ -8,7 +8,7 @@ export default function LoadingFallback() {
         </div>
         <div className="space-y-1">
           <p className="text-sm font-semibold text-foreground tracking-wide">Memuat Halaman</p>
-          <p className="text-xs text-muted-foreground/80 font-medium animate-pulse">Menyiapkan materi terbaik...</p>
+          <p className="text-xs text-muted-foreground/80 font-medium animate-pulse">Menyiapkan materi terbaik…</p>
         </div>
       </div>
     </div>

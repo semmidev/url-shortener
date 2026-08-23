@@ -95,7 +95,7 @@ func (w *OutboxWorker) processPendingEvents(ctx context.Context) {
 			AggregateType: e.AggregateType,
 			AggregateID:   e.AggregateID,
 			EventType:     e.EventType,
-			Payload:       e.Payload,
+			Payload:       json.RawMessage(e.Payload),
 			CreatedAt:     e.CreatedAt,
 		}
 

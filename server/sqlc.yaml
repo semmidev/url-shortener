@@ -16,3 +16,5 @@ sql:
             go_type: "time.Time"
           - db_type: "uuid"
             go_type: "uuid.UUID"
+          - db_type: "jsonb"
+            go_type: "string"

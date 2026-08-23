@@ -117,3 +117,23 @@ func (f Filter) SortKey() string {
 		return "created_at_" + f.SortDirection
 	}
 }
+
+type Meta struct {
+	Total      int64 `json:"total"`
+	Page       int32 `json:"page"`
+	Limit      int32 `json:"limit"`
+	TotalPages int32 `json:"total_pages"`
+}
+
+func CalculateMeta(total int64, page, limit int32) Meta {
+	totalPages := int32(0)
+	if limit > 0 {
+		totalPages = int32(math.Ceil(float64(total) / float64(limit)))
+	}
+	return Meta{
+		Total:      total,
+		Page:       page,
+		Limit:      limit,
+		TotalPages: totalPages,
+	}
+}

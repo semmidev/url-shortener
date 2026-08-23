@@ -1,9 +1,10 @@
 import * as React from "react"
 import { useNavigate } from "react-router-dom"
 import { useAuthStore } from "@/features/auth/store"
-import { useI18n } from "@/context/I18nContext"
+import { usePermission } from "@/hooks/usePermission"
 import { NavMain } from "@/components/nav-main"
 import { NavUser } from "@/components/nav-user"
+import { resolveIcon } from "@/lib/iconResolver"
 import {
   Sidebar,
   SidebarContent,
@@ -15,24 +16,47 @@ import {
   SidebarGroup,
   SidebarGroupLabel,
 } from "@/components/ui/sidebar"
-import {
-  LayoutDashboardIcon,
-  Link2Icon,
-  BarChart3Icon,
-  ShieldCheckIcon,
-  UserIcon,
-  ZapIcon,
-  ListFilterIcon,
-  UserCogIcon,
-  SlidersIcon,
-} from "lucide-react"
+import { ZapIcon, Loader2Icon } from "lucide-react"
+
+/**
+ * Build a NavMain item from a DB navigation menu item.
+ * Recursively maps children to sub-items.
+ */
+function menuToNavItem(menu) {
+  const icon = resolveIcon(menu.icon, { className: "size-4" })
+  const subIcon = resolveIcon(menu.icon, { className: "size-3.5" })
+
+  const isExactRoute = menu.path === "/dashboard" || menu.path === "/dashboard/admin"
+
+  const base = {
+    title: menu.title,
+    url: menu.path,
+    icon,
+    badge: menu.badge_text || undefined,
+    exact: isExactRoute,
+  }
+
+  if (menu.children && menu.children.length > 0) {
+    return {
+      ...base,
+      url: undefined, // parent items with children don't navigate themselves
+      items: menu.children.map((child) => ({
+        title: child.title,
+        url: child.path,
+        icon: resolveIcon(child.icon, { className: "size-3.5" }) || subIcon,
+        badge: child.badge_text || undefined,
+        exact: child.path === "/dashboard" || child.path === "/dashboard/admin",
+      })),
+    }
+  }
+
+  return base
+}
 
 export function AppSidebar({ ...props }) {
   const user = useAuthStore((s) => s.user)
-  const { t } = useI18n()
   const navigate = useNavigate()
-
-  const isAdmin = user?.role === "admin"
+  const { menus, isLoaded } = usePermission()
 
   const sidebarUser = {
     name: user?.full_name || user?.email || "User",
@@ -41,6 +65,22 @@ export function AppSidebar({ ...props }) {
     avatar_url: user?.avatar_url || "",
     role: user?.role,
   }
+
+  // Organize menus into Group Sections (is_group = true) and standalone items
+  const { groups, standalone } = React.useMemo(() => {
+    const groupList = []
+    const standaloneList = []
+
+    menus.forEach((item) => {
+      if (item.is_group) {
+        groupList.push(item)
+      } else {
+        standaloneList.push(item)
+      }
+    })
+
+    return { groups: groupList, standalone: standaloneList }
+  }, [menus])
 
   return (
     <Sidebar collapsible="icon" {...props}>
@@ -56,7 +96,7 @@ export function AppSidebar({ ...props }) {
                 <ZapIcon className="size-4 shrink-0" />
               </div>
               <div className="grid flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden">
-                <span className="truncate font-bold text-foreground tracking-tight">{t("nav.urlShortener")}</span>
+                <span className="truncate font-bold text-foreground tracking-tight">URL Shortener</span>
               </div>
             </SidebarMenuButton>
           </SidebarMenuItem>
@@ -64,87 +104,41 @@ export function AppSidebar({ ...props }) {
       </SidebarHeader>
 
       <SidebarContent>
-        {/* Main Dashboard Section */}
-        <SidebarGroup>
-          <SidebarGroupLabel>{t("nav.home")}</SidebarGroupLabel>
-          <NavMain
-            items={[
-              {
-                title: t("nav.dashboard"),
-                url: "/dashboard",
-                icon: <LayoutDashboardIcon className="size-4" />,
-                exact: true,
-              },
-            ]}
-          />
-        </SidebarGroup>
-
-        {/* Link Management Section with Sub-menu */}
-        <SidebarGroup>
-          <SidebarGroupLabel>{t("nav.links")}</SidebarGroupLabel>
-          <NavMain
-            items={[
-              {
-                title: t("nav.links"),
-                icon: <Link2Icon className="size-4" />,
-                items: [
-                  {
-                    title: t("nav.shortUrls"),
-                    url: "/dashboard/urls",
-                    icon: <ListFilterIcon className="size-3.5" />,
-                  },
-                  {
-                    title: t("nav.analytics"),
-                    url: "/dashboard/analytics",
-                    icon: <BarChart3Icon className="size-3.5" />,
-                  },
-                ],
-              },
-            ]}
-          />
-        </SidebarGroup>
-
-        {/* System Administration Section */}
-        {isAdmin && (
+        {!isLoaded ? (
+          /* Loading skeleton while menus fetch */
           <SidebarGroup>
-            <SidebarGroupLabel>{t("nav.administration")}</SidebarGroupLabel>
-            <NavMain
-              items={[
-                {
-                  title: t("nav.administration"),
-                  icon: <ShieldCheckIcon className="size-4" />,
-                  items: [
-                    {
-                      title: t("nav.userManagement"),
-                      url: "/dashboard/admin",
-                      icon: <UserCogIcon className="size-3.5" />,
-                    },
-                  ],
-                },
-              ]}
-            />
+            <div className="flex items-center justify-center py-8 text-muted-foreground">
+              <Loader2Icon className="size-4 animate-spin mr-2" />
+              <span className="text-xs">Loading menu…</span>
+            </div>
+          </SidebarGroup>
+        ) : groups.length > 0 || standalone.length > 0 ? (
+          <>
+            {/* Standalone Top-Level Items (if any) */}
+            {standalone.length > 0 && (
+              <SidebarGroup>
+                <NavMain items={standalone.map(menuToNavItem)} />
+              </SidebarGroup>
+            )}
+
+            {/* Group Sections with Labels */}
+            {groups.map((group) => (
+              <SidebarGroup key={group.id}>
+                {group.title && (
+                  <SidebarGroupLabel className="group-data-[collapsible=icon]:hidden">
+                    {group.title}
+                  </SidebarGroupLabel>
+                )}
+                <NavMain items={(group.children || []).map(menuToNavItem)} />
+              </SidebarGroup>
+            ))}
+          </>
+        ) : (
+          /* Fallback if no menus returned */
+          <SidebarGroup>
+            <div className="px-3 py-2 text-xs text-muted-foreground">No menu items available.</div>
           </SidebarGroup>
         )}
-
-        {/* Settings & Profile Section */}
-        <SidebarGroup>
-          <SidebarGroupLabel>{t("nav.settings")}</SidebarGroupLabel>
-          <NavMain
-            items={[
-              {
-                title: t("nav.settings"),
-                icon: <UserIcon className="size-4" />,
-                items: [
-                  {
-                    title: t("nav.accountProfile"),
-                    url: "/dashboard/account",
-                    icon: <SlidersIcon className="size-3.5" />,
-                  },
-                ],
-              },
-            ]}
-          />
-        </SidebarGroup>
       </SidebarContent>
 
       <SidebarFooter>

@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { ThemeProvider } from 'next-themes';
 import { Toaster } from 'sonner';
 import { I18nProvider } from '@/context/I18nContext';
+import { PermissionProvider } from '@/context/PermissionContext';
 import { useAuthStore } from '@/features/auth/store';
 import TopLoadingBar from '@/components/TopLoadingBar';
 
@@ -16,7 +17,15 @@ import Overview from '@/features/dashboard/pages/OverviewPage';
 import URLs from '@/features/urls/pages/URLsPage';
 import URLDetailPage from '@/features/urls/pages/URLDetailPage';
 import Analytics from '@/features/analytics/pages/AnalyticsPage';
-import AdminUsers from '@/features/admin/pages/AdminUsersPage';
+
+import AdminDashboardPage from '@/features/admin/pages/AdminDashboardPage';
+import AdminUsersPage from '@/features/admin/pages/AdminUsersPage';
+import AdminRolesPage from '@/features/admin/pages/AdminRolesPage';
+import AdminMenusPage from '@/features/admin/pages/AdminMenusPage';
+import AdminLinksPage from '@/features/admin/pages/AdminLinksPage';
+import AdminAuditLogsPage from '@/features/admin/pages/AdminAuditLogsPage';
+import AdminSystemPage from '@/features/admin/pages/AdminSystemPage';
+
 import Account from '@/features/account/pages/AccountPage';
 
 function PrivateRoute({ children, adminOnly = false }) {
@@ -34,7 +43,7 @@ function PrivateRoute({ children, adminOnly = false }) {
     return <Navigate to="/login" replace />;
   }
 
-  if (adminOnly && user?.role !== 'admin') {
+  if (adminOnly && user?.role !== 'admin' && user?.role !== 'superadmin') {
     return <Navigate to="/dashboard" replace />;
   }
 
@@ -61,6 +70,7 @@ function PublicRoute({ children }) {
 
 export default function App() {
   const initialize = useAuthStore((state) => state.initialize);
+  const user = useAuthStore((state) => state.user);
 
   useEffect(() => {
     initialize();
@@ -71,8 +81,9 @@ export default function App() {
   return (
     <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false} storageKey="theme-mode">
       <I18nProvider>
-        <Toaster position="top-right" richColors />
-        <Router>
+        <PermissionProvider user={user}>
+          <Toaster position="top-right" richColors />
+          <Router>
           <TopLoadingBar />
           <Routes>
             {/* Root Redirect */}
@@ -111,21 +122,73 @@ export default function App() {
               <Route path="urls" element={<URLs />} />
               <Route path="urls/:id" element={<URLDetailPage />} />
               <Route path="analytics" element={<Analytics />} />
+
+              {/* Superadmin Suite Routes */}
               <Route
                 path="admin"
                 element={
                   <PrivateRoute adminOnly>
-                    <AdminUsers />
+                    <AdminDashboardPage />
                   </PrivateRoute>
                 }
               />
+              <Route
+                path="admin/users"
+                element={
+                  <PrivateRoute adminOnly>
+                    <AdminUsersPage />
+                  </PrivateRoute>
+                }
+              />
+              <Route
+                path="admin/roles"
+                element={
+                  <PrivateRoute adminOnly>
+                    <AdminRolesPage />
+                  </PrivateRoute>
+                }
+              />
+              <Route
+                path="admin/menus"
+                element={
+                  <PrivateRoute adminOnly>
+                    <AdminMenusPage />
+                  </PrivateRoute>
+                }
+              />
+              <Route
+                path="admin/links"
+                element={
+                  <PrivateRoute adminOnly>
+                    <AdminLinksPage />
+                  </PrivateRoute>
+                }
+              />
+              <Route
+                path="admin/audit-logs"
+                element={
+                  <PrivateRoute adminOnly>
+                    <AdminAuditLogsPage />
+                  </PrivateRoute>
+                }
+              />
+              <Route
+                path="admin/system"
+                element={
+                  <PrivateRoute adminOnly>
+                    <AdminSystemPage />
+                  </PrivateRoute>
+                }
+              />
+
               <Route path="account" element={<Account />} />
             </Route>
 
             {/* Fallback wildcard route */}
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
           </Routes>
-        </Router>
+          </Router>
+        </PermissionProvider>
       </I18nProvider>
     </ThemeProvider>
   );

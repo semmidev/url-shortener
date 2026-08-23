@@ -28,7 +28,7 @@ type CreateOutboxEventParams struct {
 	AggregateType string `json:"aggregate_type"`
 	AggregateID   string `json:"aggregate_id"`
 	EventType     string `json:"event_type"`
-	Payload       []byte `json:"payload"`
+	Payload       string `json:"payload"`
 }
 
 func (q *Queries) CreateOutboxEvent(ctx context.Context, arg CreateOutboxEventParams) (OutboxEvent, error) {

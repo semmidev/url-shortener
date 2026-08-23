@@ -28,6 +28,25 @@ func (q *Queries) CountAllUsers(ctx context.Context, search pgtype.Text) (int64,
 	return count, err
 }
 
+const countGlobalLinks = `-- name: CountGlobalLinks :one
+SELECT COUNT(*)
+FROM short_urls s
+LEFT JOIN users u ON s.user_id = u.id
+WHERE s.deleted_at IS NULL AND ($1::text IS NULL OR (
+    s.short_code ILIKE '%' || $1::text || '%' OR
+    s.original_url ILIKE '%' || $1::text || '%' OR
+    s.title ILIKE '%' || $1::text || '%' OR
+    u.email ILIKE '%' || $1::text || '%'
+))
+`
+
+func (q *Queries) CountGlobalLinks(ctx context.Context, search pgtype.Text) (int64, error) {
+	row := q.db.QueryRow(ctx, countGlobalLinks, search)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const getSystemStats = `-- name: GetSystemStats :one
 SELECT
     (SELECT COUNT(*) FROM users) AS total_users,
@@ -110,6 +129,105 @@ func (q *Queries) ListAllUsers(ctx context.Context, arg ListAllUsersParams) ([]L
 	return items, nil
 }
 
+const listGlobalLinks = `-- name: ListGlobalLinks :many
+SELECT s.id, s.user_id, u.email as user_email, s.short_code, s.original_url, s.title, s.is_active, s.click_count, s.expires_at, s.created_at, s.updated_at
+FROM short_urls s
+LEFT JOIN users u ON s.user_id = u.id
+WHERE s.deleted_at IS NULL AND ($1::text IS NULL OR (
+    s.short_code ILIKE '%' || $1::text || '%' OR
+    s.original_url ILIKE '%' || $1::text || '%' OR
+    s.title ILIKE '%' || $1::text || '%' OR
+    u.email ILIKE '%' || $1::text || '%'
+))
+ORDER BY s.created_at DESC
+LIMIT $3 OFFSET $2
+`
+
+type ListGlobalLinksParams struct {
+	Search    pgtype.Text `json:"search"`
+	OffsetVal int32       `json:"offset_val"`
+	LimitVal  int32       `json:"limit_val"`
+}
+
+type ListGlobalLinksRow struct {
+	ID          uuid.UUID          `json:"id"`
+	UserID      pgtype.UUID        `json:"user_id"`
+	UserEmail   pgtype.Text        `json:"user_email"`
+	ShortCode   string             `json:"short_code"`
+	OriginalUrl string             `json:"original_url"`
+	Title       string             `json:"title"`
+	IsActive    bool               `json:"is_active"`
+	ClickCount  int64              `json:"click_count"`
+	ExpiresAt   pgtype.Timestamptz `json:"expires_at"`
+	CreatedAt   time.Time          `json:"created_at"`
+	UpdatedAt   time.Time          `json:"updated_at"`
+}
+
+func (q *Queries) ListGlobalLinks(ctx context.Context, arg ListGlobalLinksParams) ([]ListGlobalLinksRow, error) {
+	rows, err := q.db.Query(ctx, listGlobalLinks, arg.Search, arg.OffsetVal, arg.LimitVal)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListGlobalLinksRow{}
+	for rows.Next() {
+		var i ListGlobalLinksRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserID,
+			&i.UserEmail,
+			&i.ShortCode,
+			&i.OriginalUrl,
+			&i.Title,
+			&i.IsActive,
+			&i.ClickCount,
+			&i.ExpiresAt,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const setURLActiveStatus = `-- name: SetURLActiveStatus :one
+UPDATE short_urls
+SET is_active = $2, updated_at = NOW()
+WHERE id = $1 AND deleted_at IS NULL
+RETURNING id, short_code, original_url, is_active, updated_at
+`
+
+type SetURLActiveStatusParams struct {
+	ID       uuid.UUID `json:"id"`
+	IsActive bool      `json:"is_active"`
+}
+
+type SetURLActiveStatusRow struct {
+	ID          uuid.UUID `json:"id"`
+	ShortCode   string    `json:"short_code"`
+	OriginalUrl string    `json:"original_url"`
+	IsActive    bool      `json:"is_active"`
+	UpdatedAt   time.Time `json:"updated_at"`
+}
+
+func (q *Queries) SetURLActiveStatus(ctx context.Context, arg SetURLActiveStatusParams) (SetURLActiveStatusRow, error) {
+	row := q.db.QueryRow(ctx, setURLActiveStatus, arg.ID, arg.IsActive)
+	var i SetURLActiveStatusRow
+	err := row.Scan(
+		&i.ID,
+		&i.ShortCode,
+		&i.OriginalUrl,
+		&i.IsActive,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const setUserSuspended = `-- name: SetUserSuspended :one
 UPDATE users
 SET is_suspended = $2, updated_at = NOW()
@@ -135,6 +253,43 @@ type SetUserSuspendedRow struct {
 func (q *Queries) SetUserSuspended(ctx context.Context, arg SetUserSuspendedParams) (SetUserSuspendedRow, error) {
 	row := q.db.QueryRow(ctx, setUserSuspended, arg.ID, arg.IsSuspended)
 	var i SetUserSuspendedRow
+	err := row.Scan(
+		&i.ID,
+		&i.Email,
+		&i.FullName,
+		&i.Role,
+		&i.IsSuspended,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const updateUserRole = `-- name: UpdateUserRole :one
+UPDATE users
+SET role = $2, updated_at = NOW()
+WHERE id = $1
+RETURNING id, email, full_name, role, is_suspended, created_at, updated_at
+`
+
+type UpdateUserRoleParams struct {
+	ID   uuid.UUID `json:"id"`
+	Role string    `json:"role"`
+}
+
+type UpdateUserRoleRow struct {
+	ID          uuid.UUID `json:"id"`
+	Email       string    `json:"email"`
+	FullName    string    `json:"full_name"`
+	Role        string    `json:"role"`
+	IsSuspended bool      `json:"is_suspended"`
+	CreatedAt   time.Time `json:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at"`
+}
+
+func (q *Queries) UpdateUserRole(ctx context.Context, arg UpdateUserRoleParams) (UpdateUserRoleRow, error) {
+	row := q.db.QueryRow(ctx, updateUserRole, arg.ID, arg.Role)
+	var i UpdateUserRoleRow
 	err := row.Scan(
 		&i.ID,
 		&i.Email,

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import { useAuthStore } from '@/features/auth/store';
 import { useI18n } from '@/context/I18nContext';
 import { toast } from 'sonner';
@@ -75,6 +76,7 @@ export default function Account() {
 
   // Google unlink loading state
   const [googleLoading, setGoogleLoading] = useState(false);
+  const [isUnlinkModalOpen, setIsUnlinkModalOpen] = useState(false);
 
   if (!user) return null;
 
@@ -134,7 +136,7 @@ export default function Account() {
 
   const hasPassword = Boolean(user?.has_password || user?.password_hash);
 
-  const handleUnlinkGoogle = async () => {
+  const handleUnlinkGoogle = () => {
     if (!hasPassword) {
       toast.error('Anda harus membuat password terlebih dahulu sebelum memutuskan koneksi Google agar tetap bisa login!');
       const passwordInput = document.getElementById('password-new');
@@ -144,8 +146,11 @@ export default function Account() {
       }
       return;
     }
+    setIsUnlinkModalOpen(true);
+  };
 
-    if (!window.confirm('Apakah Anda yakin ingin memutuskan koneksi akun Google Anda?')) return;
+  const confirmUnlinkGoogle = async () => {
+    setIsUnlinkModalOpen(false);
     setGoogleLoading(true);
 
     const res = await unlinkGoogle();
@@ -377,6 +382,46 @@ export default function Account() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Unlink Google Confirmation Modal */}
+      <AnimatePresence>
+        {isUnlinkModalOpen && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 z-50">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-card border border-border rounded-2xl p-6 max-w-sm w-full shadow-xl space-y-4 text-center"
+            >
+              <div className="w-12 h-12 rounded-full bg-amber-500/10 text-amber-500 flex items-center justify-center mx-auto">
+                <AlertCircleIcon className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-foreground">Putuskan Akun Google</h3>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Apakah Anda yakin ingin memutuskan koneksi akun Google Anda?
+                </p>
+              </div>
+              <div className="flex justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setIsUnlinkModalOpen(false)}
+                  className="w-full py-2 px-4 rounded-lg border border-border text-foreground hover:bg-accent cursor-pointer"
+                >
+                  Batal
+                </button>
+                <button
+                  type="button"
+                  onClick={confirmUnlinkGoogle}
+                  className="w-full py-2 px-4 rounded-lg bg-red-600 text-white font-semibold hover:bg-red-700 cursor-pointer"
+                >
+                  Ya, Putuskan
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
