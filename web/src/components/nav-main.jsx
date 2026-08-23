@@ -13,6 +13,7 @@ import {
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
@@ -103,10 +104,12 @@ function NavMainItem({ item }) {
             </span>
           </DropdownMenuTrigger>
           <DropdownMenuContent side="right" align="start" sideOffset={8} className="min-w-48 shadow-md z-50">
-            <DropdownMenuLabel className="flex items-center gap-2 font-semibold text-xs text-muted-foreground uppercase tracking-wider">
-              {item.icon}
-              <span>{item.title}</span>
-            </DropdownMenuLabel>
+            <DropdownMenuGroup>
+              <DropdownMenuLabel className="flex items-center gap-2 font-semibold text-xs text-muted-foreground uppercase tracking-wider">
+                {item.icon}
+                <span>{item.title}</span>
+              </DropdownMenuLabel>
+            </DropdownMenuGroup>
             <DropdownMenuSeparator />
             {item.items.map((subItem) => {
               const active = isSubActive(subItem)
