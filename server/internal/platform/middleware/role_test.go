@@ -4,8 +4,8 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"uuid"
 
-	"github.com/google/uuid"
 	customMw "github.com/semmidev/url-shortener/server/internal/platform/middleware"
 	"github.com/semmidev/url-shortener/server/internal/platform/web"
 )

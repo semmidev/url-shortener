@@ -7,8 +7,8 @@ import (
 	"net/http"
 	"strings"
 	"time"
+	"uuid"
 
-	"github.com/google/uuid"
 	"github.com/semmidev/url-shortener/server/internal/platform/logger"
 )
 
@@ -61,7 +61,7 @@ func WideEventLoggingWithSampling(appLogger *logger.Logger, sampleRate float64) 
 			}
 			reqID := r.Header.Get("X-Request-ID")
 			if reqID == "" {
-				reqID = uuid.NewString()
+				reqID = uuid.NewV7().String()
 			}
 			w.Header().Set("X-Request-ID", reqID)
 

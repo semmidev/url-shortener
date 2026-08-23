@@ -12,8 +12,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"uuid"
 
-	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	db "github.com/semmidev/url-shortener/server/db/sqlc"
@@ -483,7 +483,7 @@ func (s *Service) ExchangeOneTimeCode(ctx context.Context, req GoogleExchangeTok
 }
 
 func (s *Service) createSessionAndTokensWithQuerier(ctx context.Context, q db.Querier, user db.User, userAgent, clientIP string) (*LoginResponse, error) {
-	sessionID := uuid.New()
+	sessionID := uuid.NewV7()
 
 	refreshTokenStr, refreshPayload, err := s.tokenMaker.CreateToken(
 		user.ID,

@@ -2,9 +2,9 @@ package url
 
 import (
 	"net/http"
+	"uuid"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/google/uuid"
 	"github.com/semmidev/url-shortener/server/internal/platform/apperr"
 	"github.com/semmidev/url-shortener/server/internal/platform/web"
 	"github.com/skip2/go-qrcode"

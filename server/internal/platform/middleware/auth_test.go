@@ -5,8 +5,8 @@ import (
 	"net/http/httptest"
 	"testing"
 	"time"
+	"uuid"
 
-	"github.com/google/uuid"
 	"github.com/semmidev/url-shortener/server/internal/platform/token"
 	"github.com/semmidev/url-shortener/server/internal/platform/web"
 )

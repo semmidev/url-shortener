@@ -5,8 +5,8 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"uuid"
 
-	"github.com/google/uuid"
 	"github.com/semmidev/url-shortener/server/internal/platform/apperr"
 	"github.com/semmidev/url-shortener/server/internal/platform/logger"
 )

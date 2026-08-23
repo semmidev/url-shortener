@@ -6,8 +6,8 @@ import (
 	"net/url"
 	"strings"
 	"time"
+	"uuid"
 
-	"github.com/google/uuid"
 	"github.com/semmidev/url-shortener/server/internal/platform/apperr"
 	"github.com/semmidev/url-shortener/server/internal/platform/validator"
 	"github.com/semmidev/url-shortener/server/internal/platform/web"

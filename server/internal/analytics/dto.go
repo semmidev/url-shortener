@@ -2,8 +2,7 @@ package analytics
 
 import (
 	"time"
-
-	"github.com/google/uuid"
+	"uuid"
 )
 
 type RecordClickRequest struct {
