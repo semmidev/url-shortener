@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -211,6 +211,7 @@ export default function URLs() {
               <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
               <Input
                 placeholder={t("urls.searchPlaceholder")}
+                aria-label={t("urls.searchPlaceholder")}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="pl-9"
@@ -226,7 +227,7 @@ export default function URLs() {
                 <SelectItem value="inactive">{t("common.inactive")}</SelectItem>
               </SelectContent>
             </Select>
-            <Button variant="outline" onClick={fetchUrls} title="Refresh Links" className="cursor-pointer">
+            <Button variant="outline" onClick={fetchUrls} title="Refresh Links" aria-label="Refresh Links" className="cursor-pointer">
               <RefreshCwIcon className={`size-4 ${loading ? 'animate-spin' : ''}`} />
             </Button>
           </div>
@@ -289,12 +290,12 @@ export default function URLs() {
                           {rowNumber}
                         </td>
                         <td className="py-3 px-3">
-                          <button
-                            onClick={() => navigate(`/dashboard/urls/${item.id}`)}
+                          <Link
+                            to={`/dashboard/urls/${item.id}`}
                             className="font-semibold text-foreground hover:text-primary transition-colors text-left cursor-pointer"
                           >
                             {item.title || item.short_code}
-                          </button>
+                          </Link>
                           <div>
                             <a
                               href={item.short_url}
@@ -336,6 +337,7 @@ export default function URLs() {
                               onClick={() => handleToggleActive(item)}
                               disabled={togglingId === item.id}
                               title={item.is_active ? 'Deactivate Link (Turn Off)' : 'Activate Link (Turn On)'}
+                              aria-label={item.is_active ? 'Deactivate link' : 'Activate link'}
                               className={`cursor-pointer transition-colors ${
                                 item.is_active
                                   ? 'text-emerald-500 hover:text-rose-500 hover:bg-rose-500/10'
@@ -351,6 +353,7 @@ export default function URLs() {
                                   variant="ghost"
                                   onClick={() => navigate(`/dashboard/urls/${item.id}`)}
                                   title="View Full Details & Click Events"
+                                  aria-label="View link details"
                                   className="cursor-pointer"
                                 >
                                   <BarChart2Icon className="size-4 shrink-0" />
@@ -360,6 +363,7 @@ export default function URLs() {
                                   variant="ghost"
                                   onClick={() => handleCopy(item.short_url, item.id)}
                                   title="Copy Short URL"
+                                  aria-label="Copy short URL"
                                   className="cursor-pointer"
                                 >
                                   {copiedId === item.id ? <CheckIcon className="size-4 text-emerald-500 shrink-0" /> : <CopyIcon className="size-4 shrink-0" />}
@@ -369,6 +373,7 @@ export default function URLs() {
                                   variant="ghost"
                                   onClick={() => setQrModal({ isOpen: true, url: item.short_url, code: item.short_code })}
                                   title="View QR Code"
+                                  aria-label="View QR code"
                                   className="cursor-pointer"
                                 >
                                   <QrCodeIcon className="size-4 shrink-0" />
@@ -378,6 +383,7 @@ export default function URLs() {
                                   variant="ghost"
                                   onClick={() => handlePreview(item.short_code)}
                                   title="Inspect Link Safety"
+                                  aria-label="Inspect link safety"
                                   className="cursor-pointer"
                                 >
                                   <EyeIcon className="size-4 shrink-0" />
@@ -390,6 +396,7 @@ export default function URLs() {
                               className="text-destructive hover:text-destructive hover:bg-destructive/10 cursor-pointer"
                               onClick={() => confirmDelete(item.id)}
                               title="Delete Short Link"
+                              aria-label="Delete short link"
                             >
                               <Trash2Icon className="size-4 shrink-0" />
                             </Button>

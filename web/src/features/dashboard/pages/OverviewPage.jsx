@@ -86,6 +86,13 @@ export default function Overview() {
     fetchData();
   }, []);
 
+  const handleCopy = (urlStr) => {
+    navigator.clipboard.writeText(urlStr);
+    setCopied(true);
+    toast.success('Short URL copied!');
+    setTimeout(() => setCopied(false), 2000);
+  };
+
   const handleQuickShorten = async (e) => {
     e.preventDefault();
     if (!originalUrl) return;
@@ -174,7 +181,7 @@ export default function Overview() {
             <Link2Icon className="size-4 text-primary" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{loading ? '...' : stats.totalUrls}</div>
+            <div className="text-2xl font-bold">{loading ? '…' : stats.totalUrls}</div>
           </CardContent>
         </Card>
 
@@ -184,7 +191,7 @@ export default function Overview() {
             <MousePointerClickIcon className="size-4 text-primary" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{loading ? '...' : stats.totalClicks}</div>
+            <div className="text-2xl font-bold">{loading ? '…' : stats.totalClicks}</div>
           </CardContent>
         </Card>
 
@@ -194,7 +201,7 @@ export default function Overview() {
             <ActivityIcon className="size-4 text-emerald-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{loading ? '...' : stats.activeUrls}</div>
+            <div className="text-2xl font-bold">{loading ? '…' : stats.activeUrls}</div>
           </CardContent>
         </Card>
       </div>
@@ -213,6 +220,7 @@ export default function Overview() {
             <div className="flex flex-col sm:flex-row gap-3">
               <Input
                 type="url"
+                aria-label={t("dashboard.originalUrl")}
                 placeholder={t("dashboard.originalUrlPlaceholder")}
                 value={originalUrl}
                 onChange={(e) => setOriginalUrl(e.target.value)}
@@ -221,6 +229,9 @@ export default function Overview() {
               />
               <Input
                 type="text"
+                aria-label="Custom alias"
+                autoComplete="off"
+                spellCheck={false}
                 placeholder={t("dashboard.customCodePlaceholder")}
                 value={customCode}
                 onChange={(e) => setCustomCode(e.target.value)}
@@ -273,7 +284,7 @@ export default function Overview() {
           <div>
             <CardTitle>{t("dashboard.recentUrlsTitle")}</CardTitle>
           </div>
-          <Button asChild size="sm" className="cursor-pointer font-semibold gap-2 bg-primary/10 text-primary hover:bg-primary hover:text-primary-foreground border border-primary/20 transition-all duration-200 shadow-2xs group">
+          <Button asChild size="sm" className="cursor-pointer font-semibold gap-2 bg-primary/10 text-primary hover:bg-primary hover:text-primary-foreground border border-primary/20 transition-colors duration-200 shadow-2xs group">
             <Link to="/dashboard/urls" className="inline-flex items-center">
               <span>{t("common.view")} {t("nav.shortUrls")}</span>
               <ArrowRightIcon className="size-4 shrink-0 transition-transform duration-200 group-hover:translate-x-0.5" />
@@ -347,10 +358,10 @@ export default function Overview() {
                       </td>
                       <td className="py-3 px-3 text-right">
                         <div className="flex items-center justify-end gap-1">
-                          <Button size="sm" variant="ghost" onClick={() => handleCopy(item.short_url)} title="Copy Short URL" className="cursor-pointer">
+                          <Button size="sm" variant="ghost" onClick={() => handleCopy(item.short_url)} title="Copy Short URL" aria-label="Copy short URL" className="cursor-pointer">
                             <CopyIcon className="size-4" />
                           </Button>
-                          <Button size="sm" variant="ghost" onClick={() => setQrModal({ isOpen: true, url: item.short_url, code: item.short_code })} title="View QR Code" className="cursor-pointer">
+                          <Button size="sm" variant="ghost" onClick={() => setQrModal({ isOpen: true, url: item.short_url, code: item.short_code })} title="View QR Code" aria-label="View QR code" className="cursor-pointer">
                             <QrCodeIcon className="size-4" />
                           </Button>
                         </div>

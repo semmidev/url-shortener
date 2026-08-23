@@ -299,7 +299,7 @@ export default function Account() {
                 {passwordLoading ? (
                   <>
                     <Loader2Icon className="size-3.5 animate-spin mr-1.5" />
-                    Menyimpan...
+                    Menyimpan…
                   </>
                 ) : (
                   'Ubah Password'

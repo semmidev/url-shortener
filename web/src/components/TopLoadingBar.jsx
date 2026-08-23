@@ -74,7 +74,7 @@ export default function TopLoadingBar() {
       aria-hidden="true"
     >
       <div
-        className="h-[3px] bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-600 transition-all duration-300 ease-out shadow-[0_0_12px_rgba(99,102,241,0.9)]"
+        className="h-[3px] bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-600 transition-[width] duration-300 ease-out shadow-[0_0_12px_rgba(99,102,241,0.9)]"
         style={{ width: `${progress}%` }}
       />
     </div>

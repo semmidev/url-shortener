@@ -58,6 +58,7 @@ export default function EditURLModal({ isOpen, onClose, item, onSuccess }) {
       <div className="w-full max-w-lg glass-card rounded-2xl p-6 shadow-2xl relative border border-slate-800">
         <button
           onClick={onClose}
+          aria-label="Close modal"
           className="absolute top-4 right-4 p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition"
         >
           <X className="w-5 h-5" />
@@ -75,41 +76,44 @@ export default function EditURLModal({ isOpen, onClose, item, onSuccess }) {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">
+            <label htmlFor="edit-title" className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5 cursor-pointer">
               Title / Label
             </label>
             <input
+              id="edit-title"
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              className="w-full px-4 py-2.5 bg-slate-900/80 border border-slate-700/80 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded-xl text-sm text-slate-100 placeholder-slate-500 outline-none transition"
+              className="w-full px-4 py-2.5 bg-slate-900/80 border border-slate-700/80 focus:border-indigo-500 focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:outline-none rounded-xl text-sm text-slate-100 placeholder-slate-500 transition"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
+            <label htmlFor="edit-original-url" className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5 flex items-center gap-1.5 cursor-pointer">
               <Link2 className="w-3.5 h-3.5 text-indigo-400" />
               Original Destination URL
             </label>
             <input
+              id="edit-original-url"
               type="url"
               required
               value={originalUrl}
               onChange={(e) => setOriginalUrl(e.target.value)}
-              className="w-full px-4 py-2.5 bg-slate-900/80 border border-slate-700/80 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded-xl text-sm text-slate-100 placeholder-slate-500 outline-none transition"
+              className="w-full px-4 py-2.5 bg-slate-900/80 border border-slate-700/80 focus:border-indigo-500 focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:outline-none rounded-xl text-sm text-slate-100 placeholder-slate-500 transition"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
+            <label htmlFor="edit-expires-at" className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5 flex items-center gap-1.5 cursor-pointer">
               <Calendar className="w-3.5 h-3.5 text-amber-400" />
               Expiration Date
             </label>
             <input
+              id="edit-expires-at"
               type="datetime-local"
               value={expiresAt}
               onChange={(e) => setExpiresAt(e.target.value)}
-              className="w-full px-4 py-2.5 bg-slate-900/80 border border-slate-700/80 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded-xl text-sm text-slate-100 outline-none transition"
+              className="w-full px-4 py-2.5 bg-slate-900/80 border border-slate-700/80 focus:border-indigo-500 focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:outline-none rounded-xl text-sm text-slate-100 transition"
             />
           </div>
 
@@ -141,7 +145,7 @@ export default function EditURLModal({ isOpen, onClose, item, onSuccess }) {
               disabled={loading}
               className="px-5 py-2.5 text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl shadow-lg shadow-indigo-600/30 transition disabled:opacity-50"
             >
-              {loading ? 'Saving...' : 'Save Changes'}
+              {loading ? 'Saving…' : 'Save Changes'}
             </button>
           </div>
         </form>

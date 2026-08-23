@@ -5,6 +5,8 @@ const INTERVAL = 2 * 60 * 1000 // Check every 2 minutes
 const VERSION_URL = "/api/v1/app/version"
 
 export function useVersionCheck() {
+  const versionRef = useRef(null)
+
   useEffect(() => {
     let isChecking = false
 
@@ -54,7 +56,6 @@ export function useVersionCheck() {
       }
     }
 
-    const versionRef = { current: null }
     check()
 
     const id = setInterval(check, INTERVAL)

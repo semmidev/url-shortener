@@ -74,6 +74,8 @@ export default function CreateURLModal({ isOpen, onClose, onSuccess }) {
             <Input
               id="customCode"
               type="text"
+              autoComplete="off"
+              spellCheck={false}
               placeholder={t("dashboard.customCodePlaceholder")}
               value={customCode}
               onChange={(e) => setCustomCode(e.target.value)}

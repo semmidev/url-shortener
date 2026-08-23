@@ -60,7 +60,7 @@ export default function URLDetailPage() {
   if (loading) {
     return (
       <div className="py-12 text-center text-sm text-muted-foreground">
-        Loading link details & click event logs...
+        Loading link details & click event logs…
       </div>
     );
   }

@@ -34,6 +34,8 @@ export default function QRCodeModal({ isOpen, onClose, shortURL, shortCode }) {
           <img
             src={qrApiUrl}
             alt={`QR Code ${shortCode}`}
+            width={192}
+            height={192}
             className="w-48 h-48 object-contain rounded-lg border bg-white p-2"
           />
           <p className="mt-3 text-xs font-mono text-primary font-semibold">{shortURL}</p>

@@ -33,7 +33,6 @@ import {
   UserIcon,
 } from "lucide-react"
 import { useNavigate } from "react-router-dom"
-import { useTheme } from "next-themes"
 
 const THEMES = [
   { id: "astro-vista", name: "Astro Vista" },
@@ -60,7 +59,6 @@ export function NavUser({ user }) {
   const { t } = useI18n()
   const { isMobile, setOpenMobile } = useSidebar()
   const navigate = useNavigate()
-  const { theme, setTheme } = useTheme()
   const initials = getInitials(user.name)
   const isAdmin = user?.role === "admin"
 
