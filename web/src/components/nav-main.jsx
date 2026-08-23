@@ -87,30 +87,23 @@ function NavMainItem({ item }) {
     )
   }
 
-  // Scenario 2: Collapsed Sidebar (Icon-only mode with Flyout Dropdown)
+  // Scenario 2: Collapsed Sidebar (Icon-only mode with Flyout Dropdown Menu)
   if (isCollapsed) {
     return (
       <SidebarMenuItem>
         <DropdownMenu>
           <DropdownMenuTrigger
-            render={
-              <SidebarMenuButton
-                type="button"
-                tooltip={item.title}
-                isActive={isActive}
-                className={`transition-colors duration-200 group-data-[collapsible=icon]:size-8! group-data-[collapsible=icon]:p-0! group-data-[collapsible=icon]:justify-center! group-data-[collapsible=icon]:rounded-lg! ${
-                  isActive
-                    ? "bg-primary/15! text-primary! font-semibold"
-                    : "text-muted-foreground hover:text-foreground hover:bg-muted/40"
-                }`}
-              />
-            }
+            className={`flex size-8 items-center justify-center rounded-lg transition-colors duration-200 cursor-pointer outline-none ${
+              isActive
+                ? "bg-primary/15 text-primary font-semibold"
+                : "text-muted-foreground hover:text-foreground hover:bg-muted/40"
+            }`}
           >
-            <span className={`transition-colors shrink-0 flex items-center justify-center ${isActive ? "text-primary" : "text-muted-foreground"}`}>
+            <span className="shrink-0 flex items-center justify-center">
               {item.icon}
             </span>
           </DropdownMenuTrigger>
-          <DropdownMenuContent side="right" align="start" sideOffset={8} className="min-w-48 shadow-md">
+          <DropdownMenuContent side="right" align="start" sideOffset={8} className="min-w-48 shadow-md z-50">
             <DropdownMenuLabel className="flex items-center gap-2 font-semibold text-xs text-muted-foreground uppercase tracking-wider">
               {item.icon}
               <span>{item.title}</span>
