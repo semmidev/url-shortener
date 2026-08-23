@@ -62,16 +62,19 @@ cd url-shortener
 # 2. Copy environment variable template to .env
 cp .env.example .env
 
-# 3. Start local PostgreSQL container (via compose.dev.yml)
+# 3. Copy pgbouncer userlist template to userlist
+cp ./server/db/pgbouncer/userlist.txt.example ./server/db/pgbouncer/userlist.txt
+
+# 4. Start local PostgreSQL container (via compose.dev.yml)
 make up-dev
 
-# 4. Run backend API server (runs database migrations automatically on startup)
+# 5. Run backend API server (runs database migrations automatically on startup)
 make run
 
-# 5. (In a separate terminal) Run background outbox & async worker
+# 6. (In a separate terminal) Run background outbox & async worker
 make run-worker
 
-# 6. Stop local PostgreSQL container
+# 7. Stop local PostgreSQL container
 make down-dev
 ```
 

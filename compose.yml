@@ -115,7 +115,7 @@ services:
       DB_NAME: ${DB_NAME:-urlshortener}
     volumes:
       - ./server/db/pgbouncer/pgbouncer.ini:/etc/pgbouncer/pgbouncer.ini:ro
-      - ./server/db/pgbouncer/userlist.txt.example:/etc/pgbouncer/userlist.txt:ro
+      - ./server/db/pgbouncer/userlist.txt:/etc/pgbouncer/userlist.txt:ro
     ports:
       - "127.0.0.1:6432:6432"
     restart: unless-stopped
