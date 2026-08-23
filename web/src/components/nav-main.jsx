@@ -29,15 +29,19 @@ function NavMainItem({ item }) {
   const isCollapsed = state === "collapsed" && !isMobile
 
   // Check matching active status
-  const isSubActive = (sub) =>
-    sub.exact
+  const isSubActive = (sub) => {
+    if (!sub.url || sub.url === "#") return false
+    return sub.exact
       ? pathname === sub.url
-      : pathname === sub.url || (sub.url !== "#" && pathname.startsWith(sub.url + "/"))
+      : pathname === sub.url || pathname.startsWith(sub.url + "/")
+  }
 
   const isChildActive = hasSubItems && item.items.some(isSubActive)
-  const isSelfActive = item.exact
-    ? pathname === item.url
-    : item.url && item.url !== "#" && (pathname === item.url || pathname.startsWith(item.url + "/"))
+  const isSelfActive = Boolean(
+    item.url &&
+      item.url !== "#" &&
+      (item.exact ? pathname === item.url : pathname === item.url || pathname.startsWith(item.url + "/"))
+  )
 
   const isActive = isSelfActive || isChildActive
 
@@ -55,15 +59,19 @@ function NavMainItem({ item }) {
     return (
       <SidebarMenuItem>
         <SidebarMenuButton
+          type="button"
           tooltip={item.title}
           isActive={isActive}
-          render={<Link to={item.url || "#"} />}
+          render={item.url && item.url !== "#" ? <Link to={item.url} /> : undefined}
           className={`transition-colors duration-200 group-data-[collapsible=icon]:size-8! group-data-[collapsible=icon]:p-0! group-data-[collapsible=icon]:justify-center! group-data-[collapsible=icon]:border-l-0! group-data-[collapsible=icon]:rounded-lg! ${
             isActive
               ? "bg-primary/10! text-primary! font-semibold border-l-2 border-l-primary rounded-l-none pl-3! group-data-[collapsible=icon]:bg-primary/15! group-data-[collapsible=icon]:text-primary!"
               : "text-muted-foreground hover:text-foreground hover:bg-muted/40"
           }`}
-          onClick={() => isMobile && setOpenMobile(false)}
+          onClick={(e) => {
+            if (isMobile) setOpenMobile(false)
+            if (item.onClick) item.onClick(e)
+          }}
         >
           <span className={`transition-colors shrink-0 flex items-center justify-center ${isActive ? "text-primary" : "text-muted-foreground"}`}>
             {item.icon}
@@ -87,6 +95,7 @@ function NavMainItem({ item }) {
           <DropdownMenuTrigger
             render={
               <SidebarMenuButton
+                type="button"
                 tooltip={item.title}
                 isActive={isActive}
                 className={`transition-colors duration-200 group-data-[collapsible=icon]:size-8! group-data-[collapsible=icon]:p-0! group-data-[collapsible=icon]:justify-center! group-data-[collapsible=icon]:rounded-lg! ${
@@ -112,7 +121,12 @@ function NavMainItem({ item }) {
               return (
                 <DropdownMenuItem
                   key={subItem.title}
-                  onClick={() => navigate(subItem.url)}
+                  onClick={(e) => {
+                    e.preventDefault()
+                    if (subItem.url && subItem.url !== "#") {
+                      navigate(subItem.url)
+                    }
+                  }}
                   className={`cursor-pointer gap-2 ${active ? "bg-primary/10 text-primary font-semibold" : ""}`}
                 >
                   {subItem.icon || <span className="size-1.5 rounded-full bg-current opacity-60" />}
@@ -135,9 +149,14 @@ function NavMainItem({ item }) {
   return (
     <SidebarMenuItem>
       <SidebarMenuButton
+        type="button"
         isActive={isActive}
         tooltip={item.title}
-        onClick={() => setIsOpen((prev) => !prev)}
+        onClick={(e) => {
+          e.preventDefault()
+          e.stopPropagation()
+          setIsOpen((prev) => !prev)
+        }}
         className={`w-full justify-between transition-colors duration-200 cursor-pointer ${
           isActive
             ? "bg-primary/10! text-primary! font-semibold border-l-2 border-l-primary rounded-l-none pl-3!"
@@ -165,7 +184,7 @@ function NavMainItem({ item }) {
               <SidebarMenuSubItem key={subItem.title}>
                 <SidebarMenuSubButton
                   isActive={active}
-                  render={<Link to={subItem.url} />}
+                  render={subItem.url && subItem.url !== "#" ? <Link to={subItem.url} /> : undefined}
                   onClick={() => isMobile && setOpenMobile(false)}
                   className={`transition-colors duration-150 cursor-pointer rounded-md ${
                     active
