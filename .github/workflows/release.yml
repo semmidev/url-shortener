@@ -28,7 +28,7 @@ jobs:
       - name: Build Frontend SPA
         run: |
           cd web
-          npm ci
+          npm ci --legacy-peer-deps
           npm run build
           cp -r dist/* ../server/internal/web/dist/
 
