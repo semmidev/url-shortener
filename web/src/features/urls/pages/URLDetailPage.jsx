@@ -1,11 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, startTransition, addTransitionType } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import SafeViewTransition from '@/components/SafeViewTransition';
 import { toast } from 'sonner';
 import { useI18n } from '@/context/I18nContext';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
+  Link2Icon,
   ArrowLeftIcon,
   CopyIcon,
   CheckIcon,
@@ -76,22 +78,39 @@ export default function URLDetailPage() {
     );
   }
 
+  const handleBack = () => {
+    if (typeof addTransitionType === 'function') {
+      startTransition(() => {
+        addTransitionType('nav-back');
+        navigate('/dashboard/urls');
+      });
+    } else {
+      navigate('/dashboard/urls');
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Top Header Navigation */}
       <div className="flex items-center gap-3">
-        <Button variant="outline" size="sm" onClick={() => navigate('/dashboard/urls')} className="cursor-pointer">
+        <Button variant="outline" size="sm" onClick={handleBack} className="cursor-pointer">
           <ArrowLeftIcon className="size-4 shrink-0" />
           <span>{t("urls.backToUrls")}</span>
         </Button>
       </div>
 
       {/* Main Link Overview Header Card */}
-      <Card className="border-border/60">
-        <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="space-y-1">
-            <div className="flex items-center gap-2">
-              <CardTitle className="text-xl">{urlData.title || urlData.short_code}</CardTitle>
+      <SafeViewTransition name={`url-card-${id}`} share="morph">
+        <Card className="border-border/60">
+          <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <SafeViewTransition name={`url-title-${id}`} share="text-morph">
+                  <CardTitle className="text-xl flex items-center gap-2">
+                    <Link2Icon className="size-5 text-primary shrink-0" />
+                    <span>{urlData.title || urlData.short_code}</span>
+                  </CardTitle>
+                </SafeViewTransition>
               <Badge
                 className={`text-[11px] font-semibold border ${
                   urlData.is_active
@@ -140,6 +159,7 @@ export default function URLDetailPage() {
           </div>
         </CardContent>
       </Card>
+    </SafeViewTransition>
 
       {/* Analytics Metric Cards */}
       <div className="grid gap-4 md:grid-cols-2">

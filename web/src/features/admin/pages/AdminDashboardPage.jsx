@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
+import DynamicPageHeader from '@/components/DynamicPageHeader';
 import {
   Users, Link, MousePointerClick, ShieldAlert,
   Activity, CheckCircle2, RefreshCw, Clock
@@ -35,16 +36,13 @@ export default function AdminDashboardPage() {
   return (
     <div className="space-y-8">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-extrabold tracking-tight text-foreground flex items-center gap-3">
-            <ShieldAlert className="w-8 h-8 text-primary" />
-            Executive Admin Dashboard
-          </h1>
-          <p className="text-muted-foreground text-sm mt-1">
-            Real-time system health, high-level metrics, and global oversight summary.
-          </p>
-        </div>
+      <DynamicPageHeader
+        title="Executive Admin Dashboard"
+        subtitle="Real-time system health, high-level metrics, and global oversight summary."
+        fallbackIcon={ShieldAlert}
+        titleClassName="text-3xl font-extrabold tracking-tight text-foreground flex items-center gap-3"
+        iconSize="w-8 h-8"
+      >
         <button
           onClick={fetchData}
           disabled={isLoading}
@@ -53,7 +51,7 @@ export default function AdminDashboardPage() {
           <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
           Refresh Metrics
         </button>
-      </div>
+      </DynamicPageHeader>
 
       {/* KPI Cards Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">

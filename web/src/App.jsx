@@ -6,6 +6,7 @@ import { I18nProvider } from '@/context/I18nContext';
 import { PermissionProvider } from '@/context/PermissionContext';
 import { useAuthStore } from '@/features/auth/store';
 import TopLoadingBar from '@/components/TopLoadingBar';
+import DirectionalTransition from '@/components/DirectionalTransition';
 
 import Login from '@/features/auth/pages/Login';
 import Register from '@/features/auth/pages/Register';
@@ -94,7 +95,9 @@ export default function App() {
               path="/login"
               element={
                 <PublicRoute>
-                  <Login />
+                  <DirectionalTransition>
+                    <Login />
+                  </DirectionalTransition>
                 </PublicRoute>
               }
             />
@@ -102,7 +105,9 @@ export default function App() {
               path="/register"
               element={
                 <PublicRoute>
-                  <Register />
+                  <DirectionalTransition>
+                    <Register />
+                  </DirectionalTransition>
                 </PublicRoute>
               }
             />
@@ -118,17 +123,17 @@ export default function App() {
                 </PrivateRoute>
               }
             >
-              <Route index element={<Overview />} />
-              <Route path="urls" element={<URLs />} />
-              <Route path="urls/:id" element={<URLDetailPage />} />
-              <Route path="analytics" element={<Analytics />} />
+              <Route index element={<DirectionalTransition><Overview /></DirectionalTransition>} />
+              <Route path="urls" element={<DirectionalTransition><URLs /></DirectionalTransition>} />
+              <Route path="urls/:id" element={<DirectionalTransition><URLDetailPage /></DirectionalTransition>} />
+              <Route path="analytics" element={<DirectionalTransition><Analytics /></DirectionalTransition>} />
 
               {/* Superadmin Suite Routes */}
               <Route
                 path="admin"
                 element={
                   <PrivateRoute adminOnly>
-                    <AdminDashboardPage />
+                    <DirectionalTransition><AdminDashboardPage /></DirectionalTransition>
                   </PrivateRoute>
                 }
               />
@@ -136,7 +141,7 @@ export default function App() {
                 path="admin/users"
                 element={
                   <PrivateRoute adminOnly>
-                    <AdminUsersPage />
+                    <DirectionalTransition><AdminUsersPage /></DirectionalTransition>
                   </PrivateRoute>
                 }
               />
@@ -144,7 +149,7 @@ export default function App() {
                 path="admin/roles"
                 element={
                   <PrivateRoute adminOnly>
-                    <AdminRolesPage />
+                    <DirectionalTransition><AdminRolesPage /></DirectionalTransition>
                   </PrivateRoute>
                 }
               />
@@ -152,7 +157,7 @@ export default function App() {
                 path="admin/menus"
                 element={
                   <PrivateRoute adminOnly>
-                    <AdminMenusPage />
+                    <DirectionalTransition><AdminMenusPage /></DirectionalTransition>
                   </PrivateRoute>
                 }
               />
@@ -160,7 +165,7 @@ export default function App() {
                 path="admin/links"
                 element={
                   <PrivateRoute adminOnly>
-                    <AdminLinksPage />
+                    <DirectionalTransition><AdminLinksPage /></DirectionalTransition>
                   </PrivateRoute>
                 }
               />
@@ -168,7 +173,7 @@ export default function App() {
                 path="admin/audit-logs"
                 element={
                   <PrivateRoute adminOnly>
-                    <AdminAuditLogsPage />
+                    <DirectionalTransition><AdminAuditLogsPage /></DirectionalTransition>
                   </PrivateRoute>
                 }
               />
@@ -176,12 +181,12 @@ export default function App() {
                 path="admin/system"
                 element={
                   <PrivateRoute adminOnly>
-                    <AdminSystemPage />
+                    <DirectionalTransition><AdminSystemPage /></DirectionalTransition>
                   </PrivateRoute>
                 }
               />
 
-              <Route path="account" element={<Account />} />
+              <Route path="account" element={<DirectionalTransition><Account /></DirectionalTransition>} />
             </Route>
 
             {/* Fallback wildcard route */}

@@ -32,6 +32,7 @@ import {
   ShieldCheckIcon,
   UserIcon,
 } from "lucide-react"
+import { startTransition, addTransitionType } from "react"
 import { useNavigate } from "react-router-dom"
 
 const THEMES = [
@@ -117,8 +118,15 @@ export function NavUser({ user }) {
               <DropdownMenuItem
                 className="cursor-pointer"
                 onClick={() => {
-                  if (isMobile) setOpenMobile(false)
-                  navigate('/dashboard/account')
+                  if (typeof addTransitionType === "function") {
+                    startTransition(() => {
+                      addTransitionType("nav-forward");
+                      navigate('/dashboard/account');
+                    });
+                  } else {
+                    navigate('/dashboard/account');
+                  }
+                  if (isMobile) setOpenMobile(false);
                 }}
               >
                 <CircleUserRoundIcon />

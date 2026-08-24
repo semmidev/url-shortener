@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import DynamicPageHeader from '@/components/DynamicPageHeader';
 import { motion, AnimatePresence } from 'motion/react';
 import { KeyRound, Plus, Shield, Check, Save, RefreshCw, Info } from 'lucide-react';
 import { toast } from 'sonner';
@@ -103,16 +104,11 @@ export default function AdminRolesPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-extrabold text-foreground flex items-center gap-2">
-            <KeyRound className="w-7 h-7 text-primary" />
-            Dynamic RBAC & Permission Matrix
-          </h1>
-          <p className="text-muted-foreground text-sm mt-1">
-            Configure system roles, access levels, and granular feature authorization matrices.
-          </p>
-        </div>
+      <DynamicPageHeader
+        title="Dynamic RBAC & Permission Matrix"
+        subtitle="Configure system roles, access levels, and granular feature authorization matrices."
+        fallbackIcon={KeyRound}
+      >
         <PermissionGuard permission="roles.create">
           <button
             onClick={() => setIsCreateOpen(true)}
@@ -122,7 +118,7 @@ export default function AdminRolesPage() {
             Create New Role
           </button>
         </PermissionGuard>
-      </div>
+      </DynamicPageHeader>
 
       {/* Main Split Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">

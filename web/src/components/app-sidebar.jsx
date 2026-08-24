@@ -83,7 +83,7 @@ export function AppSidebar({ ...props }) {
   }, [menus])
 
   return (
-    <Sidebar collapsible="icon" {...props}>
+    <Sidebar style={{ viewTransitionName: 'app-sidebar' }} collapsible="icon" {...props}>
       <SidebarHeader className="h-(--header-height) justify-center border-b border-border/40 px-2 shrink-0 group-data-[collapsible=icon]:px-0! group-data-[collapsible=icon]:justify-center!">
         <SidebarMenu className="group-data-[collapsible=icon]:items-center">
           <SidebarMenuItem>

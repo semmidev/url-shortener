@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuthStore } from '@/features/auth/store';
 import { useI18n } from '@/context/I18nContext';
+import DynamicPageHeader from '@/components/DynamicPageHeader';
 import { toast } from 'sonner';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -177,10 +178,11 @@ export default function Account() {
 
   return (
     <div className="space-y-6 animate-in fade-in duration-200">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">{t("account.title")}</h1>
-        <p className="text-sm text-muted-foreground">{t("account.subtitle")}</p>
-      </div>
+      <DynamicPageHeader
+        title={t("account.title")}
+        subtitle={t("account.subtitle")}
+        fallbackIcon={UserIcon}
+      />
 
       {/* Identity Card */}
       <Card className="border-border/60">

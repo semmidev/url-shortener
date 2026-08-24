@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import DynamicPageHeader from '@/components/DynamicPageHeader';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Menu as MenuIcon, Plus, Edit2, Trash2, Shield, FolderPlus,
@@ -208,36 +209,30 @@ export default function AdminMenusPage() {
 
   return (
     <div className="space-y-6">
-      {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-extrabold text-foreground flex items-center gap-2">
-            <MenuIcon className="w-7 h-7 text-primary" />
-            Dynamic Navigation Menu Builder
-          </h1>
-          <p className="text-muted-foreground text-sm mt-1">
-            Build section groups, menus, and submenus with instant sidebar revalidation and ordering controls.
-          </p>
-        </div>
+      <DynamicPageHeader
+        title="Dynamic Navigation Menu Builder"
+        subtitle="Build section groups, menus, and submenus with instant sidebar revalidation and ordering controls."
+        fallbackIcon={MenuIcon}
+      >
         <div className="flex items-center gap-2">
           <PermissionGuard permission="menus.create">
             <button
               onClick={() => openCreateModal({ isGroup: true })}
-              className="inline-flex items-center justify-center gap-2 px-3.5 py-2 text-sm font-semibold rounded-lg border border-primary/30 text-primary hover:bg-primary/10 transition-colors cursor-pointer"
+              className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-lg bg-card border border-border hover:bg-accent text-foreground transition-colors cursor-pointer"
             >
-              <FolderPlus className="w-4 h-4" />
-              + Section Group
+              <FolderPlus className="w-4 h-4 text-primary" />
+              Add Group Section
             </button>
             <button
               onClick={() => openCreateModal({ isGroup: false })}
-              className="inline-flex items-center justify-center gap-2 px-4 py-2 text-sm font-semibold rounded-lg bg-primary text-primary-foreground hover:opacity-90 shadow-sm cursor-pointer"
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors shadow-sm cursor-pointer"
             >
               <Plus className="w-4 h-4" />
-              + Top Menu
+              Add Menu Item
             </button>
           </PermissionGuard>
         </div>
-      </div>
+      </DynamicPageHeader>
 
       {/* Menus Tree Container */}
       <div className="rounded-2xl bg-card border border-border p-6 shadow-sm space-y-4">

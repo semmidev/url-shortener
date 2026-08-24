@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { useI18n } from '@/context/I18nContext';
+import DynamicPageHeader from '@/components/DynamicPageHeader';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   AreaChart,
@@ -11,7 +12,7 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from 'recharts';
-import { MousePointerClickIcon, GlobeIcon, LaptopIcon } from 'lucide-react';
+import { BarChart3Icon, MousePointerClickIcon, GlobeIcon, LaptopIcon } from 'lucide-react';
 import { getDashboardAnalytics } from '@/features/analytics/api';
 
 export default function Analytics() {
@@ -55,10 +56,11 @@ export default function Analytics() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">{t("analytics.title")}</h1>
-        <p className="text-sm text-muted-foreground">{t("analytics.subtitle")}</p>
-      </div>
+      <DynamicPageHeader
+        title={t("analytics.title")}
+        subtitle={t("analytics.subtitle")}
+        fallbackIcon={BarChart3Icon}
+      />
 
       {/* Stats Summary */}
       <div className="grid gap-4 md:grid-cols-3">

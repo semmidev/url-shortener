@@ -39,7 +39,7 @@ export default function DashboardLayout() {
       <SidebarInset className="bg-background text-foreground flex flex-col min-h-screen">
 
         {/* Top Header Bar */}
-        <header className="flex h-14 items-center justify-between border-b border-border/60 px-4 lg:px-6 shrink-0 bg-card sticky top-0 z-40">
+        <header style={{ viewTransitionName: 'site-header' }} className="flex h-14 items-center justify-between border-b border-border/60 px-4 lg:px-6 shrink-0 bg-card sticky top-0 z-40">
 
           {/* Left: sidebar trigger + breadcrumb */}
           <div className="flex items-center gap-3">

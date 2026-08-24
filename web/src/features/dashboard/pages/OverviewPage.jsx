@@ -2,11 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
 import { useI18n } from '@/context/I18nContext';
+import DynamicPageHeader from '@/components/DynamicPageHeader';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import {
+  LayoutDashboardIcon,
   Link2Icon,
   MousePointerClickIcon,
   ActivityIcon,
@@ -166,12 +168,11 @@ export default function Overview() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">{t("dashboard.title")}</h1>
-        <p className="text-sm text-muted-foreground">
-          {t("dashboard.subtitle")}
-        </p>
-      </div>
+      <DynamicPageHeader
+        title={t("dashboard.title")}
+        subtitle={t("dashboard.subtitle")}
+        fallbackIcon={LayoutDashboardIcon}
+      />
 
       {/* Metrics Cards */}
       <div className="grid gap-4 md:grid-cols-3">

@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import DynamicPageHeader from '@/components/DynamicPageHeader';
 import { motion, AnimatePresence } from 'motion/react';
 import { Globe, Search, Ban, CheckCircle2, Trash2, ExternalLink, QrCode, RefreshCcw, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
@@ -72,17 +73,11 @@ export default function AdminLinksPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-extrabold text-foreground flex items-center gap-2">
-            <Globe className="w-7 h-7 text-primary" />
-            Global URL Oversight & Abuse Control
-          </h1>
-          <p className="text-muted-foreground text-sm mt-1">
-            Monitor all short links system-wide, block malware/phishing domains, and force remove illegal content.
-          </p>
-        </div>
-      </div>
+      <DynamicPageHeader
+        title="Global URL Oversight & Abuse Control"
+        subtitle="Monitor all short links system-wide, block malware/phishing domains, and force remove illegal content."
+        fallbackIcon={Globe}
+      />
 
       {/* Filter & Search Bar */}
       <div className="p-4 rounded-xl bg-card border border-border flex flex-col sm:flex-row gap-4 items-center justify-between">

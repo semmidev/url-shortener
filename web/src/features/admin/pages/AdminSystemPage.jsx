@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import DynamicPageHeader from '@/components/DynamicPageHeader';
 import { Sliders, Save, RefreshCw, ToggleLeft, ToggleRight, Zap, Globe } from 'lucide-react';
 import { toast } from 'sonner';
 import { getSystemConfigs, updateSystemConfig } from '../api';
@@ -63,23 +64,19 @@ export default function AdminSystemPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-extrabold text-foreground flex items-center gap-2">
-            <Sliders className="w-7 h-7 text-primary" />
-            System Configuration & Feature Flags
-          </h1>
-          <p className="text-muted-foreground text-sm mt-1">
-            Toggle global platform capabilities, feature flags, and application branding.
-          </p>
-        </div>
+      <DynamicPageHeader
+        title="System Configuration & Feature Flags"
+        subtitle="Toggle global platform capabilities, feature flags, and application branding."
+        fallbackIcon={Sliders}
+      >
         <button
           onClick={fetchConfigs}
           className="p-2 text-muted-foreground hover:text-foreground rounded-lg border border-border bg-background cursor-pointer"
+          title="Refresh Configs"
         >
           <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
         </button>
-      </div>
+      </DynamicPageHeader>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Feature Flags Toggle Module */}

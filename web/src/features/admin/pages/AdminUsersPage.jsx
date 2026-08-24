@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import DynamicPageHeader from '@/components/DynamicPageHeader';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Users, Search, Shield, Ban, CheckCircle2, UserCheck,
@@ -90,17 +91,11 @@ export default function AdminUsersPage() {
   return (
     <div className="space-y-6">
       {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-extrabold text-foreground flex items-center gap-2">
-            <Users className="w-7 h-7 text-primary" />
-            User & Account Management
-          </h1>
-          <p className="text-muted-foreground text-sm mt-1">
-            Search, suspend, manage roles, and revoke active sessions for system users.
-          </p>
-        </div>
-      </div>
+      <DynamicPageHeader
+        title="User & Account Management"
+        subtitle="Search, suspend, manage roles, and revoke active sessions for system users."
+        fallbackIcon={Users}
+      />
 
       {/* Filters Bar */}
       <div className="p-4 rounded-xl bg-card border border-border flex flex-col sm:flex-row gap-4 items-center justify-between">

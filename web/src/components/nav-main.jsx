@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react"
+import React, { useState, useEffect, startTransition, addTransitionType } from "react"
 import { Link, useLocation } from "react-router-dom"
 import {
   SidebarGroupContent,
@@ -69,8 +69,13 @@ function NavMainItem({ item }) {
               : "text-muted-foreground hover:text-foreground hover:bg-muted/40"
           }`}
           onClick={(e) => {
-            if (isMobile) setOpenMobile(false)
-            if (item.onClick) item.onClick(e)
+            if (typeof addTransitionType === "function") {
+              startTransition(() => {
+                addTransitionType("nav-forward");
+              });
+            }
+            if (isMobile) setOpenMobile(false);
+            if (item.onClick) item.onClick(e);
           }}
         >
           <span className={`transition-colors shrink-0 flex items-center justify-center ${isActive ? "text-primary" : "text-muted-foreground"}`}>
@@ -171,7 +176,14 @@ function NavMainItem({ item }) {
                 <SidebarMenuSubButton
                   isActive={active}
                   render={subItem.url && subItem.url !== "#" ? <Link to={subItem.url} /> : undefined}
-                  onClick={() => isMobile && setOpenMobile(false)}
+                  onClick={() => {
+                    if (typeof addTransitionType === "function") {
+                      startTransition(() => {
+                        addTransitionType("nav-forward");
+                      });
+                    }
+                    if (isMobile) setOpenMobile(false);
+                  }}
                   className={`transition-colors duration-150 cursor-pointer rounded-md ${
                     active
                       ? "bg-primary/10! text-primary! font-semibold"

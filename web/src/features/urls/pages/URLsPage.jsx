@@ -1,5 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, startTransition, addTransitionType } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import SafeViewTransition from '@/components/SafeViewTransition';
+import DynamicPageHeader from '@/components/DynamicPageHeader';
 import { toast } from 'sonner';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -7,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
+  Link2Icon,
   PlusIcon,
   SearchIcon,
   CopyIcon,
@@ -192,16 +195,16 @@ export default function URLs() {
   return (
     <div className="space-y-6">
       {/* Top Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">{t("urls.title")}</h1>
-          <p className="text-sm text-muted-foreground">{t("urls.subtitle")}</p>
-        </div>
+      <DynamicPageHeader
+        title={t("urls.title")}
+        subtitle={t("urls.subtitle")}
+        fallbackIcon={Link2Icon}
+      >
         <Button onClick={() => setIsCreateOpen(true)} className="cursor-pointer">
           <PlusIcon className="size-4 shrink-0" />
           <span>{t("dashboard.createUrlBtn")}</span>
         </Button>
-      </div>
+      </DynamicPageHeader>
 
       {/* Filter & Search Bar */}
       <Card>
@@ -286,16 +289,27 @@ export default function URLs() {
                     const rowNumber = (page - 1) * limit + index + 1;
                     return (
                       <tr key={item.id} className="group hover:bg-muted/30 transition-colors">
-                        <td className="py-3 px-3 text-center font-mono text-xs text-muted-foreground font-semibold">
-                          {rowNumber}
-                        </td>
-                        <td className="py-3 px-3">
-                          <Link
-                            to={`/dashboard/urls/${item.id}`}
-                            className="font-semibold text-foreground hover:text-primary transition-colors text-left cursor-pointer"
-                          >
-                            {item.title || item.short_code}
-                          </Link>
+                          <td className="py-3 px-3 text-center font-mono text-xs text-muted-foreground font-semibold">
+                            {rowNumber}
+                          </td>
+                          <td className="py-3 px-3">
+                            <SafeViewTransition name={`url-card-${item.id}`} share="morph" default="none">
+                              <SafeViewTransition name={`url-title-${item.id}`} share="text-morph" default="none">
+                                <Link
+                                  to={`/dashboard/urls/${item.id}`}
+                                  onClick={() => {
+                                    if (typeof addTransitionType === 'function') {
+                                      startTransition(() => {
+                                        addTransitionType('nav-forward');
+                                      });
+                                    }
+                                  }}
+                                  className="font-semibold text-foreground hover:text-primary transition-colors text-left cursor-pointer"
+                                >
+                                  {item.title || item.short_code}
+                                </Link>
+                              </SafeViewTransition>
+                            </SafeViewTransition>
                           <div>
                             <a
                               href={item.short_url}

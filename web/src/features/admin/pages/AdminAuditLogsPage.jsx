@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import DynamicPageHeader from '@/components/DynamicPageHeader';
 import { motion, AnimatePresence } from 'motion/react';
 import { FileText, Search, RefreshCcw, Eye, Clock, User, Shield } from 'lucide-react';
 import { toast } from 'sonner';
@@ -32,17 +33,11 @@ export default function AdminAuditLogsPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-extrabold text-foreground flex items-center gap-2">
-            <FileText className="w-7 h-7 text-primary" />
-            Security Audit Trail & Compliance Log
-          </h1>
-          <p className="text-muted-foreground text-sm mt-1">
-            Immutable log stream recording all administrative actions, permission overrides, and security events.
-          </p>
-        </div>
-      </div>
+      <DynamicPageHeader
+        title="Security Audit Trail & Compliance Log"
+        subtitle="Immutable log stream recording all administrative actions, permission overrides, and security events."
+        fallbackIcon={FileText}
+      />
 
       {/* Filter Bar */}
       <div className="p-4 rounded-xl bg-card border border-border flex flex-col sm:flex-row gap-4 items-center justify-between">
