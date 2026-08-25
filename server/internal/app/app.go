@@ -12,7 +12,6 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	chimw "github.com/go-chi/chi/v5/middleware"
-	"github.com/go-chi/cors"
 	"github.com/hibiken/asynq"
 	"github.com/jackc/pgx/v5/pgxpool"
 	httpSwagger "github.com/swaggo/http-swagger/v2"
@@ -223,15 +222,7 @@ func BuildRouter(cfg config.Config, pool *pgxpool.Pool, appLogger *logger.Logger
 	r := chi.NewRouter()
 
 	// Global Middlewares
-	r.Use(cors.Handler(cors.Options{
-		AllowedOrigins:   []string{"https://*", "http://*"},
-		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
-		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token", "traceparent", "tracestate"},
-		ExposedHeaders:   []string{"Link", "X-Request-ID"},
-		AllowCredentials: true,
-		MaxAge:           300,
-	}))
-
+	r.Use(customMw.CORS())
 	r.Use(customMw.SecureHeaders)
 	r.Use(chimw.Recoverer)
 	r.Use(customMw.RequestTimeout(10 * time.Second))
