@@ -57,7 +57,7 @@ func SecureHeaders(next http.Handler) http.Handler {
 					"style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "+
 					"font-src 'self' data: https://fonts.gstatic.com; "+
 					"img-src 'self' data: blob: https:; "+
-					"connect-src 'self' http: https: ws: wss:; "+
+					"connect-src 'self' https: wss: ws://localhost:* ws://127.0.0.1:*; "+
 					"frame-src 'self' blob: https://www.youtube.com; "+
 					"frame-ancestors 'self'",
 			)

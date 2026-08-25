@@ -83,10 +83,13 @@ func Error(w http.ResponseWriter, r *http.Request, err error) {
 		ev.SetError(err)
 	}
 
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Cache-Control", "no-store, max-age=0")
+	w.Header().Set("Pragma", "no-cache")
+
 	var appErr *apperr.Error
 	if errors.As(err, &appErr) {
 		status := appErr.HTTPStatusCode()
-		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(status)
 		_ = json.NewEncoder(w).Encode(Response{
 			Success: false,
@@ -97,7 +100,6 @@ func Error(w http.ResponseWriter, r *http.Request, err error) {
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusInternalServerError)
 	_ = json.NewEncoder(w).Encode(Response{
 		Success: false,
