@@ -2,6 +2,8 @@
 
 <p align="center">
   <a href="https://github.com/semmidev/url-shortener/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/semmidev/url-shortener/ci.yml?branch=main&label=CI%20Build&style=for-the-badge&logo=githubactions&logoColor=white" alt="CI Status"></a>
+  <a href="https://github.com/semmidev/url-shortener/actions/workflows/security.yml"><img src="https://img.shields.io/github/actions/workflow/status/semmidev/url-shortener/security.yml?branch=main&label=Security%20Audit&style=for-the-badge&logo=githubshield&logoColor=white" alt="Security Status"></a>
+  <a href="https://github.com/semmidev/url-shortener/actions/workflows/codeql.yml"><img src="https://img.shields.io/github/actions/workflow/status/semmidev/url-shortener/codeql.yml?branch=main&label=CodeQL%20SAST&style=for-the-badge&logo=github&logoColor=white" alt="CodeQL SAST Status"></a>
   <a href="https://github.com/semmidev/url-shortener/actions/workflows/cd.yml"><img src="https://img.shields.io/github/actions/workflow/status/semmidev/url-shortener/cd.yml?label=CD%20Deploy&style=for-the-badge&logo=docker&logoColor=white" alt="CD Status"></a>
   <a href="https://github.com/semmidev/url-shortener/releases"><img src="https://img.shields.io/github/v/release/semmidev/url-shortener?style=for-the-badge&color=orange&logo=github" alt="Latest Release"></a>
   <a href="https://github.com/semmidev/url-shortener/blob/main/LICENSE"><img src="https://img.shields.io/github/license/semmidev/url-shortener?style=for-the-badge&color=blue" alt="License"></a>
@@ -9,13 +11,17 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/Backend-Go_1.27.0-00ADD8?style=for-the-badge&logo=go&logoColor=white" alt="Go Backend">
+  <img src="https://img.shields.io/badge/Router-Chi_v5.3.0-00ADD8?style=for-the-badge&logo=go&logoColor=white" alt="Chi Router">
   <img src="https://img.shields.io/badge/Frontend-React_19-61DAFB?style=for-the-badge&logo=react&logoColor=black" alt="React Frontend">
   <img src="https://img.shields.io/badge/Database-PostgreSQL_18-4169E1?style=for-the-badge&logo=postgresql&logoColor=white" alt="PostgreSQL">
+  <img src="https://img.shields.io/badge/Queue-Asynq_Redis-DC382D?style=for-the-badge&logo=redis&logoColor=white" alt="Asynq Worker Queue">
   <img src="https://img.shields.io/badge/Styling-Tailwind_v4-06B6D4?style=for-the-badge&logo=tailwindcss&logoColor=white" alt="Tailwind CSS">
   <img src="https://img.shields.io/badge/Container-Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white" alt="Docker">
 </p>
 
-A clean, modern, high-performance URL Shortener REST API backend written in Go using **Modular Monolith** architecture, **Go-Chi**, and **PostgreSQL 18**. Features interactive Scalar API Reference UI & Swagger documentation, automatic database migrations, structured wide-event logging, multi-language input validation, tiered rate limiting, and containerized testing support.
+A clean, modern, enterprise-grade URL Shortener REST API backend written in Go using **Modular Monolith** architecture, **Go-Chi (v5.3.0)**, **Asynq Redis Worker Queues**, and **PostgreSQL 18**. Features interactive Scalar API Reference UI & Swagger documentation, automatic database migrations, SSRF prevention, worker queue offloading (preventing unbounded goroutine explosion), enterprise CI/CD security pipelines (CodeQL SAST v4, Trivy, Hadolint, GitLeaks, Govulncheck), structured wide-event logging, multi-language input validation, tiered rate limiting, and containerized testing support.
+
+---
 
 ### 📸 Previews
 
@@ -36,6 +42,7 @@ A clean, modern, high-performance URL Shortener REST API backend written in Go u
 ## 📋 Table of Contents
 - [🚀 Quick Start & Setup Guide](#-quick-start--setup-guide)
 - [🏗️ System Architecture & Data Flow](#️-system-architecture--data-flow)
+- [🛡️ Enterprise Security & CI/CD Pipelines](#️-enterprise-security--cicd-pipelines)
 - [🛠️ Makefile Commands](#️-makefile-commands)
 - [🏗️ Architectural & Code Style Decisions (ADRs)](#-architectural--code-style-decisions-adrs)
 - [📦 Release & Deployment Workflow](#-release--deployment-workflow)
@@ -49,7 +56,7 @@ A clean, modern, high-performance URL Shortener REST API backend written in Go u
 
 ### 1. Prerequisites
 - **Go**: `v1.22+` (or latest `v1.27.0`)
-- **Docker** / **Podman**: Required for local PostgreSQL database container and Testcontainers E2E testing.
+- **Docker** / **Podman**: Required for local PostgreSQL & Redis containers and Testcontainers E2E testing.
 - **Make**: Executing build, test, and container scripts.
 
 ### 2. Run Application Locally
@@ -65,16 +72,16 @@ cp .env.example .env
 # 3. Copy pgbouncer userlist template to userlist
 cp ./server/db/pgbouncer/userlist.txt.example ./server/db/pgbouncer/userlist.txt
 
-# 4. Start local PostgreSQL container (via compose.dev.yml)
+# 4. Start local PostgreSQL & Redis containers (via compose.dev.yml)
 make up-dev
 
 # 5. Run backend API server (runs database migrations automatically on startup)
 make run
 
-# 6. (In a separate terminal) Run background outbox & async worker
+# 6. (In a separate terminal) Run background outbox & Asynq worker queue processor
 make run-worker
 
-# 7. Stop local PostgreSQL container
+# 7. Stop local development infrastructure
 make down-dev
 ```
 
@@ -93,12 +100,12 @@ Once the server is running (`http://localhost:8080`):
 graph TD
     Client["Client / Web SPA / Mobile"] --> |HTTP Request| Router["Chi Router (HTTP Server)"]
 
-    subgraph MiddlewareStack["Middleware Stack"]
-        CORS["CORS Middleware"]
-        SecureHeaders["Secure Headers"]
-        RealIP["Real IP & Recovery"]
+    subgraph MiddlewareStack["Middleware Stack (customMw)"]
+        CORS["CORS Middleware (customMw.CORS)"]
+        SecureHeaders["Secure Headers & Strict CSP"]
+        ClientIP["Web Client IP Resolver (GetClientIP)"]
         Timeout["Request Timeout (10s)"]
-        LoggerMW["Wide Event Logging"]
+        LoggerMW["Wide Event Logging (slog)"]
         RateLimiter["Redis Rate Limiter"]
         AuthMW["JWT Auth Middleware"]
         RoleMW["Role Admin Guard"]
@@ -119,7 +126,7 @@ graph TD
 
     subgraph Services["Core Business Logic Layer"]
         UserSvc["UserService"]
-        URLSvc["URLService"]
+        URLSvc["URLService (SSRF Safe)"]
         AnalyticsSvc["AnalyticsService"]
         AdminSvc["AdminService"]
     end
@@ -130,10 +137,16 @@ graph TD
     AnalyticsH --> AnalyticsSvc
     AdminH --> AdminSvc
 
-    subgraph BackgroundWorkers["Background Workers"]
+    subgraph WorkerQueues["Asynchronous Task & Worker Architecture"]
+        TaskDistributor["Asynq TaskDistributor (Redis Worker Queue)"]
+        BoundedFallback["Bounded Channel Worker Pool (Fallback)"]
         OutboxWorker["Outbox Worker (Async Event Stream)"]
-        CleanupWorker["URL Expiration Worker (Goroutine)"]
+        CleanupWorker["URL Expiration Worker"]
     end
+
+    RedirectH -.->|Enqueue TaskRecordClickAnalytics| TaskDistributor
+    RedirectH -.->|Non-blocking Fallback| BoundedFallback
+    AdminH -.->|Enqueue TaskRecordAuditLog| TaskDistributor
 
     CleanupWorker -.-> URLSvc
     OutboxWorker -.-> AnalyticsH
@@ -168,7 +181,7 @@ graph TD
     EventPub --> NATS
 ```
 
-### Redirection & Analytics Sequence Diagram (`GET /{code}`)
+### Redirection & Bounded Worker Queue Analytics Sequence (`GET /{code}`)
 
 ```mermaid
 sequenceDiagram
@@ -179,11 +192,11 @@ sequenceDiagram
     participant URLSvc as URLService
     participant Redis as Redis Cache
     participant DB as PostgreSQL (SQLC)
-    participant AsyncLog as Async Goroutine
-    participant Analytics as Analytics Recorder
+    participant TaskDist as Asynq TaskDistributor / Worker Pool
+    participant WorkerProc as TaskProcessor (Asynq Worker)
 
     User->>Chi: GET /{code}
-    Chi->>Chi: Apply Rate Limiting & Wide Event Logging
+    Chi->>Chi: Apply Rate Limiting, CORS, & Wide Event Logging
     Chi->>RedH: Handled by Redirect(w, r)
     RedH->>URLSvc: GetByCode(shortCode)
 
@@ -199,14 +212,38 @@ sequenceDiagram
     URLSvc-->>RedH: Return Target Destination URL
     RedH-->>User: 307 Temporary Redirect (Location: target_url)
 
-    par Async Background Logging (Non-blocking)
-        RedH->>AsyncLog: Launch Goroutine (Click & Analytics)
-        AsyncLog->>URLSvc: IncrementClickCount(urlID)
-        AsyncLog->>DB: UPDATE click_count
-        AsyncLog->>Analytics: RecordClick(urlID, IP, UserAgent, Referrer)
-        Analytics->>DB: INSERT into url_analytics & outbox
+    par Offloaded Async Click & Analytics Logging (Zero Goroutine Explosion)
+        RedH->>TaskDist: Enqueue TaskRecordClickAnalytics(URLID, ClientIP, UserAgent, Referrer)
+        alt Asynq Redis Worker Queue
+            TaskDist->>WorkerProc: Asynq Worker Pick Task
+            WorkerProc->>DB: IncrementClickCount & RecordClick
+        else Fallback Bounded Queue (No Redis)
+            TaskDist->>WorkerProc: Fixed Channel Worker Pool Process
+            WorkerProc->>DB: IncrementClickCount & RecordClick
+        end
     end
 ```
+
+---
+
+## 🛡️ Enterprise Security & CI/CD Pipelines
+
+This repository implements a multi-layered security & quality audit pipeline:
+
+| Pipeline / Tool | Category | Action / Configuration File |
+| :--- | :--- | :--- |
+| **CodeQL SAST v4** | Static Application Security Testing | [`.github/workflows/codeql.yml`](.github/workflows/codeql.yml) |
+| **GitLeaks** | Secret & Token Detection | [`.github/workflows/security.yml`](.github/workflows/security.yml) |
+| **Govulncheck** | Go Dependency Vulnerability Scanner | [`.github/workflows/security.yml`](.github/workflows/security.yml) |
+| **Hadolint** | Dockerfile Security & Best Practices Linter | [`.github/workflows/security.yml`](.github/workflows/security.yml) |
+| **Trivy** | Container Image & Artifact Vulnerability Scanner | [`.github/workflows/security.yml`](.github/workflows/security.yml) |
+| **golangci-lint** | Static Code Quality & Deprecation Checker | [`.github/workflows/ci.yml`](.github/workflows/ci.yml) |
+
+### Key Security Safeguards
+- **SSRF Protection**: URL creation enforces scheme validation (`http`, `https`) and strictly rejects loopback IPs (`127.0.0.1`, `::1`), private CIDR ranges (`10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`), and `localhost` hostnames.
+- **Client IP Resolution**: Safe `web.GetClientIP(r)` header extraction (`CF-Connecting-IP`, `X-Forwarded-For`, `X-Real-IP`) to prevent IP spoofing attacks.
+- **Unbounded Goroutine Offloading**: Asynq Redis Task Queue with a 10,000-buffer Bounded Channel Worker Pool fallback prevents goroutine leakage under high traffic.
+- **HTTP Hardening**: Strict CSP headers (`connect-src`), anti-caching headers on error responses (`Cache-Control: no-store`), and isolated management server endpoints.
 
 ---
 
@@ -215,11 +252,12 @@ sequenceDiagram
 ```bash
 make run               # Run backend API server locally
 make dev               # Run backend API server locally with Air live hot-reload
+make run-worker        # Run background outbox & Asynq task worker processor
 make seed              # Seed database with sample users, short URLs, and analytics events
 make setup-hooks       # Install pre-commit git hooks
 make build             # Build production static binary in bin/api
 make lint              # Run golangci-lint code analysis (0 issues requirement)
-make up-dev            # Start local development infrastructure (PostgreSQL) via compose.dev.yml
+make up-dev            # Start local development infrastructure (PostgreSQL & Redis) via compose.dev.yml
 make down-dev          # Stop local development infrastructure via compose.dev.yml
 make logs-dev          # Stream local development infrastructure logs
 make docker-up         # Start full stack production containers via compose.yml
@@ -292,25 +330,26 @@ All major architectural and code style decisions are formally documented in our 
 This project enforces a **Release-Driven CI/CD Strategy** following industry best practices:
 
 - **CI (`.github/workflows/ci.yml`)**: Runs linting (`golangci-lint`), unit tests, and integration tests on every `push` and `pull_request` to `main` / `master`.
-- **CD (`.github/workflows/cd.yml`)**: Triggers **ONLY when a Git release tag (`v*`) is pushed**. Builds and pushes multi-architecture Docker images to Docker Hub with Semantic Versioning tags (`1.0.0`, `1.0`, `1`, `latest`).
+- **Security Audit (`.github/workflows/security.yml` & `codeql.yml`)**: Runs CodeQL SAST (v4), GitLeaks, Govulncheck, Hadolint, and Trivy image scanning.
+- **CD (`.github/workflows/cd.yml`)**: Triggers **ONLY when a Git release tag (`v*`) is pushed**. Builds and pushes multi-architecture Docker images to Docker Hub with Semantic Versioning tags (`1.9.2`, `1.9`, `1`, `latest`).
 - **Release Automation (`.goreleaser.yaml` & `.github/workflows/release.yml`)**: Triggers on Git tag push (`v*`). Builds cross-platform static Go binaries (embedding compiled React SPA assets), generates changelogs from Conventional Commits, and publishes artifacts to **GitHub Releases**.
 
 ### How to Trigger a New Release (Docker Hub Image & GitHub Release)
 
-To publish a new production version (e.g. `v1.0.0`):
+To publish a new production version (e.g. `v1.9.2`):
 
 ```bash
 # 1. Create a semantic versioning Git tag locally
-git tag v1.0.0
+git tag -a v1.9.2 -m "v1.9.2 Rilis Keamanan, Refactoring Worker Queue, dan Otomasi CI Security Pipelines"
 
 # 2. Push the tag to GitHub to trigger CI/CD & GoReleaser workflows
-git push origin v1.0.0
+git push origin v1.9.2
 ```
 
 Once pushed, GitHub Actions automatically:
-1. Runs CI tests.
+1. Runs CI & Security tests.
 2. Generates GitHub Release binaries (`.tar.gz`, `.zip`), checksums, and changelog notes.
-3. Builds and pushes versioned container images (`username/repository:1.0.0`, `1.0`, `1`, `latest`) to Docker Hub.
+3. Builds and pushes versioned container images (`username/repository:1.9.2`, `1.9`, `1`, `latest`) to Docker Hub.
 
 ---
 
