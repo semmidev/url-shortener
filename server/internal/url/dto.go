@@ -3,6 +3,7 @@ package url
 import (
 	"crypto/rand"
 	"math/big"
+	"net"
 	"net/url"
 	"strings"
 	"time"
@@ -22,7 +23,7 @@ var blockedURLSchemes = map[string]bool{
 	"blob":       true,
 }
 
-// validateURLScheme returns an error if the URL uses a dangerous scheme.
+// validateURLScheme returns an error if the URL uses a dangerous scheme or targets loopback/private IPs (SSRF protection).
 func validateURLScheme(raw string) error {
 	u, err := url.Parse(raw)
 	if err != nil {
@@ -30,6 +31,18 @@ func validateURLScheme(raw string) error {
 	}
 	if blockedURLSchemes[strings.ToLower(u.Scheme)] {
 		return apperr.Invalid("original_url scheme '" + u.Scheme + "' is not allowed")
+	}
+
+	host := strings.ToLower(u.Hostname())
+	if host == "localhost" || host == "0.0.0.0" {
+		return apperr.Invalid("original_url cannot target local system hostnames")
+	}
+
+	ip := net.ParseIP(host)
+	if ip != nil {
+		if ip.IsLoopback() || ip.IsPrivate() || ip.IsUnspecified() || ip.IsLinkLocalUnicast() {
+			return apperr.Invalid("original_url cannot target private or loopback IP addresses")
+		}
 	}
 	return nil
 }

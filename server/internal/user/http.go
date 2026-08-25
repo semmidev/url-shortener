@@ -56,7 +56,7 @@ func (h *Handler) register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	req.UserAgent = r.UserAgent()
-	req.ClientIP = r.RemoteAddr
+	req.ClientIP = web.GetClientIP(r)
 
 	resp, err := h.svc.Register(r.Context(), req)
 	if err != nil {
@@ -85,7 +85,7 @@ func (h *Handler) login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	req.UserAgent = r.UserAgent()
-	req.ClientIP = r.RemoteAddr
+	req.ClientIP = web.GetClientIP(r)
 
 	resp, err := h.svc.Login(r.Context(), req)
 	if err != nil {
@@ -176,7 +176,7 @@ func (h *Handler) googleCallback(w http.ResponseWriter, r *http.Request) {
 	req := HandleGoogleCallbackRequest{
 		Code:      code,
 		UserAgent: r.UserAgent(),
-		ClientIP:  r.RemoteAddr,
+		ClientIP:  web.GetClientIP(r),
 	}
 
 	resp, err := h.svc.HandleGoogleCallback(r.Context(), req)

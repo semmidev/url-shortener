@@ -47,6 +47,27 @@ func TestCreateURLRequestValidation(t *testing.T) {
 			},
 			wantErr: true,
 		},
+		{
+			name: "rejection of loopback IP (SSRF)",
+			req: CreateURLRequest{
+				OriginalURL: "http://127.0.0.1/admin",
+			},
+			wantErr: true,
+		},
+		{
+			name: "rejection of private IP (SSRF)",
+			req: CreateURLRequest{
+				OriginalURL: "http://192.168.1.1/secret",
+			},
+			wantErr: true,
+		},
+		{
+			name: "rejection of localhost hostname (SSRF)",
+			req: CreateURLRequest{
+				OriginalURL: "http://localhost:8080/metrics",
+			},
+			wantErr: true,
+		},
 	}
 
 	for _, tt := range tests {

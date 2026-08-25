@@ -135,6 +135,7 @@ func (h *RedirectHandler) Redirect(w http.ResponseWriter, r *http.Request) {
 	logger.Enrich(r.Context(), "target_url", res.OriginalURL)
 
 	// Asynchronously record click metrics and increment counter
+	clientIP := web.GetClientIP(r)
 	// #nosec G118 -- background click logging outlives request context intentionally
 	go func(urlID uuid.UUID, ip, userAgent, referrer string) {
 		ctx := context.Background()
@@ -142,7 +143,7 @@ func (h *RedirectHandler) Redirect(w http.ResponseWriter, r *http.Request) {
 		if h.analyticsRec != nil {
 			h.analyticsRec.RecordClick(ctx, urlID, ip, userAgent, referrer)
 		}
-	}(res.ID, r.RemoteAddr, r.UserAgent(), r.Referer())
+	}(res.ID, clientIP, r.UserAgent(), r.Referer())
 
 	// Set Cache-Control header for Edge / CDN caching (Cloudflare, Fastly)
 	maxAge := h.svc.cfg.CacheControlMaxAge

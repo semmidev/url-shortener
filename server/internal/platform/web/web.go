@@ -4,7 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"net"
 	"net/http"
+	"strings"
 	"uuid"
 
 	"github.com/semmidev/url-shortener/server/internal/platform/apperr"
@@ -166,4 +168,28 @@ func UserRole(ctx context.Context) (string, bool) {
 func SessionID(ctx context.Context) (uuid.UUID, bool) {
 	id, ok := ctx.Value(sessionIDKey).(uuid.UUID)
 	return id, ok
+}
+
+// GetClientIP extracts the real client IP address considering proxy headers like CF-Connecting-IP, X-Forwarded-For, and X-Real-IP.
+func GetClientIP(r *http.Request) string {
+	if ip := r.Header.Get("CF-Connecting-IP"); ip != "" {
+		return strings.TrimSpace(ip)
+	}
+	if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
+		parts := strings.Split(xff, ",")
+		if len(parts) > 0 {
+			ip := strings.TrimSpace(parts[0])
+			if ip != "" {
+				return ip
+			}
+		}
+	}
+	if ip := r.Header.Get("X-Real-IP"); ip != "" {
+		return strings.TrimSpace(ip)
+	}
+	ip := r.RemoteAddr
+	if host, _, err := net.SplitHostPort(ip); err == nil {
+		return host
+	}
+	return ip
 }
