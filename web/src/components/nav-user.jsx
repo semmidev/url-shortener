@@ -75,13 +75,13 @@ export function NavUser({ user }) {
               <AvatarImage src={user.avatar_url || user.avatar} alt={user.name} />
               <AvatarFallback className="rounded-lg bg-primary/10 text-primary font-bold font-mono text-xs">{initials}</AvatarFallback>
             </Avatar>
-            <div className="grid flex-1 text-left text-sm leading-tight gap-0.5 group-data-[collapsible=icon]:hidden">
+            <div className="grid flex-1 min-w-0 text-left text-sm leading-tight gap-0.5 group-data-[collapsible=icon]:hidden">
               <span className="truncate font-medium">{user.name}</span>
               <span className="truncate text-xs text-foreground/70">
                 {user.email}
               </span>
             </div>
-            <EllipsisVerticalIcon className="ml-auto size-4 shrink-0 group-data-[collapsible=icon]:hidden" />
+            <EllipsisVerticalIcon className="ml-auto size-4 shrink-0 group-data-[collapsible=icon]:hidden" aria-hidden="true" />
           </DropdownMenuTrigger>
 
           <DropdownMenuContent
@@ -98,12 +98,12 @@ export function NavUser({ user }) {
                     <AvatarImage src={user.avatar_url || user.avatar} alt={user.name} />
                     <AvatarFallback className="rounded-lg bg-primary/10 text-primary font-bold font-mono text-xs">{initials}</AvatarFallback>
                   </Avatar>
-                  <div className="grid flex-1 text-left text-sm leading-tight">
+                  <div className="grid flex-1 min-w-0 text-left text-sm leading-tight">
                     <span className="truncate font-medium">{user.name}</span>
                     <span className="truncate text-xs text-muted-foreground flex items-center gap-1">
                       {isAdmin
-                        ? <><ShieldCheckIcon className="size-3" /> {t("common.administrator")}</>
-                        : <><UserIcon className="size-3" /> Member</>
+                        ? <><ShieldCheckIcon className="size-3" aria-hidden="true" /> {t("common.administrator")}</>
+                        : <><UserIcon className="size-3" aria-hidden="true" /> Member</>
                       }
                     </span>
                   </div>
@@ -129,7 +129,7 @@ export function NavUser({ user }) {
                   if (isMobile) setOpenMobile(false);
                 }}
               >
-                <CircleUserRoundIcon />
+                <CircleUserRoundIcon aria-hidden="true" />
                 {t("nav.accountProfile")}
               </DropdownMenuItem>
             </DropdownMenuGroup>
@@ -144,7 +144,7 @@ export function NavUser({ user }) {
               }}
               className="cursor-pointer text-destructive focus:text-destructive"
             >
-              <LogOutIcon />
+              <LogOutIcon aria-hidden="true" />
               {t("common.logout")}
             </DropdownMenuItem>
 

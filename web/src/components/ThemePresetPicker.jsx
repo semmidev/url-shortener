@@ -80,20 +80,27 @@ export function ThemePresetPicker({ className = "" }) {
         variant="ghost"
         size="icon"
         aria-label={t("common.colorPreset")}
+        aria-expanded={showThemeMenu}
+        aria-haspopup="menu"
         onClick={() => setShowThemeMenu((v) => !v)}
         className="cursor-pointer h-8 w-8 text-muted-foreground hover:text-foreground"
       >
-        <Palette className="h-4 w-4" />
+        <Palette className="h-4 w-4" aria-hidden="true" />
       </Button>
 
       {showThemeMenu && (
-        <div className="absolute right-0 top-full mt-1 z-50 w-44 bg-card border border-border rounded-xl shadow-xl py-1 max-h-72 overflow-y-auto animate-in fade-in-20">
+        <div
+          role="menu"
+          aria-orientation="vertical"
+          className="absolute right-0 top-full mt-1 z-50 w-44 bg-card border border-border rounded-xl shadow-xl py-1 max-h-72 overflow-y-auto animate-in fade-in-20"
+        >
           <p className="px-3 py-1.5 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
             {t("common.colorPreset")}
           </p>
           {THEMES.map((tItem) => (
             <button
               key={tItem.id}
+              role="menuitem"
               onClick={() => {
                 setPreset(tItem.id)
                 setShowThemeMenu(false)
@@ -105,9 +112,10 @@ export function ThemePresetPicker({ className = "" }) {
               <span
                 className="w-3 h-3 rounded-full border border-border/60 shrink-0"
                 style={{ backgroundColor: tItem.color }}
+                aria-hidden="true"
               />
               {tItem.name}
-              {activePreset === tItem.id && <CheckIcon className="ml-auto h-3 w-3 text-primary" />}
+              {activePreset === tItem.id && <CheckIcon className="ml-auto h-3 w-3 text-primary" aria-hidden="true" />}
             </button>
           ))}
         </div>

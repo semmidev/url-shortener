@@ -129,17 +129,19 @@ export default function Overview() {
       <button
         type="button"
         onClick={() => handleSort(field)}
+        aria-label={`Sort by ${label}`}
+        aria-sort={isCurrent ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none'}
         className="flex items-center gap-1.5 hover:text-foreground transition-colors cursor-pointer font-semibold text-xs uppercase tracking-wider select-none group"
       >
         <span>{label}</span>
         {isCurrent ? (
           sortDirection === 'asc' ? (
-            <ArrowUpIcon className="size-3.5 text-primary shrink-0 transition-transform" />
+            <ArrowUpIcon className="size-3.5 text-primary shrink-0 transition-transform" aria-hidden="true" />
           ) : (
-            <ArrowDownIcon className="size-3.5 text-primary shrink-0 transition-transform" />
+            <ArrowDownIcon className="size-3.5 text-primary shrink-0 transition-transform" aria-hidden="true" />
           )
         ) : (
-          <ArrowUpDownIcon className="size-3.5 text-muted-foreground/40 opacity-0 group-hover:opacity-100 shrink-0 transition-opacity" />
+          <ArrowUpDownIcon className="size-3.5 text-muted-foreground/40 opacity-0 group-hover:opacity-100 shrink-0 transition-opacity" aria-hidden="true" />
         )}
       </button>
     );

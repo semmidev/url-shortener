@@ -100,20 +100,22 @@ export default function AdminUsersPage() {
       {/* Filters Bar */}
       <div className="p-4 rounded-xl bg-card border border-border flex flex-col sm:flex-row gap-4 items-center justify-between">
         <div className="relative w-full sm:w-80">
-          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
           <input
             type="text"
-            placeholder="Search by email or name..."
+            aria-label="Search users by email or name"
+            placeholder="Search by email or name (e.g. alex@example.com)…"
             value={search}
             onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-            className="w-full pl-9 pr-4 py-2 text-sm rounded-lg bg-background border border-border focus:outline-none focus:ring-2 focus:ring-primary/20"
+            className="w-full pl-9 pr-4 py-2 text-sm rounded-lg bg-background border border-border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary"
           />
         </div>
         <button
           onClick={fetchUsers}
-          className="p-2 text-muted-foreground hover:text-foreground rounded-lg border border-border bg-background"
+          aria-label="Refresh users list"
+          className="p-2 text-muted-foreground hover:text-foreground rounded-lg border border-border bg-background cursor-pointer"
         >
-          <RefreshCcw className="w-4 h-4" />
+          <RefreshCcw className="w-4 h-4" aria-hidden="true" />
         </button>
       </div>
 
@@ -134,8 +136,8 @@ export default function AdminUsersPage() {
               {isLoading ? (
                 <tr>
                   <td colSpan={5} className="py-12 text-center text-muted-foreground">
-                    <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-2" />
-                    Loading users list...
+                    <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-2" aria-hidden="true" />
+                    Loading users list…
                   </td>
                 </tr>
               ) : users.length === 0 ? (

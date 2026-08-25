@@ -19,7 +19,6 @@ server/db/pgbouncer/userlist.txt
 !server/db/pgbouncer/userlist.txt.example
 
 # ─── References & Local Docs ──────────────────────────────────────────────────
-references/
 
 # ─── Infrastructure & Databases ───────────────────────────────────────────────
 # Terraform

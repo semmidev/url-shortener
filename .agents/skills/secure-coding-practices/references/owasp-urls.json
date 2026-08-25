@@ -1,0 +1,102 @@
+{
+  "owasp_scp_guide": {
+    "name": "OWASP Secure Coding Practices Quick Reference Guide",
+    "url": "https://owasp.org/www-project-secure-coding-practices-quick-reference-guide/",
+    "stable_version": "https://owasp.org/www-project-secure-coding-practices-quick-reference-guide/stable-en/",
+    "checklist": "https://owasp.org/www-project-secure-coding-practices-quick-reference-guide/stable-en/02-checklist/05-checklist.html",
+    "introduction": "https://owasp.org/www-project-secure-coding-practices-quick-reference-guide/stable-en/01-introduction/05-introduction",
+    "github": "https://github.com/OWASP/www-project-secure-coding-practices-quick-reference-guide",
+    "status": "archived",
+    "retrieval_date": "2026-07-22"
+  },
+  "scp_domain_crosswalk": {
+    "1_input_validation": {"domain": "Input Validation", "url": "https://cheatsheetseries.owasp.org/cheatsheets/Input_Validation_Cheat_Sheet.html", "retrieval_date": "2026-07-22", "confidence": "verified"},
+    "2_output_encoding": {"domain": "Output Encoding", "url": "https://cheatsheetseries.owasp.org/cheatsheets/Cross_Site_Scripting_Prevention_Cheat_Sheet.html", "retrieval_date": "2026-07-22", "confidence": "cited"},
+    "3_authentication_and_password_management": {"domain": "Authentication and Password Management", "url": "https://cheatsheetseries.owasp.org/cheatsheets/Authentication_Cheat_Sheet.html", "retrieval_date": "2026-07-22", "confidence": "cited"},
+    "4_session_management": {"domain": "Session Management", "url": "https://cheatsheetseries.owasp.org/cheatsheets/Session_Management_Cheat_Sheet.html", "retrieval_date": "2026-07-22", "confidence": "cited"},
+    "5_access_control": {"domain": "Access Control", "url": "https://cheatsheetseries.owasp.org/cheatsheets/Authorization_Cheat_Sheet.html", "retrieval_date": "2026-07-22", "confidence": "cited"},
+    "6_cryptographic_practices": {"domain": "Cryptographic Practices", "url": "https://cheatsheetseries.owasp.org/cheatsheets/Cryptographic_Storage_Cheat_Sheet.html", "retrieval_date": "2026-07-22", "confidence": "cited"},
+    "7_error_handling_and_logging": {"domain": "Error Handling and Logging", "url": "https://cheatsheetseries.owasp.org/cheatsheets/Logging_Cheat_Sheet.html", "retrieval_date": "2026-07-22", "confidence": "verified"},
+    "8_data_protection": {"domain": "Data Protection", "url": "https://devguide.owasp.org/en/04-design/02-web-app-checklist/08-protect-data/", "retrieval_date": "2026-07-22", "confidence": "cited"},
+    "9_communication_security": {"domain": "Communication Security", "url": "https://cheatsheetseries.owasp.org/cheatsheets/Transport_Layer_Security_Cheat_Sheet.html", "retrieval_date": "2026-07-22", "confidence": "cited"},
+    "10_system_configuration": {"domain": "System Configuration", "url": "https://cheatsheetseries.owasp.org/cheatsheets/Docker_Security_Cheat_Sheet.html", "retrieval_date": "2026-07-22", "confidence": "cited"},
+    "11_database_security": {"domain": "Database Security", "url": "https://cheatsheetseries.owasp.org/cheatsheets/Database_Security_Cheat_Sheet.html", "retrieval_date": "2026-07-22", "confidence": "verified"},
+    "12_file_management": {"domain": "File Management", "url": "https://cheatsheetseries.owasp.org/cheatsheets/File_Upload_Cheat_Sheet.html", "retrieval_date": "2026-07-22", "confidence": "cited-weak"},
+    "13_memory_management": {"domain": "Memory Management", "url": "https://devguide.owasp.org/", "retrieval_date": "2026-07-22", "confidence": "assumed"},
+    "14_general_coding_practices": {"domain": "General Coding Practices", "url": "https://top10proactive.owasp.org/archive/2024/the-top-10/", "retrieval_date": "2026-07-22", "confidence": "verified"}
+  },
+  "related_owasp_projects": {
+    "top_10": {
+      "name": "OWASP Top 10",
+      "url": "https://owasp.org/www-project-top-ten/",
+      "note": "Focus on web application vulnerabilities; complements SCP"
+    },
+    "asvs": {
+      "name": "OWASP Application Security Verification Standard (ASVS)",
+      "url": "https://owasp.org/www-project-application-security-verification-standard/",
+      "note": "Comprehensive security requirements framework"
+    },
+    "masvs": {
+      "name": "OWASP Mobile Application Security Verification Standard (MASVS)",
+      "url": "https://owasp.org/www-project-mobile-app-security/",
+      "note": "Mobile-specific security requirements"
+    },
+    "api_security": {
+      "name": "OWASP API Security Top 10",
+      "url": "https://owasp.org/www-project-api-security/",
+      "note": "REST and GraphQL API security focus"
+    },
+    "kubernetes_top_10": {
+      "name": "OWASP Kubernetes Top 10",
+      "url": "https://owasp.org/www-project-kubernetes-top-ten/",
+      "note": "Container and orchestration security"
+    },
+    "llm_top_10": {
+      "name": "OWASP LLM Top 10",
+      "url": "https://owasp.org/www-project-llm-top-10/",
+      "note": "Large Language Model security risks"
+    }
+  },
+  "cryptography_references": {
+    "nist_guidelines": "https://csrc.nist.gov/publications/detail/sp/800-38d/final",
+    "fips_140_2": "https://csrc.nist.gov/publications/detail/fips/140/2/final",
+    "cwe_weak_crypto": "https://cwe.mitre.org/data/definitions/327.html",
+    "cwe_hardcoded_secrets": "https://cwe.mitre.org/data/definitions/798.html"
+  },
+  "authentication_references": {
+    "cwe_weak_password": "https://cwe.mitre.org/data/definitions/521.html",
+    "cwe_plaintext_storage": "https://cwe.mitre.org/data/definitions/312.html",
+    "mfa_standards": "https://www.nist.gov/publications/detail/sp/800-63-3"
+  },
+  "injection_references": {
+    "cwe_sql_injection": "https://cwe.mitre.org/data/definitions/89.html",
+    "cwe_os_command_injection": "https://cwe.mitre.org/data/definitions/78.html",
+    "cwe_ldap_injection": "https://cwe.mitre.org/data/definitions/90.html",
+    "cwe_xpath_injection": "https://cwe.mitre.org/data/definitions/643.html"
+  },
+  "access_control_references": {
+    "cwe_broken_access_control": "https://cwe.mitre.org/data/definitions/284.html",
+    "cwe_direct_object_reference": "https://cwe.mitre.org/data/definitions/639.html",
+    "cwe_privilege_escalation": "https://cwe.mitre.org/data/definitions/269.html"
+  },
+  "xss_references": {
+    "cwe_xss": "https://cwe.mitre.org/data/definitions/79.html",
+    "cwe_dom_xss": "https://cwe.mitre.org/data/definitions/756.html"
+  },
+  "data_protection_references": {
+    "cwe_sensitive_data_exposure": "https://cwe.mitre.org/data/definitions/200.html",
+    "cwe_use_after_free": "https://cwe.mitre.org/data/definitions/416.html"
+  },
+  "session_management_references": {
+    "cwe_session_fixation": "https://cwe.mitre.org/data/definitions/384.html",
+    "cwe_csrf": "https://cwe.mitre.org/data/definitions/352.html"
+  },
+  "configuration_references": {
+    "cwe_misconfiguration": "https://cwe.mitre.org/data/definitions/16.html",
+    "cwe_default_credentials": "https://cwe.mitre.org/data/definitions/798.html"
+  },
+  "vulnerability_databases": {
+    "cwe_top_25": "https://cwe.mitre.org/top25/",
+    "cvss_calculator": "https://www.first.org/cvss/calculator/3.1"
+  }
+}

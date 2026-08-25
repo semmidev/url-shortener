@@ -211,7 +211,7 @@ export default function URLs() {
         <CardContent className="pt-6">
           <div className="flex flex-col sm:flex-row gap-3">
             <div className="relative flex-1">
-              <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+              <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" aria-hidden="true" />
               <Input
                 placeholder={t("urls.searchPlaceholder")}
                 aria-label={t("urls.searchPlaceholder")}
@@ -231,7 +231,7 @@ export default function URLs() {
               </SelectContent>
             </Select>
             <Button variant="outline" onClick={fetchUrls} title="Refresh Links" aria-label="Refresh Links" className="cursor-pointer">
-              <RefreshCwIcon className={`size-4 ${loading ? 'animate-spin' : ''}`} />
+              <RefreshCwIcon className={`size-4 ${loading ? 'animate-spin' : ''}`} aria-hidden="true" />
             </Button>
           </div>
         </CardContent>
@@ -289,7 +289,7 @@ export default function URLs() {
                     const rowNumber = (page - 1) * limit + index + 1;
                     return (
                       <tr key={item.id} className="group hover:bg-muted/30 transition-colors">
-                          <td className="py-3 px-3 text-center font-mono text-xs text-muted-foreground font-semibold">
+                          <td className="py-3 px-3 text-center font-mono text-xs text-muted-foreground font-semibold tabular-nums">
                             {rowNumber}
                           </td>
                           <td className="py-3 px-3">
@@ -324,11 +324,11 @@ export default function URLs() {
                         <td className="py-3 px-3 max-w-xs truncate text-muted-foreground text-xs">
                           {item.original_url}
                         </td>
-                        <td className="py-3 px-3 whitespace-nowrap text-xs text-muted-foreground font-mono">
+                        <td className="py-3 px-3 whitespace-nowrap text-xs text-muted-foreground font-mono tabular-nums">
                           {formatDate(item.created_at)}
                         </td>
                         <td className="py-3 px-3">
-                          <Badge variant="outline" className="font-bold font-mono">
+                          <Badge variant="outline" className="font-bold font-mono tabular-nums">
                             {item.click_count || 0}
                           </Badge>
                         </td>

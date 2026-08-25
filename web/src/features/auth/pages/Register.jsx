@@ -25,20 +25,21 @@ function PasswordInput({ id, name, value, onChange, error, placeholder = '••
   return (
     <div className="relative group">
       <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-muted-foreground">
-        <Lock className="w-4 h-4" />
+        <Lock className="w-4 h-4" aria-hidden="true" />
       </span>
       <input
         id={id} name={name}
         type={show ? 'text' : 'password'}
         autoComplete={autoComplete} value={value} onChange={onChange} placeholder={placeholder}
+        spellCheck={false}
         className={`w-full pl-9 pr-10 rounded-xl border bg-muted/50 hover:bg-muted/80 focus:bg-card px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary ${error ? 'border-destructive' : 'border-border'}`}
       />
       <button
-        type="button" onClick={() => setShow((v) => !v)} tabIndex={-1}
+        type="button" onClick={() => setShow((v) => !v)}
         aria-label={show ? 'Hide password' : 'Show password'}
         className="absolute inset-y-0 right-0 flex items-center px-3 text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
       >
-        {show ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+        {show ? <EyeOff className="w-4 h-4" aria-hidden="true" /> : <Eye className="w-4 h-4" aria-hidden="true" />}
       </button>
     </div>
   );
@@ -239,8 +240,9 @@ export default function Register() {
               <div className="space-y-1.5">
                 <label htmlFor="fullName" className="text-xs font-bold text-muted-foreground block">{t("auth.fullNameLabel")} <span className="text-destructive">*</span></label>
                 <div className="relative">
-                  <span className="absolute inset-y-0 left-0 flex items-center pl-3.5 text-muted-foreground"><User className="w-4 h-4" /></span>
-                  <input id="fullName" name="fullName" type="text" autoComplete="name" autoFocus value={values.fullName} onChange={handleChange} placeholder="Alex Morgan"
+                  <span className="absolute inset-y-0 left-0 flex items-center pl-3.5 text-muted-foreground"><User className="w-4 h-4" aria-hidden="true" /></span>
+                  <input id="fullName" name="fullName" type="text" autoComplete="name" autoFocus value={values.fullName} onChange={handleChange} placeholder="e.g. Alex Morgan…"
+                    spellCheck={false}
                     className={`w-full pl-10 rounded-xl border bg-muted/50 hover:bg-muted/80 focus:bg-card px-3.5 py-2.5 text-sm text-foreground placeholder:text-muted-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary ${errors.fullName ? 'border-destructive' : 'border-border'}`}
                   />
                 </div>
@@ -251,8 +253,9 @@ export default function Register() {
               <div className="space-y-1.5">
                 <label htmlFor="email" className="text-xs font-bold text-muted-foreground block">{t("auth.emailLabel")} <span className="text-destructive">*</span></label>
                 <div className="relative">
-                  <span className="absolute inset-y-0 left-0 flex items-center pl-3.5 text-muted-foreground"><Mail className="w-4 h-4" /></span>
-                  <input id="email" name="email" type="email" autoComplete="email" value={values.email} onChange={handleChange} placeholder="name@example.com"
+                  <span className="absolute inset-y-0 left-0 flex items-center pl-3.5 text-muted-foreground"><Mail className="w-4 h-4" aria-hidden="true" /></span>
+                  <input id="email" name="email" type="email" autoComplete="email" value={values.email} onChange={handleChange} placeholder="e.g. name@example.com…"
+                    spellCheck={false}
                     className={`w-full pl-10 rounded-xl border bg-muted/50 hover:bg-muted/80 focus:bg-card px-3.5 py-2.5 text-sm text-foreground placeholder:text-muted-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary ${errors.email ? 'border-destructive' : 'border-border'}`}
                   />
                 </div>

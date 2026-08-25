@@ -51,7 +51,8 @@ export default function CreateURLModal({ isOpen, onClose, onSuccess }) {
             <Input
               id="originalUrl"
               type="url"
-              placeholder={t("dashboard.originalUrlPlaceholder")}
+              autoComplete="off"
+              placeholder="e.g. https://example.com/my-long-url…"
               value={originalUrl}
               onChange={(e) => setOriginalUrl(e.target.value)}
               required
