@@ -9,14 +9,38 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	db "github.com/semmidev/url-shortener/server/db/sqlc"
 	"github.com/semmidev/url-shortener/server/internal/platform/web"
+	"github.com/semmidev/url-shortener/server/internal/worker"
 )
 
 type Logger struct {
-	queries db.Querier
+	queries         db.Querier
+	taskDistributor worker.TaskDistributor
+	auditQueue      chan db.CreateAuditLogParams
 }
 
 func NewLogger(queries db.Querier) *Logger {
-	return &Logger{queries: queries}
+	l := &Logger{
+		queries:    queries,
+		auditQueue: make(chan db.CreateAuditLogParams, 10000),
+	}
+	// Start fixed worker pool for fallback async audit log processing (no unbounded goroutines)
+	for i := 0; i < 3; i++ {
+		go l.startFallbackWorker()
+	}
+	return l
+}
+
+func (l *Logger) SetTaskDistributor(distributor worker.TaskDistributor) {
+	if l != nil {
+		l.taskDistributor = distributor
+	}
+}
+
+func (l *Logger) startFallbackWorker() {
+	for params := range l.auditQueue {
+		bgCtx := context.Background()
+		_, _ = l.queries.CreateAuditLog(bgCtx, params)
+	}
 }
 
 type AuditParams struct {
@@ -51,10 +75,7 @@ func (l *Logger) Log(ctx context.Context, r *http.Request, params AuditParams) {
 	ipAddr := ""
 	userAgent := ""
 	if r != nil {
-		ipAddr = r.RemoteAddr
-		if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
-			ipAddr = xff
-		}
+		ipAddr = web.GetClientIP(r)
 		userAgent = r.UserAgent()
 	}
 
@@ -63,17 +84,33 @@ func (l *Logger) Log(ctx context.Context, r *http.Request, params AuditParams) {
 		actorUUID = pgtype.UUID{Bytes: userID, Valid: true}
 	}
 
-	go func() { //nolint:gosec // async audit log insertion requires detached background context
-		bgCtx := context.WithoutCancel(ctx)
-		_, _ = l.queries.CreateAuditLog(bgCtx, db.CreateAuditLogParams{
+	if l.taskDistributor != nil {
+		_ = l.taskDistributor.DistributeTaskRecordAuditLog(ctx, &worker.PayloadRecordAuditLog{
 			ActorID:    actorUUID,
 			ActorEmail: actorEmail,
 			Action:     params.Action,
 			Resource:   params.Resource,
 			ResourceID: params.ResourceID,
 			Payload:    payloadBytes,
-			IpAddress:  ipAddr,
+			IPAddress:  ipAddr,
 			UserAgent:  userAgent,
 		})
-	}()
+		return
+	}
+
+	// Bounded non-blocking fallback enqueue (prevents spawning unbounded goroutines under high load)
+	select {
+	case l.auditQueue <- db.CreateAuditLogParams{
+		ActorID:    actorUUID,
+		ActorEmail: actorEmail,
+		Action:     params.Action,
+		Resource:   params.Resource,
+		ResourceID: params.ResourceID,
+		Payload:    payloadBytes,
+		IpAddress:  ipAddr,
+		UserAgent:  userAgent,
+	}:
+	default:
+		// Queue full under extreme traffic
+	}
 }

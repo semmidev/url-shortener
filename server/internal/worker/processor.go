@@ -20,6 +20,8 @@ type TaskProcessor interface {
 	Start() error
 	Shutdown()
 	ProcessTaskDeactivateExpiredURLs(ctx context.Context, task *asynq.Task) error
+	ProcessTaskRecordClickAnalytics(ctx context.Context, task *asynq.Task) error
+	ProcessTaskRecordAuditLog(ctx context.Context, task *asynq.Task) error
 }
 
 // RedisTaskProcessor is an Asynq-backed task processor server.
@@ -78,6 +80,8 @@ func (processor *RedisTaskProcessor) Start() error {
 	mux := asynq.NewServeMux()
 
 	mux.HandleFunc(TaskDeactivateExpiredURLs, processor.ProcessTaskDeactivateExpiredURLs)
+	mux.HandleFunc(TaskRecordClickAnalytics, processor.ProcessTaskRecordClickAnalytics)
+	mux.HandleFunc(TaskRecordAuditLog, processor.ProcessTaskRecordAuditLog)
 
 	return processor.server.Start(mux)
 }

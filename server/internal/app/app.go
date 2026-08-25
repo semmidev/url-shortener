@@ -183,14 +183,16 @@ func BuildRouter(cfg config.Config, pool *pgxpool.Pool, appLogger *logger.Logger
 
 	urlSvc := url.NewService(store, cfg, redisCache)
 	urlSvc.SetMetricsRecorder(appMetrics)
-	if taskDistributor != nil {
-		urlSvc.SetTaskDistributor(taskDistributor)
-	}
 	urlSvc.StartExpirationCleanupWorker(context.Background(), 1*time.Minute)
 
 	analyticsSvc := analytics.NewService(store)
 	auditLogger := audit.NewLogger(store)
 	adminSvc := admin.NewService(store)
+
+	if taskDistributor != nil {
+		urlSvc.SetTaskDistributor(taskDistributor)
+		auditLogger.SetTaskDistributor(taskDistributor)
+	}
 
 	// Initialize Embedded SPA Handler
 	spaHandler, err := spaweb.NewSPAHandler()
@@ -206,6 +208,9 @@ func BuildRouter(cfg config.Config, pool *pgxpool.Pool, appLogger *logger.Logger
 
 	redirectH := url.NewRedirectHandler(urlSvc, analyticsH, spaHandler)
 	redirectH.SetMetricsRecorder(appMetrics)
+	if taskDistributor != nil {
+		redirectH.SetTaskDistributor(taskDistributor)
+	}
 
 	// Start Outbox Worker for async background event streaming
 	outboxWorker := outbox.NewOutboxWorker(store, eventPub, analyticsH)
@@ -228,7 +233,6 @@ func BuildRouter(cfg config.Config, pool *pgxpool.Pool, appLogger *logger.Logger
 	}))
 
 	r.Use(customMw.SecureHeaders)
-	r.Use(chimw.RealIP)
 	r.Use(chimw.Recoverer)
 	r.Use(customMw.RequestTimeout(10 * time.Second))
 	r.Use(customMw.Metrics(appMetrics))

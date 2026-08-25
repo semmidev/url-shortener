@@ -14,6 +14,16 @@ type TaskDistributor interface {
 		payload *PayloadDeactivateExpiredURLs,
 		opts ...asynq.Option,
 	) error
+	DistributeTaskRecordClickAnalytics(
+		ctx context.Context,
+		payload *PayloadRecordClickAnalytics,
+		opts ...asynq.Option,
+	) error
+	DistributeTaskRecordAuditLog(
+		ctx context.Context,
+		payload *PayloadRecordAuditLog,
+		opts ...asynq.Option,
+	) error
 }
 
 // RedisTaskDistributor is a Redis-backed implementation of TaskDistributor using Asynq.

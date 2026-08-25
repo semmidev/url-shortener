@@ -115,12 +115,9 @@ func (m *InMemoryPublisher) Publish(ctx context.Context, topic string, event Eve
 	m.mu.RUnlock()
 
 	for _, h := range handlers {
-		handler := h
-		go func() {
-			if err := handler(ctx, event); err != nil {
-				slog.Error("in-memory event handler error", "topic", topic, "error", err)
-			}
-		}()
+		if err := h(ctx, event); err != nil {
+			slog.Error("in-memory event handler error", "topic", topic, "error", err)
+		}
 	}
 	return nil
 }

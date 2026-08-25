@@ -15,6 +15,7 @@ import (
 	"github.com/semmidev/url-shortener/server/internal/platform/apperr"
 	"github.com/semmidev/url-shortener/server/internal/platform/logger"
 	"github.com/semmidev/url-shortener/server/internal/platform/web"
+	"github.com/semmidev/url-shortener/server/internal/worker"
 )
 
 type AnalyticsRecorder interface {
@@ -25,24 +26,55 @@ type RedirectMetricsRecorder interface {
 	RecordURLRedirect(status string)
 }
 
+type clickTask struct {
+	urlID     uuid.UUID
+	ip        string
+	userAgent string
+	referrer  string
+}
+
 type RedirectHandler struct {
-	svc          *Service
-	analyticsRec AnalyticsRecorder
-	spaHandler   http.Handler
-	metrics      RedirectMetricsRecorder
+	svc             *Service
+	analyticsRec    AnalyticsRecorder
+	spaHandler      http.Handler
+	metrics         RedirectMetricsRecorder
+	taskDistributor worker.TaskDistributor
+	clickQueue      chan clickTask
 }
 
 func NewRedirectHandler(svc *Service, analyticsRec AnalyticsRecorder, spaHandler http.Handler) *RedirectHandler {
-	return &RedirectHandler{
+	h := &RedirectHandler{
 		svc:          svc,
 		analyticsRec: analyticsRec,
 		spaHandler:   spaHandler,
+		clickQueue:   make(chan clickTask, 10000),
+	}
+	// Start fixed worker pool for fallback async click processing (no unbounded goroutines spawned per request)
+	for i := 0; i < 5; i++ {
+		go h.startFallbackWorker()
+	}
+	return h
+}
+
+func (h *RedirectHandler) startFallbackWorker() {
+	for t := range h.clickQueue {
+		ctx := context.Background()
+		_ = h.svc.IncrementClickCount(ctx, IncrementClickCountRequest{ID: t.urlID})
+		if h.analyticsRec != nil {
+			h.analyticsRec.RecordClick(ctx, t.urlID, t.ip, t.userAgent, t.referrer)
+		}
 	}
 }
 
 func (h *RedirectHandler) SetMetricsRecorder(m RedirectMetricsRecorder) {
 	if h != nil {
 		h.metrics = m
+	}
+}
+
+func (h *RedirectHandler) SetTaskDistributor(distributor worker.TaskDistributor) {
+	if h != nil {
+		h.taskDistributor = distributor
 	}
 }
 
@@ -134,16 +166,27 @@ func (h *RedirectHandler) Redirect(w http.ResponseWriter, r *http.Request) {
 
 	logger.Enrich(r.Context(), "target_url", res.OriginalURL)
 
-	// Asynchronously record click metrics and increment counter
+	// Asynchronously record click metrics and increment counter via TaskDistributor or bounded worker queue
 	clientIP := web.GetClientIP(r)
-	// #nosec G118 -- background click logging outlives request context intentionally
-	go func(urlID uuid.UUID, ip, userAgent, referrer string) {
-		ctx := context.Background()
-		_ = h.svc.IncrementClickCount(ctx, IncrementClickCountRequest{ID: urlID})
-		if h.analyticsRec != nil {
-			h.analyticsRec.RecordClick(ctx, urlID, ip, userAgent, referrer)
+	if h.taskDistributor != nil {
+		_ = h.taskDistributor.DistributeTaskRecordClickAnalytics(r.Context(), &worker.PayloadRecordClickAnalytics{
+			URLID:     res.ID,
+			IP:        clientIP,
+			UserAgent: r.UserAgent(),
+			Referrer:  r.Referer(),
+		})
+	} else {
+		select {
+		case h.clickQueue <- clickTask{
+			urlID:     res.ID,
+			ip:        clientIP,
+			userAgent: r.UserAgent(),
+			referrer:  r.Referer(),
+		}:
+		default:
+			logger.Enrich(r.Context(), "click_queue_full", true)
 		}
-	}(res.ID, clientIP, r.UserAgent(), r.Referer())
+	}
 
 	// Set Cache-Control header for Edge / CDN caching (Cloudflare, Fastly)
 	maxAge := h.svc.cfg.CacheControlMaxAge
