@@ -256,8 +256,8 @@ export default function Account() {
           <div className="flex items-center gap-2">
             <KeyRoundIcon className="size-5 text-amber-500 shrink-0" />
             <div>
-              <CardTitle className="text-base font-semibold">Keamanan Akun (Ganti Password)</CardTitle>
-              <CardDescription className="text-xs">Perbarui password secara berkala untuk menjaga keamanan akun Anda.</CardDescription>
+              <CardTitle className="text-base font-semibold">{t("account.changePasswordTitle")}</CardTitle>
+              <CardDescription className="text-xs">{t("account.changePasswordDesc")}</CardDescription>
             </div>
           </div>
         </CardHeader>
@@ -266,20 +266,20 @@ export default function Account() {
             <div className="mb-4 p-3 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-600 dark:text-amber-400 text-xs flex items-center gap-2">
               <AlertCircleIcon className="size-4 shrink-0" />
               <span>
-                Akun Anda belum memiliki password. Buat password di bawah ini agar Anda tetap bisa login menggunakan email & password jika koneksi Google dilepas.
+                {t("account.noPasswordWarning")}
               </span>
             </div>
           )}
           <form onSubmit={handlePasswordSubmit} className="space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <Label htmlFor="password-new" className="text-xs font-medium">Password Baru</Label>
+                <Label htmlFor="password-new" className="text-xs font-medium">{t("account.newPassword")}</Label>
                 <Input
                   id="password-new"
                   type="password"
                   value={passwordForm.newPassword}
                   onChange={(e) => setPasswordForm((p) => ({ ...p, newPassword: e.target.value }))}
-                  placeholder="Minimal 6 karakter"
+                  placeholder={t("account.newPasswordPlaceholder")}
                   className="bg-background/80"
                   autoComplete="new-password"
                 />
@@ -287,13 +287,13 @@ export default function Account() {
               </div>
 
               <div className="space-y-1.5">
-                <Label htmlFor="password-confirm" className="text-xs font-medium">Konfirmasi Password Baru</Label>
+                <Label htmlFor="password-confirm" className="text-xs font-medium">{t("account.confirmNewPassword")}</Label>
                 <Input
                   id="password-confirm"
                   type="password"
                   value={passwordForm.confirmPassword}
                   onChange={(e) => setPasswordForm((p) => ({ ...p, confirmPassword: e.target.value }))}
-                  placeholder="Ulangi password baru"
+                  placeholder={t("account.confirmPasswordPlaceholder")}
                   className="bg-background/80"
                   autoComplete="new-password"
                 />
@@ -306,10 +306,10 @@ export default function Account() {
                 {passwordLoading ? (
                   <>
                     <Loader2Icon className="size-3.5 animate-spin mr-1.5" />
-                    Menyimpan…
+                    {t("common.saving")}
                   </>
                 ) : (
-                  'Ubah Password'
+                  t("account.updatePasswordBtn")
                 )}
               </Button>
             </div>
@@ -323,8 +323,8 @@ export default function Account() {
           <div className="flex items-center gap-2">
             <LinkIcon className="size-5 text-emerald-500 shrink-0" />
             <div>
-              <CardTitle className="text-base font-semibold">Koneksi Akun Google</CardTitle>
-              <CardDescription className="text-xs">Hubungkan akun Google Anda untuk metode login satu kali klik yang cepat.</CardDescription>
+              <CardTitle className="text-base font-semibold">{t("account.googleConnectionTitle")}</CardTitle>
+              <CardDescription className="text-xs">{t("account.googleConnectionDesc")}</CardDescription>
             </div>
           </div>
         </CardHeader>
@@ -335,14 +335,14 @@ export default function Account() {
                 <GoogleLogo className="size-5" />
               </div>
               <div className="min-w-0">
-                <p className="text-sm font-semibold text-foreground">Google OAuth</p>
+                <p className="text-sm font-semibold text-foreground">{t("account.googleOAuth")}</p>
                 {user.google_id ? (
                   <p className="text-xs text-emerald-600 dark:text-emerald-400 flex items-center gap-1 font-medium mt-0.5">
                     <CheckCircle2Icon className="size-3.5 shrink-0 text-emerald-500" />
-                    Akun Google Terhubung ({user.email})
+                    {t("account.googleConnected")} ({user.email})
                   </p>
                 ) : (
-                  <p className="text-xs text-muted-foreground mt-0.5">Belum terhubung dengan akun Google</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">{t("account.googleNotConnected")}</p>
                 )}
               </div>
             </div>
@@ -358,7 +358,7 @@ export default function Account() {
                   className="text-xs border-destructive/30 text-destructive hover:bg-destructive/10 cursor-pointer h-9"
                 >
                   {googleLoading ? <Loader2Icon className="size-3.5 animate-spin mr-1.5" /> : null}
-                  Putuskan Koneksi Google
+                  {t("account.unlinkGoogleBtn")}
                 </Button>
               ) : (
                 <Button
@@ -370,7 +370,7 @@ export default function Account() {
                   className="text-xs border-emerald-500/40 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10 cursor-pointer h-9 gap-2 font-medium"
                 >
                   {googleLoading ? <Loader2Icon className="size-3.5 animate-spin" /> : <GoogleLogo className="size-4" />}
-                  Hubungkan Akun Google
+                  {t("account.connectGoogleBtn")}
                 </Button>
               )}
             </div>
@@ -379,7 +379,7 @@ export default function Account() {
           <div className="rounded-lg bg-background/50 border border-border/40 px-3.5 py-2.5 text-xs text-muted-foreground leading-relaxed flex items-start gap-2">
             <span className="shrink-0 text-base">💡</span>
             <span>
-              Menghubungkan akun Google memungkinkan Anda untuk masuk ke aplikasi secara instan tanpa harus mengetik alamat email dan password.
+              {t("account.googleTip")}
             </span>
           </div>
         </CardContent>
@@ -399,9 +399,9 @@ export default function Account() {
                 <AlertCircleIcon className="w-6 h-6" />
               </div>
               <div>
-                <h3 className="text-lg font-bold text-foreground">Putuskan Akun Google</h3>
+                <h3 className="text-lg font-bold text-foreground">{t("account.unlinkModalTitle")}</h3>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Apakah Anda yakin ingin memutuskan koneksi akun Google Anda?
+                  {t("account.unlinkModalDesc")}
                 </p>
               </div>
               <div className="flex justify-end gap-3 pt-2">
@@ -410,14 +410,14 @@ export default function Account() {
                   onClick={() => setIsUnlinkModalOpen(false)}
                   className="w-full py-2 px-4 rounded-lg border border-border text-foreground hover:bg-accent cursor-pointer"
                 >
-                  Batal
+                  {t("common.cancel")}
                 </button>
                 <button
                   type="button"
                   onClick={confirmUnlinkGoogle}
                   className="w-full py-2 px-4 rounded-lg bg-red-600 text-white font-semibold hover:bg-red-700 cursor-pointer"
                 >
-                  Ya, Putuskan
+                  {t("account.unlinkConfirmBtn")}
                 </button>
               </div>
             </motion.div>

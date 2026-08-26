@@ -5,6 +5,7 @@ import { Globe, Search, Ban, CheckCircle2, Trash2, ExternalLink, QrCode, Refresh
 import { toast } from 'sonner';
 import { getGlobalLinks, banGlobalLink, forceDeleteLink } from '../api';
 import PermissionGuard from '@/components/PermissionGuard';
+import { useI18n } from '@/context/I18nContext';
 
 export default function AdminLinksPage() {
   const [links, setLinks] = useState([]);
@@ -12,6 +13,7 @@ export default function AdminLinksPage() {
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
+  const { t } = useI18n();
 
   // Selected item for action
   const [selectedLink, setSelectedLink] = useState(null);
@@ -40,7 +42,7 @@ export default function AdminLinksPage() {
     setActionLoading(true);
     try {
       await banGlobalLink(selectedLink.id, !selectedLink.is_active);
-      toast.success(`Short code /${selectedLink.short_code} ${selectedLink.is_active ? 'banned' : 'unbanned'}`);
+      toast.success(t('adminPages.links.banSuccess'));
       fetchLinks();
       closeModal();
     } catch (err) {
@@ -59,7 +61,7 @@ export default function AdminLinksPage() {
       fetchLinks();
       closeModal();
     } catch (err) {
-      toast.error('Failed to delete URL');
+      toast.error('Failed to remove link');
     } finally {
       setActionLoading(false);
     }
@@ -74,8 +76,8 @@ export default function AdminLinksPage() {
     <div className="space-y-6">
       {/* Header */}
       <DynamicPageHeader
-        title="Global URL Oversight & Abuse Control"
-        subtitle="Monitor all short links system-wide, block malware/phishing domains, and force remove illegal content."
+        title={t('adminPages.links.title')}
+        subtitle={t('adminPages.links.subtitle')}
         fallbackIcon={Globe}
       />
 
@@ -85,7 +87,7 @@ export default function AdminLinksPage() {
           <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
           <input
             type="text"
-            placeholder="Search by code, target URL, title or email..."
+            placeholder={t('adminPages.links.searchPlaceholder')}
             value={search}
             onChange={(e) => { setSearch(e.target.value); setPage(1); }}
             className="w-full pl-9 pr-4 py-2 text-sm rounded-lg bg-background border border-border focus:outline-none focus:ring-2 focus:ring-primary/20"
@@ -93,7 +95,7 @@ export default function AdminLinksPage() {
         </div>
         <button
           onClick={fetchLinks}
-          className="p-2 text-muted-foreground hover:text-foreground rounded-lg border border-border bg-background"
+          className="p-2 text-muted-foreground hover:text-foreground rounded-lg border border-border bg-background cursor-pointer"
         >
           <RefreshCcw className="w-4 h-4" />
         </button>
@@ -105,12 +107,12 @@ export default function AdminLinksPage() {
           <table className="w-full text-left text-sm">
             <thead className="bg-muted/40 text-muted-foreground text-xs uppercase tracking-wider font-semibold border-b border-border">
               <tr>
-                <th className="px-6 py-4">Short Code / Title</th>
-                <th className="px-6 py-4">Original Destination URL</th>
-                <th className="px-6 py-4">Creator</th>
-                <th className="px-6 py-4">Clicks</th>
-                <th className="px-6 py-4">Status</th>
-                <th className="px-6 py-4 text-right">Actions</th>
+                <th className="px-6 py-4">{t('adminPages.links.colTitleCode')}</th>
+                <th className="px-6 py-4">{t('adminPages.links.colOriginalUrl')}</th>
+                <th className="px-6 py-4">{t('adminPages.links.colOwner')}</th>
+                <th className="px-6 py-4">{t('adminPages.links.colClicks')}</th>
+                <th className="px-6 py-4">{t('adminPages.links.colStatus')}</th>
+                <th className="px-6 py-4 text-right">{t('adminPages.links.colActions')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">

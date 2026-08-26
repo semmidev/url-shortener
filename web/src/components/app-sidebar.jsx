@@ -4,6 +4,7 @@ import { useAuthStore } from "@/features/auth/store"
 import { usePermission } from "@/hooks/usePermission"
 import { NavMain } from "@/components/nav-main"
 import { NavUser } from "@/components/nav-user"
+import { useI18n } from "@/context/I18nContext"
 import { resolveIcon } from "@/lib/iconResolver"
 import {
   Sidebar,
@@ -20,16 +21,19 @@ import { ZapIcon, Loader2Icon } from "lucide-react"
 
 /**
  * Build a NavMain item from a DB navigation menu item.
- * Recursively maps children to sub-items.
+ * Recursively maps children to sub-items and selects title by language.
  */
-function menuToNavItem(menu) {
+function menuToNavItem(menu, language) {
   const icon = resolveIcon(menu.icon, { className: "size-4" })
   const subIcon = resolveIcon(menu.icon, { className: "size-3.5" })
 
   const isExactRoute = menu.path === "/dashboard" || menu.path === "/dashboard/admin"
+  const title = language === 'id'
+    ? (menu.title_id || menu.title)
+    : (menu.title_en || menu.title)
 
   const base = {
-    title: menu.title,
+    title,
     url: menu.path,
     icon,
     badge: menu.badge_text || undefined,
@@ -40,13 +44,18 @@ function menuToNavItem(menu) {
     return {
       ...base,
       url: undefined, // parent items with children don't navigate themselves
-      items: menu.children.map((child) => ({
-        title: child.title,
-        url: child.path,
-        icon: resolveIcon(child.icon, { className: "size-3.5" }) || subIcon,
-        badge: child.badge_text || undefined,
-        exact: child.path === "/dashboard" || child.path === "/dashboard/admin",
-      })),
+      items: menu.children.map((child) => {
+        const childTitle = language === 'id'
+          ? (child.title_id || child.title)
+          : (child.title_en || child.title)
+        return {
+          title: childTitle,
+          url: child.path,
+          icon: resolveIcon(child.icon, { className: "size-3.5" }) || subIcon,
+          badge: child.badge_text || undefined,
+          exact: child.path === "/dashboard" || child.path === "/dashboard/admin",
+        }
+      }),
     }
   }
 
@@ -57,6 +66,7 @@ export function AppSidebar({ ...props }) {
   const user = useAuthStore((s) => s.user)
   const navigate = useNavigate()
   const { menus, isLoaded } = usePermission()
+  const { language, t } = useI18n()
 
   const sidebarUser = {
     name: user?.full_name || user?.email || "User",
@@ -109,7 +119,7 @@ export function AppSidebar({ ...props }) {
           <SidebarGroup>
             <div className="flex items-center justify-center py-8 text-muted-foreground">
               <Loader2Icon className="size-4 animate-spin mr-2" />
-              <span className="text-xs">Loading menu…</span>
+              <span className="text-xs">{t('common.loading')}</span>
             </div>
           </SidebarGroup>
         ) : groups.length > 0 || standalone.length > 0 ? (
@@ -117,21 +127,26 @@ export function AppSidebar({ ...props }) {
             {/* Standalone Top-Level Items (if any) */}
             {standalone.length > 0 && (
               <SidebarGroup>
-                <NavMain items={standalone.map(menuToNavItem)} />
+                <NavMain items={standalone.map((m) => menuToNavItem(m, language))} />
               </SidebarGroup>
             )}
 
             {/* Group Sections with Labels */}
-            {groups.map((group) => (
-              <SidebarGroup key={group.id}>
-                {group.title && (
-                  <SidebarGroupLabel className="group-data-[collapsible=icon]:hidden">
-                    {group.title}
-                  </SidebarGroupLabel>
-                )}
-                <NavMain items={(group.children || []).map(menuToNavItem)} />
-              </SidebarGroup>
-            ))}
+            {groups.map((group) => {
+              const groupTitle = language === 'id'
+                ? (group.title_id || group.title)
+                : (group.title_en || group.title)
+              return (
+                <SidebarGroup key={group.id}>
+                  {groupTitle && (
+                    <SidebarGroupLabel className="group-data-[collapsible=icon]:hidden">
+                      {groupTitle}
+                    </SidebarGroupLabel>
+                  )}
+                  <NavMain items={(group.children || []).map((m) => menuToNavItem(m, language))} />
+                </SidebarGroup>
+              )
+            })}
           </>
         ) : (
           /* Fallback if no menus returned */

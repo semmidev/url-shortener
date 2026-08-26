@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { FileText, Search, RefreshCcw, Eye, Clock, User, Shield } from 'lucide-react';
 import { toast } from 'sonner';
 import { getAuditLogs } from '../api';
+import { useI18n } from '@/context/I18nContext';
 
 export default function AdminAuditLogsPage() {
   const [logs, setLogs] = useState([]);
@@ -12,6 +13,7 @@ export default function AdminAuditLogsPage() {
   const [page, setPage] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedLog, setSelectedLog] = useState(null);
+  const { t } = useI18n();
 
   const fetchLogs = async () => {
     setIsLoading(true);
@@ -34,8 +36,8 @@ export default function AdminAuditLogsPage() {
     <div className="space-y-6">
       {/* Header */}
       <DynamicPageHeader
-        title="Security Audit Trail & Compliance Log"
-        subtitle="Immutable log stream recording all administrative actions, permission overrides, and security events."
+        title={t('adminPages.auditLogs.title')}
+        subtitle={t('adminPages.auditLogs.subtitle')}
         fallbackIcon={FileText}
       />
 
@@ -45,7 +47,7 @@ export default function AdminAuditLogsPage() {
           <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
           <input
             type="text"
-            placeholder="Filter by actor email, action code or resource..."
+            placeholder={t('adminPages.auditLogs.searchPlaceholder')}
             value={search}
             onChange={(e) => { setSearch(e.target.value); setPage(1); }}
             className="w-full pl-9 pr-4 py-2 text-sm rounded-lg bg-background border border-border focus:outline-none focus:ring-2 focus:ring-primary/20"
@@ -53,7 +55,7 @@ export default function AdminAuditLogsPage() {
         </div>
         <button
           onClick={fetchLogs}
-          className="p-2 text-muted-foreground hover:text-foreground rounded-lg border border-border bg-background"
+          className="p-2 text-muted-foreground hover:text-foreground rounded-lg border border-border bg-background cursor-pointer"
         >
           <RefreshCcw className="w-4 h-4" />
         </button>

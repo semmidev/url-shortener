@@ -403,6 +403,8 @@ func buildMenuTree(items []db.ListNavigationMenusRow) []NavigationMenuResponse {
 			ID:             m.ID,
 			ParentID:       pgUUIDToUUIDPtr(m.ParentID),
 			Title:          m.Title,
+			TitleID:        m.TitleID,
+			TitleEN:        m.TitleEN,
 			Path:           m.Path,
 			Icon:           m.Icon,
 			OrderIndex:     m.OrderIndex,
@@ -449,9 +451,20 @@ func buildMenuTree(items []db.ListNavigationMenusRow) []NavigationMenuResponse {
 }
 
 func (s *Service) CreateNavigationMenu(ctx context.Context, req CreateMenuRequest) (NavigationMenuResponse, error) {
+	titleID := req.TitleID
+	if titleID == "" {
+		titleID = req.Title
+	}
+	titleEN := req.TitleEN
+	if titleEN == "" {
+		titleEN = req.Title
+	}
+
 	m, err := s.q.CreateNavigationMenu(ctx, db.CreateNavigationMenuParams{
 		ParentID:       uuidToPgUUID(req.ParentID),
 		Title:          req.Title,
+		TitleID:        titleID,
+		TitleEN:        titleEN,
 		Path:           req.Path,
 		Icon:           req.Icon,
 		OrderIndex:     req.OrderIndex,
@@ -469,6 +482,8 @@ func (s *Service) CreateNavigationMenu(ctx context.Context, req CreateMenuReques
 		ID:             m.ID,
 		ParentID:       pgUUIDToUUIDPtr(m.ParentID),
 		Title:          m.Title,
+		TitleID:        m.TitleID,
+		TitleEN:        m.TitleEN,
 		Path:           m.Path,
 		Icon:           m.Icon,
 		OrderIndex:     m.OrderIndex,
@@ -483,10 +498,21 @@ func (s *Service) CreateNavigationMenu(ctx context.Context, req CreateMenuReques
 }
 
 func (s *Service) UpdateNavigationMenu(ctx context.Context, id uuid.UUID, req CreateMenuRequest) (NavigationMenuResponse, error) {
+	titleID := req.TitleID
+	if titleID == "" {
+		titleID = req.Title
+	}
+	titleEN := req.TitleEN
+	if titleEN == "" {
+		titleEN = req.Title
+	}
+
 	m, err := s.q.UpdateNavigationMenu(ctx, db.UpdateNavigationMenuParams{
 		ID:             id,
 		ParentID:       uuidToPgUUID(req.ParentID),
 		Title:          req.Title,
+		TitleID:        titleID,
+		TitleEN:        titleEN,
 		Path:           req.Path,
 		Icon:           req.Icon,
 		OrderIndex:     req.OrderIndex,
@@ -504,6 +530,8 @@ func (s *Service) UpdateNavigationMenu(ctx context.Context, id uuid.UUID, req Cr
 		ID:             m.ID,
 		ParentID:       pgUUIDToUUIDPtr(m.ParentID),
 		Title:          m.Title,
+		TitleID:        m.TitleID,
+		TitleEN:        m.TitleEN,
 		Path:           m.Path,
 		Icon:           m.Icon,
 		OrderIndex:     m.OrderIndex,

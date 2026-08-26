@@ -28,6 +28,8 @@ type NavigationMenu struct {
 	ID             uuid.UUID   `json:"id"`
 	ParentID       pgtype.UUID `json:"parent_id"`
 	Title          string      `json:"title"`
+	TitleID        string      `json:"title_id"`
+	TitleEN        string      `json:"title_en"`
 	Path           string      `json:"path"`
 	Icon           string      `json:"icon"`
 	OrderIndex     int32       `json:"order_index"`

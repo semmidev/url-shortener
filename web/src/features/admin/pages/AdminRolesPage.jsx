@@ -5,6 +5,7 @@ import { KeyRound, Plus, Shield, Check, Save, RefreshCw, Info } from 'lucide-rea
 import { toast } from 'sonner';
 import { getAdminRoles, getAdminPermissions, createAdminRole, updateRolePermissions } from '../api';
 import PermissionGuard from '@/components/PermissionGuard';
+import { useI18n } from '@/context/I18nContext';
 
 export default function AdminRolesPage() {
   const [roles, setRoles] = useState([]);
@@ -13,6 +14,7 @@ export default function AdminRolesPage() {
   const [selectedPerms, setSelectedPerms] = useState(new Set());
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const { t } = useI18n();
 
   // New Role Modal State
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -69,10 +71,10 @@ export default function AdminRolesPage() {
     setIsSaving(true);
     try {
       await updateRolePermissions(selectedRole.id, Array.from(selectedPerms));
-      toast.success(`Permissions for role '${selectedRole.display_name}' updated successfully`);
+      toast.success(t('adminPages.roles.updateSuccess'));
       fetchData();
     } catch (err) {
-      toast.error('Failed to update role permissions');
+      toast.error('Failed to update permissions');
     } finally {
       setIsSaving(false);
     }
@@ -81,11 +83,8 @@ export default function AdminRolesPage() {
   const handleCreateRole = async (e) => {
     e.preventDefault();
     try {
-      const created = await createAdminRole({
-        ...newRoleForm,
-        permissions: []
-      });
-      toast.success(`Role '${created.display_name}' created`);
+      await createAdminRole(newRoleForm);
+      toast.success(t('adminPages.roles.createSuccess'));
       setIsCreateOpen(false);
       setNewRoleForm({ name: '', display_name: '', description: '' });
       fetchData();
@@ -105,17 +104,17 @@ export default function AdminRolesPage() {
     <div className="space-y-6">
       {/* Header */}
       <DynamicPageHeader
-        title="Dynamic RBAC & Permission Matrix"
-        subtitle="Configure system roles, access levels, and granular feature authorization matrices."
+        title={t('adminPages.roles.title')}
+        subtitle={t('adminPages.roles.subtitle')}
         fallbackIcon={KeyRound}
       >
         <PermissionGuard permission="roles.create">
           <button
             onClick={() => setIsCreateOpen(true)}
-            className="inline-flex items-center justify-center gap-2 px-4 py-2 text-sm font-semibold rounded-lg bg-primary text-primary-foreground hover:opacity-90 transition-opacity"
+            className="inline-flex items-center justify-center gap-2 px-4 py-2 text-sm font-semibold rounded-lg bg-primary text-primary-foreground hover:opacity-90 transition-opacity cursor-pointer"
           >
             <Plus className="w-4 h-4" />
-            Create New Role
+            {t('adminPages.roles.createRoleBtn')}
           </button>
         </PermissionGuard>
       </DynamicPageHeader>
@@ -124,7 +123,7 @@ export default function AdminRolesPage() {
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
         {/* Roles List Sidebar */}
         <div className="lg:col-span-1 space-y-3">
-          <h2 className="text-xs font-bold uppercase tracking-wider text-muted-foreground px-1">System Roles</h2>
+          <h2 className="text-xs font-bold uppercase tracking-wider text-muted-foreground px-1">{t('adminPages.roles.rolesListTitle')}</h2>
           <div className="space-y-2">
             {roles.map((r) => (
               <button

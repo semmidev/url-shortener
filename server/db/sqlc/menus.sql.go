@@ -14,14 +14,16 @@ import (
 )
 
 const createNavigationMenu = `-- name: CreateNavigationMenu :one
-INSERT INTO navigation_menus (parent_id, title, path, icon, order_index, is_active, is_external, is_group, badge_text, permission_code)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-RETURNING id, parent_id, title, path, icon, order_index, is_active, is_external, is_group, badge_text, permission_code, created_at, updated_at
+INSERT INTO navigation_menus (parent_id, title, title_id, title_en, path, icon, order_index, is_active, is_external, is_group, badge_text, permission_code)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+RETURNING id, parent_id, title, title_id, title_en, path, icon, order_index, is_active, is_external, is_group, badge_text, permission_code, created_at, updated_at
 `
 
 type CreateNavigationMenuParams struct {
 	ParentID       pgtype.UUID `json:"parent_id"`
 	Title          string      `json:"title"`
+	TitleID        string      `json:"title_id"`
+	TitleEN        string      `json:"title_en"`
 	Path           string      `json:"path"`
 	Icon           string      `json:"icon"`
 	OrderIndex     int32       `json:"order_index"`
@@ -36,6 +38,8 @@ type CreateNavigationMenuRow struct {
 	ID             uuid.UUID   `json:"id"`
 	ParentID       pgtype.UUID `json:"parent_id"`
 	Title          string      `json:"title"`
+	TitleID        string      `json:"title_id"`
+	TitleEN        string      `json:"title_en"`
 	Path           string      `json:"path"`
 	Icon           string      `json:"icon"`
 	OrderIndex     int32       `json:"order_index"`
@@ -52,6 +56,8 @@ func (q *Queries) CreateNavigationMenu(ctx context.Context, arg CreateNavigation
 	row := q.db.QueryRow(ctx, createNavigationMenu,
 		arg.ParentID,
 		arg.Title,
+		arg.TitleID,
+		arg.TitleEN,
 		arg.Path,
 		arg.Icon,
 		arg.OrderIndex,
@@ -66,6 +72,8 @@ func (q *Queries) CreateNavigationMenu(ctx context.Context, arg CreateNavigation
 		&i.ID,
 		&i.ParentID,
 		&i.Title,
+		&i.TitleID,
+		&i.TitleEN,
 		&i.Path,
 		&i.Icon,
 		&i.OrderIndex,
@@ -91,7 +99,7 @@ func (q *Queries) DeleteNavigationMenu(ctx context.Context, id uuid.UUID) error 
 }
 
 const getNavigationMenuByID = `-- name: GetNavigationMenuByID :one
-SELECT id, parent_id, title, path, icon, order_index, is_active, is_external, is_group, badge_text, permission_code, created_at, updated_at
+SELECT id, parent_id, title, title_id, title_en, path, icon, order_index, is_active, is_external, is_group, badge_text, permission_code, created_at, updated_at
 FROM navigation_menus
 WHERE id = $1
 `
@@ -100,6 +108,8 @@ type GetNavigationMenuByIDRow struct {
 	ID             uuid.UUID   `json:"id"`
 	ParentID       pgtype.UUID `json:"parent_id"`
 	Title          string      `json:"title"`
+	TitleID        string      `json:"title_id"`
+	TitleEN        string      `json:"title_en"`
 	Path           string      `json:"path"`
 	Icon           string      `json:"icon"`
 	OrderIndex     int32       `json:"order_index"`
@@ -119,6 +129,8 @@ func (q *Queries) GetNavigationMenuByID(ctx context.Context, id uuid.UUID) (GetN
 		&i.ID,
 		&i.ParentID,
 		&i.Title,
+		&i.TitleID,
+		&i.TitleEN,
 		&i.Path,
 		&i.Icon,
 		&i.OrderIndex,
@@ -134,7 +146,7 @@ func (q *Queries) GetNavigationMenuByID(ctx context.Context, id uuid.UUID) (GetN
 }
 
 const listNavigationMenus = `-- name: ListNavigationMenus :many
-SELECT id, parent_id, title, path, icon, order_index, is_active, is_external, is_group, badge_text, permission_code, created_at, updated_at
+SELECT id, parent_id, title, title_id, title_en, path, icon, order_index, is_active, is_external, is_group, badge_text, permission_code, created_at, updated_at
 FROM navigation_menus
 ORDER BY order_index ASC, created_at ASC
 `
@@ -143,6 +155,8 @@ type ListNavigationMenusRow struct {
 	ID             uuid.UUID   `json:"id"`
 	ParentID       pgtype.UUID `json:"parent_id"`
 	Title          string      `json:"title"`
+	TitleID        string      `json:"title_id"`
+	TitleEN        string      `json:"title_en"`
 	Path           string      `json:"path"`
 	Icon           string      `json:"icon"`
 	OrderIndex     int32       `json:"order_index"`
@@ -168,6 +182,8 @@ func (q *Queries) ListNavigationMenus(ctx context.Context) ([]ListNavigationMenu
 			&i.ID,
 			&i.ParentID,
 			&i.Title,
+			&i.TitleID,
+			&i.TitleEN,
 			&i.Path,
 			&i.Icon,
 			&i.OrderIndex,
@@ -208,15 +224,17 @@ func (q *Queries) UpdateMenuOrderIndex(ctx context.Context, arg UpdateMenuOrderI
 
 const updateNavigationMenu = `-- name: UpdateNavigationMenu :one
 UPDATE navigation_menus
-SET parent_id = $2, title = $3, path = $4, icon = $5, order_index = $6, is_active = $7, is_external = $8, is_group = $9, badge_text = $10, permission_code = $11, updated_at = NOW()
+SET parent_id = $2, title = $3, title_id = $4, title_en = $5, path = $6, icon = $7, order_index = $8, is_active = $9, is_external = $10, is_group = $11, badge_text = $12, permission_code = $13, updated_at = NOW()
 WHERE id = $1
-RETURNING id, parent_id, title, path, icon, order_index, is_active, is_external, is_group, badge_text, permission_code, created_at, updated_at
+RETURNING id, parent_id, title, title_id, title_en, path, icon, order_index, is_active, is_external, is_group, badge_text, permission_code, created_at, updated_at
 `
 
 type UpdateNavigationMenuParams struct {
 	ID             uuid.UUID   `json:"id"`
 	ParentID       pgtype.UUID `json:"parent_id"`
 	Title          string      `json:"title"`
+	TitleID        string      `json:"title_id"`
+	TitleEN        string      `json:"title_en"`
 	Path           string      `json:"path"`
 	Icon           string      `json:"icon"`
 	OrderIndex     int32       `json:"order_index"`
@@ -231,6 +249,8 @@ type UpdateNavigationMenuRow struct {
 	ID             uuid.UUID   `json:"id"`
 	ParentID       pgtype.UUID `json:"parent_id"`
 	Title          string      `json:"title"`
+	TitleID        string      `json:"title_id"`
+	TitleEN        string      `json:"title_en"`
 	Path           string      `json:"path"`
 	Icon           string      `json:"icon"`
 	OrderIndex     int32       `json:"order_index"`
@@ -248,6 +268,8 @@ func (q *Queries) UpdateNavigationMenu(ctx context.Context, arg UpdateNavigation
 		arg.ID,
 		arg.ParentID,
 		arg.Title,
+		arg.TitleID,
+		arg.TitleEN,
 		arg.Path,
 		arg.Icon,
 		arg.OrderIndex,
@@ -262,6 +284,8 @@ func (q *Queries) UpdateNavigationMenu(ctx context.Context, arg UpdateNavigation
 		&i.ID,
 		&i.ParentID,
 		&i.Title,
+		&i.TitleID,
+		&i.TitleEN,
 		&i.Path,
 		&i.Icon,
 		&i.OrderIndex,

@@ -4,10 +4,12 @@ import { Sliders, Save, RefreshCw, ToggleLeft, ToggleRight, Zap, Globe } from 'l
 import { toast } from 'sonner';
 import { getSystemConfigs, updateSystemConfig } from '../api';
 import PermissionGuard from '@/components/PermissionGuard';
+import { useI18n } from '@/context/I18nContext';
 
 export default function AdminSystemPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const { t } = useI18n();
 
   // Form states for app_info and feature_flags
   const [appInfo, setAppInfo] = useState({ app_name: '', description: '', support_email: '' });
@@ -43,7 +45,7 @@ export default function AdminSystemPage() {
     setIsSaving(true);
     try {
       await updateSystemConfig('app_info', appInfo, 'General application branding information');
-      toast.success('Application branding updated');
+      toast.success(t('adminPages.system.updateSuccess'));
     } catch (err) {
       toast.error('Failed to save application branding');
     } finally {
@@ -55,7 +57,7 @@ export default function AdminSystemPage() {
     setFeatureFlags(newFlags);
     try {
       await updateSystemConfig('feature_flags', newFlags, 'Global system feature toggles');
-      toast.success('Feature flags updated');
+      toast.success(t('adminPages.system.updateSuccess'));
     } catch (err) {
       toast.error('Failed to save feature flags');
     }
@@ -65,8 +67,8 @@ export default function AdminSystemPage() {
     <div className="space-y-6">
       {/* Header */}
       <DynamicPageHeader
-        title="System Configuration & Feature Flags"
-        subtitle="Toggle global platform capabilities, feature flags, and application branding."
+        title={t('adminPages.system.title')}
+        subtitle={t('adminPages.system.subtitle')}
         fallbackIcon={Sliders}
       >
         <button

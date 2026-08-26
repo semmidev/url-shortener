@@ -8,6 +8,7 @@ import {
 import { toast } from 'sonner';
 import { getAdminUsers, suspendUser, updateUserRole, revokeUserSessions } from '../api';
 import PermissionGuard from '@/components/PermissionGuard';
+import { useI18n } from '@/context/I18nContext';
 
 export default function AdminUsersPage() {
   const [users, setUsers] = useState([]);
@@ -15,6 +16,7 @@ export default function AdminUsersPage() {
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
+  const { t } = useI18n();
 
   // Modal States
   const [selectedUser, setSelectedUser] = useState(null);
@@ -44,7 +46,7 @@ export default function AdminUsersPage() {
     setActionLoading(true);
     try {
       await suspendUser(selectedUser.id, !selectedUser.is_suspended);
-      toast.success(`User ${selectedUser.is_suspended ? 'unsuspended' : 'suspended'} successfully`);
+      toast.success(t('adminPages.users.statusUpdatedSuccess'));
       fetchUsers();
       closeModal();
     } catch (err) {
@@ -59,7 +61,7 @@ export default function AdminUsersPage() {
     setActionLoading(true);
     try {
       await updateUserRole(selectedUser.id, newRole);
-      toast.success(`User role updated to ${newRole}`);
+      toast.success(t('adminPages.users.roleUpdatedSuccess'));
       fetchUsers();
       closeModal();
     } catch (err) {
@@ -74,7 +76,7 @@ export default function AdminUsersPage() {
     setActionLoading(true);
     try {
       await revokeUserSessions(selectedUser.id);
-      toast.success(`All active sessions for ${selectedUser.email} revoked`);
+      toast.success(`Sessions revoked for ${selectedUser.email}`);
       closeModal();
     } catch (err) {
       toast.error('Failed to revoke sessions');
@@ -92,8 +94,8 @@ export default function AdminUsersPage() {
     <div className="space-y-6">
       {/* Page Header */}
       <DynamicPageHeader
-        title="User & Account Management"
-        subtitle="Search, suspend, manage roles, and revoke active sessions for system users."
+        title={t('adminPages.users.title')}
+        subtitle={t('adminPages.users.subtitle')}
         fallbackIcon={Users}
       />
 
@@ -104,7 +106,7 @@ export default function AdminUsersPage() {
           <input
             type="text"
             aria-label="Search users by email or name"
-            placeholder="Search by email or name (e.g. alex@example.com)…"
+            placeholder={t('adminPages.users.searchPlaceholder')}
             value={search}
             onChange={(e) => { setSearch(e.target.value); setPage(1); }}
             className="w-full pl-9 pr-4 py-2 text-sm rounded-lg bg-background border border-border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary"
@@ -125,11 +127,11 @@ export default function AdminUsersPage() {
           <table className="w-full text-left text-sm">
             <thead className="bg-muted/40 text-muted-foreground text-xs uppercase tracking-wider font-semibold border-b border-border">
               <tr>
-                <th className="px-6 py-4">User</th>
-                <th className="px-6 py-4">Role</th>
-                <th className="px-6 py-4">Status</th>
-                <th className="px-6 py-4">Joined Date</th>
-                <th className="px-6 py-4 text-right">Actions</th>
+                <th className="px-6 py-4">{t('adminPages.users.colUser')}</th>
+                <th className="px-6 py-4">{t('adminPages.users.colRole')}</th>
+                <th className="px-6 py-4">{t('adminPages.users.colStatus')}</th>
+                <th className="px-6 py-4">{t('adminPages.users.colJoined')}</th>
+                <th className="px-6 py-4 text-right">{t('adminPages.users.colActions')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
@@ -137,7 +139,7 @@ export default function AdminUsersPage() {
                 <tr>
                   <td colSpan={5} className="py-12 text-center text-muted-foreground">
                     <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-2" aria-hidden="true" />
-                    Loading users list…
+                    {t('common.loading')}…
                   </td>
                 </tr>
               ) : users.length === 0 ? (

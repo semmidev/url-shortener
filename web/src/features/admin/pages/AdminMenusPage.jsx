@@ -15,6 +15,7 @@ import {
 import PermissionGuard from '@/components/PermissionGuard';
 import { usePermission } from '@/hooks/usePermission';
 import { resolveIcon } from '@/lib/iconResolver';
+import { useI18n } from '@/context/I18nContext';
 
 const ROUTE_OPTIONS = [
   { label: 'None / Disabled (Section Group)', value: '' },
@@ -49,10 +50,13 @@ export default function AdminMenusPage() {
   const [isDeleting, setIsDeleting] = useState(false);
 
   const { refetch: refetchSidebar } = usePermission();
+  const { t, language } = useI18n();
 
   const [form, setForm] = useState({
     parent_id: '',
     title: '',
+    title_id: '',
+    title_en: '',
     path: '',
     icon: 'LayoutDashboard',
     order_index: 0,
@@ -111,6 +115,8 @@ export default function AdminMenusPage() {
     setForm({
       parent_id: parentId,
       title: '',
+      title_id: '',
+      title_en: '',
       path: isGroup ? '' : '/dashboard',
       icon: isGroup ? 'Home' : 'LayoutDashboard',
       order_index: nextOrder,
@@ -125,7 +131,9 @@ export default function AdminMenusPage() {
     setEditingItem(item);
     setForm({
       parent_id: item.parent_id || '',
-      title: item.title,
+      title: item.title || '',
+      title_id: item.title_id || item.title || '',
+      title_en: item.title_en || item.title || '',
       path: item.path || '',
       icon: item.icon || 'LayoutDashboard',
       order_index: item.order_index || 0,
@@ -138,8 +146,12 @@ export default function AdminMenusPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    const titleVal = form.title || form.title_en || form.title_id;
     const payload = {
       ...form,
+      title: titleVal,
+      title_id: form.title_id || titleVal,
+      title_en: form.title_en || titleVal,
       parent_id: form.parent_id || null,
       path: form.is_group ? '' : form.path,
       permission_code: form.permission_code || null,
@@ -198,20 +210,25 @@ export default function AdminMenusPage() {
     }));
 
     try {
-      await reorderAdminMenus(payload);
-      toast.success('Menu order updated');
+      await reorderAdminMenus({ items: payload });
+      toast.success(t('adminPages.menus.reorderSuccess'));
       await fetchData();
       refetchSidebar();
     } catch (err) {
-      toast.error('Failed to reorder menus');
+      toast.error('Failed to update menu order');
     }
+  };
+
+  const getItemTitle = (item) => {
+    if (!item) return '';
+    return language === 'id' ? (item.title_id || item.title) : (item.title_en || item.title);
   };
 
   return (
     <div className="space-y-6">
       <DynamicPageHeader
-        title="Dynamic Navigation Menu Builder"
-        subtitle="Build section groups, menus, and submenus with instant sidebar revalidation and ordering controls."
+        title={t('adminPages.menus.title')}
+        subtitle={t('adminPages.menus.subtitle')}
         fallbackIcon={MenuIcon}
       >
         <div className="flex items-center gap-2">
@@ -221,23 +238,22 @@ export default function AdminMenusPage() {
               className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-lg bg-card border border-border hover:bg-accent text-foreground transition-colors cursor-pointer"
             >
               <FolderPlus className="w-4 h-4 text-primary" />
-              Add Group Section
+              {t('adminPages.menus.addSectionGroup')}
             </button>
             <button
               onClick={() => openCreateModal({ isGroup: false })}
               className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors shadow-sm cursor-pointer"
             >
               <Plus className="w-4 h-4" />
-              Add Menu Item
+              {t('adminPages.menus.addTopMenu')}
             </button>
           </PermissionGuard>
         </div>
       </DynamicPageHeader>
 
-      {/* Menus Tree Container */}
       <div className="rounded-2xl bg-card border border-border p-6 shadow-sm space-y-4">
         {isLoading ? (
-          <div className="py-12 text-center text-muted-foreground">Loading navigation structure…</div>
+          <div className="py-12 text-center text-muted-foreground">{t('common.loading')}</div>
         ) : menus.length === 0 ? (
           <div className="py-12 text-center text-muted-foreground">No navigation menus found.</div>
         ) : (
@@ -251,7 +267,6 @@ export default function AdminMenusPage() {
                     : 'bg-background border-border/70 space-y-3'
                 }`}
               >
-                {/* Item Header Row */}
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <div className="p-2 rounded-lg bg-card border border-border/60 text-primary">
@@ -259,7 +274,7 @@ export default function AdminMenusPage() {
                     </div>
                     <div>
                       <div className="flex items-center gap-2">
-                        <span className="font-bold text-foreground">{item.title}</span>
+                        <span className="font-bold text-foreground">{getItemTitle(item)}</span>
                         {item.is_group && (
                           <span className="text-[10px] font-bold tracking-wider uppercase px-2 py-0.5 rounded bg-primary text-primary-foreground">
                             Section Group
@@ -278,9 +293,7 @@ export default function AdminMenusPage() {
                     </div>
                   </div>
 
-                  {/* Actions & Order Controls */}
                   <div className="flex items-center gap-2">
-                    {/* Arrow Up / Down Order Buttons */}
                     <PermissionGuard permission="menus.update">
                       <div className="flex items-center gap-0.5 bg-card border border-border/60 rounded-lg p-0.5">
                         <button
@@ -301,7 +314,6 @@ export default function AdminMenusPage() {
                         </button>
                       </div>
                     </PermissionGuard>
-
                     <PermissionGuard permission="menus.create">
                       <button
                         onClick={() => openCreateModal({ parentId: item.id, isGroup: false })}
@@ -330,7 +342,6 @@ export default function AdminMenusPage() {
                   </div>
                 </div>
 
-                {/* Nested Children / Menus / Submenus */}
                 {item.children && item.children.length > 0 && (
                   <div className="pl-6 pt-2 space-y-2 border-l-2 border-primary/30">
                     {item.children.map((child, childIdx) => (
@@ -345,7 +356,7 @@ export default function AdminMenusPage() {
                             </div>
                             <div>
                               <div className="flex items-center gap-2">
-                                <span className="font-semibold text-foreground">{child.title}</span>
+                                <span className="font-semibold text-foreground">{getItemTitle(child)}</span>
                                 {child.permission_code && (
                                   <span className="text-[10px] px-2 py-0.5 rounded bg-primary/10 text-primary font-medium flex items-center gap-1">
                                     <Shield className="w-2.5 h-2.5" />
@@ -356,9 +367,7 @@ export default function AdminMenusPage() {
                               <span className="font-mono text-[11px] text-muted-foreground">{child.path}</span>
                             </div>
                           </div>
-
                           <div className="flex items-center gap-1.5">
-                            {/* Arrow Up / Down Order Buttons for Child Menus */}
                             <PermissionGuard permission="menus.update">
                               <div className="flex items-center gap-0.5 bg-background border border-border/50 rounded p-0.5">
                                 <button
@@ -379,7 +388,6 @@ export default function AdminMenusPage() {
                                 </button>
                               </div>
                             </PermissionGuard>
-
                             {!child.is_group && (
                               <PermissionGuard permission="menus.create">
                                 <button
@@ -403,14 +411,13 @@ export default function AdminMenusPage() {
                           </div>
                         </div>
 
-                        {/* Level 3 Submenus */}
                         {child.children && child.children.length > 0 && (
                           <div className="pl-4 pt-1 space-y-1.5 border-l-2 border-border/40">
                             {child.children.map((sub, subIdx) => (
                               <div key={sub.id} className="p-2 rounded bg-background border border-border/30 flex items-center justify-between text-[11px]">
                                 <div className="flex items-center gap-2">
                                   {resolveIcon(sub.icon, { className: 'w-3 h-3 text-muted-foreground' })}
-                                  <span className="font-medium text-foreground">{sub.title}</span>
+                                  <span className="font-medium text-foreground">{getItemTitle(sub)}</span>
                                   <span className="font-mono text-muted-foreground text-[10px]">{sub.path}</span>
                                   {sub.permission_code && (
                                     <span className="text-[9px] px-1.5 py-0.2 rounded bg-amber-500/10 text-amber-600">
@@ -419,7 +426,6 @@ export default function AdminMenusPage() {
                                   )}
                                 </div>
                                 <div className="flex items-center gap-1">
-                                  {/* Arrow Up / Down Order Buttons for Submenus */}
                                   <PermissionGuard permission="menus.update">
                                     <div className="flex items-center gap-0.5">
                                       <button
@@ -465,23 +471,21 @@ export default function AdminMenusPage() {
         )}
       </div>
 
-      {/* Modal Form */}
       <AnimatePresence>
         {isModalOpen && (
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 z-50">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-xs">
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-card border border-border rounded-2xl p-6 max-w-lg w-full shadow-xl space-y-4 max-h-[90vh] overflow-y-auto"
+              className="w-full max-w-lg rounded-2xl bg-card border border-border p-6 shadow-xl space-y-4 max-h-[90vh] overflow-y-auto"
             >
               <h3 className="text-lg font-bold text-foreground">
                 {editingItem
-                  ? `Edit ${form.is_group ? 'Section Group' : 'Navigation Menu'}`
-                  : `Create ${form.is_group ? 'Section Group' : 'Navigation Menu'}`}
+                  ? t('adminPages.menus.editMenuTitle')
+                  : t('adminPages.menus.createMenuTitle')}
               </h3>
               <form onSubmit={handleSubmit} className="space-y-4 text-sm">
-                {/* Type Selection */}
                 <div className="flex items-center gap-4 p-2.5 rounded-xl bg-accent/40 border border-border">
                   <label className="flex items-center gap-2 text-xs font-semibold text-foreground cursor-pointer">
                     <input
@@ -494,30 +498,63 @@ export default function AdminMenusPage() {
                       })}
                       className="rounded text-primary focus:ring-primary"
                     />
-                    Is Section Group (Label Header)
+                    {t('adminPages.menus.isSectionGroupLabel')}
                   </label>
                   <span className="text-[11px] text-muted-foreground">
-                    Groups serve only as section headers in the sidebar.
+                    {t('adminPages.menus.isSectionGroupDesc')}
                   </span>
                 </div>
 
-                {/* Title (Text Input) */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
+                      <span>🇮🇩</span> {t('adminPages.menus.titleIdLabel')}
+                    </label>
+                    <input
+                      type="text"
+                      placeholder={t('adminPages.menus.titleIdPlaceholder')}
+                      value={form.title_id}
+                      onChange={(e) => setForm({
+                        ...form,
+                        title_id: e.target.value,
+                        title: form.title || e.target.value
+                      })}
+                      className="w-full mt-1 p-2.5 rounded-lg bg-background border border-border focus:ring-2 focus:ring-primary/20"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
+                      <span>🇬🇧</span> {t('adminPages.menus.titleEnLabel')}
+                    </label>
+                    <input
+                      type="text"
+                      placeholder={t('adminPages.menus.titleEnPlaceholder')}
+                      value={form.title_en}
+                      onChange={(e) => setForm({
+                        ...form,
+                        title_en: e.target.value,
+                        title: form.title || e.target.value
+                      })}
+                      className="w-full mt-1 p-2.5 rounded-lg bg-background border border-border focus:ring-2 focus:ring-primary/20"
+                    />
+                  </div>
+                </div>
+
                 <div>
-                  <label className="text-xs font-medium text-muted-foreground">Title (Label)</label>
+                  <label className="text-xs font-medium text-muted-foreground">{t('adminPages.menus.defaultTitleLabel')}</label>
                   <input
                     type="text"
                     required
-                    placeholder={form.is_group ? 'e.g. Administration' : 'e.g. User Management'}
+                    placeholder="e.g. User Management"
                     value={form.title}
                     onChange={(e) => setForm({ ...form, title: e.target.value })}
                     className="w-full mt-1 p-2.5 rounded-lg bg-background border border-border focus:ring-2 focus:ring-primary/20"
                   />
                 </div>
 
-                {/* Route Path (Dropdown Picker) */}
                 {!form.is_group && (
                   <div>
-                    <label className="text-xs font-medium text-muted-foreground">Route Path</label>
+                    <label className="text-xs font-medium text-muted-foreground">{t('adminPages.menus.routePathLabel')}</label>
                     <select
                       value={form.path}
                       onChange={(e) => setForm({ ...form, path: e.target.value })}
@@ -532,9 +569,8 @@ export default function AdminMenusPage() {
                   </div>
                 )}
 
-                {/* Icon (Visual Select Picker) */}
                 <div>
-                  <label className="text-xs font-medium text-muted-foreground">Icon</label>
+                  <label className="text-xs font-medium text-muted-foreground">{t('adminPages.menus.iconLabel')}</label>
                   <div className="flex items-center gap-3 mt-1">
                     <div className="p-2.5 rounded-lg bg-background border border-border flex items-center justify-center min-w-10 text-primary">
                       {resolveIcon(form.icon, { className: 'w-5 h-5' }) || <Layers className="w-5 h-5" />}
@@ -553,17 +589,16 @@ export default function AdminMenusPage() {
                   </div>
                 </div>
 
-                {/* Permission Code Guard (Dropdown Picker) */}
                 <div>
                   <label className="text-xs font-medium text-muted-foreground">
-                    Permission Code Guard (Optional)
+                    {t('adminPages.menus.permissionGuardLabel')}
                   </label>
                   <select
                     value={form.permission_code}
                     onChange={(e) => setForm({ ...form, permission_code: e.target.value })}
                     className="w-full mt-1 p-2.5 rounded-lg bg-background border border-border text-foreground"
                   >
-                    <option value="">No Permission Guard (Public / All Authenticated Users)</option>
+                    <option value="">{t('adminPages.menus.noPermissionGuard')}</option>
                     {permissions.map((p) => (
                       <option key={p.code} value={p.code}>
                         {p.code} — {p.description || p.module}
@@ -571,24 +606,23 @@ export default function AdminMenusPage() {
                     ))}
                   </select>
                   <p className="text-[11px] text-muted-foreground mt-1">
-                    Select a permission code to restrict visibility of this menu to users possessing that permission.
+                    {t('adminPages.menus.permissionGuardHelp')}
                   </p>
                 </div>
 
-                {/* Form Buttons */}
                 <div className="flex justify-end gap-3 pt-3 border-t border-border">
                   <button
                     type="button"
                     onClick={() => setIsModalOpen(false)}
-                    className="px-4 py-2 rounded-lg border border-border text-foreground hover:bg-accent cursor-pointer"
+                    className="px-4 py-2 text-xs font-semibold rounded-lg border border-border hover:bg-accent cursor-pointer"
                   >
-                    Cancel
+                    {t('common.cancel')}
                   </button>
                   <button
                     type="submit"
-                    className="px-4 py-2 rounded-lg bg-primary text-primary-foreground font-semibold hover:opacity-90 shadow-xs cursor-pointer"
+                    className="px-4 py-2 text-xs font-semibold rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 cursor-pointer"
                   >
-                    Save Menu
+                    {t('adminPages.menus.saveMenuBtn')}
                   </button>
                 </div>
               </form>
@@ -597,41 +631,36 @@ export default function AdminMenusPage() {
         )}
       </AnimatePresence>
 
-      {/* Delete Confirmation Modal */}
       <AnimatePresence>
         {deletingItem && (
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 z-50">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-xs">
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-card border border-border rounded-2xl p-6 max-w-sm w-full shadow-xl space-y-4 text-center"
+              className="w-full max-w-sm rounded-2xl bg-card border border-border p-6 shadow-xl space-y-4"
             >
-              <div className="w-12 h-12 rounded-full bg-red-500/10 text-red-500 flex items-center justify-center mx-auto">
-                <Trash2 className="w-6 h-6" />
-              </div>
-              <div>
-                <h3 className="text-lg font-bold text-foreground">Delete Navigation Menu</h3>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Are you sure you want to delete <span className="font-semibold text-foreground">"{deletingItem.title}"</span>? Any submenus inside it will also be deleted.
-                </p>
-              </div>
+              <h3 className="text-base font-bold text-foreground">
+                {t('adminPages.menus.deleteConfirmTitle')}
+              </h3>
+              <p className="text-xs text-muted-foreground">
+                {t('adminPages.menus.deleteConfirmDesc')}
+              </p>
               <div className="flex justify-end gap-3 pt-2">
                 <button
                   type="button"
                   onClick={() => setDeletingItem(null)}
-                  disabled={isDeleting}
-                  className="w-full py-2 px-4 rounded-lg border border-border text-foreground hover:bg-accent cursor-pointer"
+                  className="px-4 py-2 text-xs font-semibold rounded-lg border border-border hover:bg-accent cursor-pointer"
                 >
-                  Cancel
+                  {t('common.cancel')}
                 </button>
                 <button
                   type="button"
                   onClick={confirmDelete}
                   disabled={isDeleting}
-                  className="w-full py-2 px-4 rounded-lg bg-red-600 text-white font-semibold hover:bg-red-700 disabled:opacity-50 cursor-pointer"
+                  className="px-4 py-2 text-xs font-semibold rounded-lg bg-red-600 text-white hover:bg-red-700 disabled:opacity-50 cursor-pointer"
                 >
-                  {isDeleting ? 'Deleting…' : 'Yes, Delete'}
+                  {isDeleting ? t('common.saving') : t('common.delete')}
                 </button>
               </div>
             </motion.div>

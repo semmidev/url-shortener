@@ -7,11 +7,13 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { getAdminStats, getAuditLogs } from '../api';
+import { useI18n } from '@/context/I18nContext';
 
 export default function AdminDashboardPage() {
   const [stats, setStats] = useState(null);
   const [recentAudits, setRecentAudits] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const { t } = useI18n();
 
   const fetchData = async () => {
     setIsLoading(true);
@@ -37,8 +39,8 @@ export default function AdminDashboardPage() {
     <div className="space-y-8">
       {/* Header */}
       <DynamicPageHeader
-        title="Executive Admin Dashboard"
-        subtitle="Real-time system health, high-level metrics, and global oversight summary."
+        title={t('adminPages.dashboard.title')}
+        subtitle={t('adminPages.dashboard.subtitle')}
         fallbackIcon={ShieldAlert}
         titleClassName="text-3xl font-extrabold tracking-tight text-foreground flex items-center gap-3"
         iconSize="w-8 h-8"
@@ -49,7 +51,7 @@ export default function AdminDashboardPage() {
           className="inline-flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium rounded-lg bg-card border border-border hover:bg-accent transition-colors disabled:opacity-50 cursor-pointer"
         >
           <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
-          Refresh Metrics
+          {t('common.filter')}
         </button>
       </DynamicPageHeader>
 
@@ -61,7 +63,7 @@ export default function AdminDashboardPage() {
           className="p-6 rounded-2xl bg-card border border-border/80 shadow-sm relative overflow-hidden group"
         >
           <div className="flex items-center justify-between">
-            <span className="text-sm font-semibold text-muted-foreground">Total Users</span>
+            <span className="text-sm font-semibold text-muted-foreground">{t('adminPages.dashboard.totalUsers')}</span>
             <div className="w-10 h-10 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center">
               <Users className="w-5 h-5" />
             </div>
@@ -70,9 +72,6 @@ export default function AdminDashboardPage() {
             <div className="text-3xl font-extrabold text-foreground">
               {stats?.total_users?.toLocaleString() || 0}
             </div>
-            <p className="text-xs text-emerald-600 dark:text-emerald-400 font-medium mt-1">
-              Active registered accounts
-            </p>
           </div>
         </motion.div>
 
@@ -83,7 +82,7 @@ export default function AdminDashboardPage() {
           className="p-6 rounded-2xl bg-card border border-border/80 shadow-sm relative overflow-hidden group"
         >
           <div className="flex items-center justify-between">
-            <span className="text-sm font-semibold text-muted-foreground">Total Global Links</span>
+            <span className="text-sm font-semibold text-muted-foreground">{t('adminPages.dashboard.activeUrls')}</span>
             <div className="w-10 h-10 rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
               <Link className="w-5 h-5" />
             </div>
@@ -93,7 +92,7 @@ export default function AdminDashboardPage() {
               {stats?.total_urls?.toLocaleString() || 0}
             </div>
             <p className="text-xs text-muted-foreground font-medium mt-1">
-              {stats?.total_active_urls?.toLocaleString() || 0} active links online
+              {stats?.total_active_urls?.toLocaleString() || 0} {t('common.active')}
             </p>
           </div>
         </motion.div>
@@ -105,7 +104,7 @@ export default function AdminDashboardPage() {
           className="p-6 rounded-2xl bg-card border border-border/80 shadow-sm relative overflow-hidden group"
         >
           <div className="flex items-center justify-between">
-            <span className="text-sm font-semibold text-muted-foreground">Cumulative Clicks</span>
+            <span className="text-sm font-semibold text-muted-foreground">{t('adminPages.dashboard.totalClicks')}</span>
             <div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
               <MousePointerClick className="w-5 h-5" />
             </div>
@@ -114,9 +113,6 @@ export default function AdminDashboardPage() {
             <div className="text-3xl font-extrabold text-foreground">
               {stats?.total_clicks?.toLocaleString() || 0}
             </div>
-            <p className="text-xs text-emerald-600 dark:text-emerald-400 font-medium mt-1">
-              Total system traffic clicks
-            </p>
           </div>
         </motion.div>
 
@@ -127,7 +123,7 @@ export default function AdminDashboardPage() {
           className="p-6 rounded-2xl bg-card border border-border/80 shadow-sm relative overflow-hidden group"
         >
           <div className="flex items-center justify-between">
-            <span className="text-sm font-semibold text-muted-foreground">System Status</span>
+            <span className="text-sm font-semibold text-muted-foreground">{t('adminPages.dashboard.systemHealth')}</span>
             <div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
               <Activity className="w-5 h-5" />
             </div>
@@ -135,9 +131,8 @@ export default function AdminDashboardPage() {
           <div className="mt-4">
             <div className="text-xl font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-2">
               <CheckCircle2 className="w-5 h-5" />
-              100% Operational
+              {t('adminPages.dashboard.operational')}
             </div>
-            <p className="text-xs text-muted-foreground mt-1">Go Engine & Database Healthy</p>
           </div>
         </motion.div>
       </div>
@@ -147,14 +142,13 @@ export default function AdminDashboardPage() {
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-bold text-foreground flex items-center gap-2">
             <Clock className="w-5 h-5 text-primary" />
-            Recent Security Audit Trail Logs
+            {t('adminPages.auditLogs.title')}
           </h2>
-          <span className="text-xs text-muted-foreground">Showing latest security events</span>
         </div>
 
         <div className="space-y-3">
           {recentAudits.length === 0 ? (
-            <p className="text-sm text-muted-foreground py-8 text-center">No recent audit activity recorded.</p>
+            <p className="text-sm text-muted-foreground py-8 text-center">{t('common.loading')}</p>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               {recentAudits.map((log) => (
