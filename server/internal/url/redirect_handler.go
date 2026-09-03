@@ -9,6 +9,7 @@ import (
 	"strings"
 	"uuid"
 
+	"github.com/destel/rill"
 	"github.com/go-chi/chi/v5"
 	"github.com/skip2/go-qrcode"
 
@@ -49,21 +50,21 @@ func NewRedirectHandler(svc *Service, analyticsRec AnalyticsRecorder, spaHandler
 		spaHandler:   spaHandler,
 		clickQueue:   make(chan clickTask, 10000),
 	}
-	// Start fixed worker pool for fallback async click processing (no unbounded goroutines spawned per request)
-	for i := 0; i < 5; i++ {
-		go h.startFallbackWorker()
-	}
+	// Start Rill pipeline worker pool for fallback async click processing (concurrency = 5)
+	go h.startFallbackWorker()
 	return h
 }
 
 func (h *RedirectHandler) startFallbackWorker() {
-	for t := range h.clickQueue {
+	stream := rill.FromChan(h.clickQueue, nil)
+	_ = rill.ForEach(stream, 5, func(t clickTask) error {
 		ctx := context.Background()
 		_ = h.svc.IncrementClickCount(ctx, IncrementClickCountRequest{ID: t.urlID})
 		if h.analyticsRec != nil {
 			h.analyticsRec.RecordClick(ctx, t.urlID, t.ip, t.userAgent, t.referrer)
 		}
-	}
+		return nil
+	})
 }
 
 func (h *RedirectHandler) SetMetricsRecorder(m RedirectMetricsRecorder) {

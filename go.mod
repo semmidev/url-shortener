@@ -3,6 +3,7 @@ module github.com/semmidev/url-shortener
 go 1.27.0
 
 require (
+	github.com/destel/rill v0.8.1
 	github.com/go-chi/chi/v5 v5.3.0
 	github.com/go-chi/cors v1.2.2
 	github.com/go-chi/httprate v0.16.0

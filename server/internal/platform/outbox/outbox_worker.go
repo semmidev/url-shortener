@@ -7,6 +7,7 @@ import (
 	"time"
 	"uuid"
 
+	"github.com/destel/rill"
 	db "github.com/semmidev/url-shortener/server/db/sqlc"
 	"github.com/semmidev/url-shortener/server/internal/platform/eventbus"
 )
@@ -89,7 +90,10 @@ func (w *OutboxWorker) processPendingEvents(ctx context.Context) {
 		return
 	}
 
-	for _, e := range events {
+	eventsStream := rill.FromSlice(events, nil)
+
+	// Process event publication in parallel using 5 workers via Rill Map
+	processedStream := rill.Map(eventsStream, 5, func(e db.OutboxEvent) (uuid.UUID, error) {
 		evt := eventbus.Event{
 			ID:            e.ID.String(),
 			AggregateType: e.AggregateType,
@@ -101,9 +105,12 @@ func (w *OutboxWorker) processPendingEvents(ctx context.Context) {
 
 		if err := w.publisher.Publish(ctx, e.EventType, evt); err != nil {
 			slog.Error("failed to publish outbox event", "event_id", e.ID, "error", err)
-			continue
+			return e.ID, err
 		}
 
 		_ = w.store.MarkOutboxEventProcessed(ctx, e.ID)
-	}
+		return e.ID, nil
+	})
+
+	rill.Drain(processedStream)
 }

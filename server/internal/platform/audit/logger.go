@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"uuid"
 
+	"github.com/destel/rill"
 	"github.com/jackc/pgx/v5/pgtype"
 	db "github.com/semmidev/url-shortener/server/db/sqlc"
 	"github.com/semmidev/url-shortener/server/internal/platform/web"
@@ -23,10 +24,8 @@ func NewLogger(queries db.Querier) *Logger {
 		queries:    queries,
 		auditQueue: make(chan db.CreateAuditLogParams, 10000),
 	}
-	// Start fixed worker pool for fallback async audit log processing (no unbounded goroutines)
-	for i := 0; i < 3; i++ {
-		go l.startFallbackWorker()
-	}
+	// Start Rill worker pipeline for fallback async audit log processing
+	go l.startFallbackWorker()
 	return l
 }
 
@@ -37,10 +36,12 @@ func (l *Logger) SetTaskDistributor(distributor worker.TaskDistributor) {
 }
 
 func (l *Logger) startFallbackWorker() {
-	for params := range l.auditQueue {
+	stream := rill.FromChan(l.auditQueue, nil)
+	_ = rill.ForEach(stream, 3, func(params db.CreateAuditLogParams) error {
 		bgCtx := context.Background()
 		_, _ = l.queries.CreateAuditLog(bgCtx, params)
-	}
+		return nil
+	})
 }
 
 type AuditParams struct {

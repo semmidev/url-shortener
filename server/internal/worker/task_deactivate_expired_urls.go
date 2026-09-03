@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/destel/rill"
 	"github.com/hibiken/asynq"
 )
 
@@ -54,10 +55,12 @@ func (processor *RedisTaskProcessor) ProcessTaskDeactivateExpiredURLs(ctx contex
 	}
 
 	if len(expiredCodes) > 0 {
-		cacheKeys := make([]string, len(expiredCodes))
-		for i, code := range expiredCodes {
-			cacheKeys[i] = fmt.Sprintf("url:code:%s", code)
-		}
+		codeStream := rill.FromSlice(expiredCodes, nil)
+		keyStream := rill.Map(codeStream, 4, func(code string) (string, error) {
+			return fmt.Sprintf("url:code:%s", code), nil
+		})
+		cacheKeys, _ := rill.ToSlice(keyStream)
+
 		if processor.cache != nil {
 			_ = processor.cache.Delete(ctx, cacheKeys...)
 		}
