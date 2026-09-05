@@ -1,9 +1,19 @@
 import React, { useEffect, useState } from 'react';
 import DynamicPageHeader from '@/components/DynamicPageHeader';
+import { DataTable } from '@/components/data-table';
 import { motion, AnimatePresence } from 'motion/react';
+import { Button } from '@/components/ui/button';
 import {
-  Users, Search, Shield, Ban, CheckCircle2, UserCheck,
-  Trash2, Key, RefreshCcw, AlertTriangle, LogOut, Lock
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
+  Users, Shield, Ban, CheckCircle2,
+  AlertTriangle, LogOut, EllipsisVertical
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { getAdminUsers, suspendUser, updateUserRole, revokeUserSessions } from '../api';
@@ -23,6 +33,10 @@ export default function AdminUsersPage() {
   const [modalType, setModalType] = useState(null); // 'suspend' | 'role' | 'revoke'
   const [newRole, setNewRole] = useState('user');
   const [actionLoading, setActionLoading] = useState(false);
+
+  // Filters
+  const [roleFilter, setRoleFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState('all');
 
   const fetchUsers = async () => {
     setIsLoading(true);
@@ -90,6 +104,164 @@ export default function AdminUsersPage() {
     setModalType(null);
   };
 
+  const handleBulkSuspend = async (selectedRows) => {
+    try {
+      await Promise.all(selectedRows.map((u) => suspendUser(u.id, true)));
+      toast.success(`Suspended ${selectedRows.length} users`);
+      fetchUsers();
+    } catch (err) {
+      toast.error('Failed to suspend selected users');
+    }
+  };
+
+  const handleBulkUnsuspend = async (selectedRows) => {
+    try {
+      await Promise.all(selectedRows.map((u) => suspendUser(u.id, false)));
+      toast.success(`Unsuspended ${selectedRows.length} users`);
+      fetchUsers();
+    } catch (err) {
+      toast.error('Failed to unsuspend selected users');
+    }
+  };
+
+  const handleBulkRevokeSessions = async (selectedRows) => {
+    try {
+      await Promise.all(selectedRows.map((u) => revokeUserSessions(u.id)));
+      toast.success(`Revoked active sessions for ${selectedRows.length} users`);
+    } catch (err) {
+      toast.error('Failed to revoke sessions for selected users');
+    }
+  };
+
+  // Filter users client side if role or status filter selected
+  const filteredUsers = users.filter((u) => {
+    if (roleFilter !== 'all' && u.role !== roleFilter) return false;
+    if (statusFilter === 'active' && u.is_suspended) return false;
+    if (statusFilter === 'suspended' && !u.is_suspended) return false;
+    return true;
+  });
+
+  const columns = [
+    {
+      accessorKey: 'full_name',
+      header: 'User Info',
+      cell: ({ row }) => {
+        const u = row.original;
+        return (
+          <div>
+            <div className="font-semibold text-foreground">{u.full_name || 'N/A'}</div>
+            <div className="text-xs text-muted-foreground">{u.email}</div>
+          </div>
+        );
+      },
+    },
+    {
+      accessorKey: 'role',
+      header: 'System Role',
+      cell: ({ row }) => {
+        const u = row.original;
+        return (
+          <span className={`inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full ${
+            u.role === 'superadmin'
+              ? 'bg-purple-500/15 text-purple-600 dark:text-purple-400 border border-purple-500/20'
+              : u.role === 'admin'
+              ? 'bg-blue-500/15 text-blue-600 dark:text-blue-400 border border-blue-500/20'
+              : 'bg-zinc-500/10 text-zinc-600 dark:text-zinc-400'
+          }`}>
+            <Shield className="w-3 h-3" />
+            {u.role}
+          </span>
+        );
+      },
+    },
+    {
+      accessorKey: 'is_suspended',
+      header: 'Account Status',
+      cell: ({ row }) => {
+        const u = row.original;
+        return u.is_suspended ? (
+          <span className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full bg-red-500/15 text-red-600 dark:text-red-400">
+            <Ban className="w-3 h-3" />
+            Suspended
+          </span>
+        ) : (
+          <span className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
+            <CheckCircle2 className="w-3 h-3" />
+            Active
+          </span>
+        );
+      },
+    },
+    {
+      accessorKey: 'created_at',
+      header: 'Joined Date',
+      cell: ({ row }) => (
+        <span className="text-xs text-muted-foreground font-mono">
+          {new Date(row.original.created_at).toLocaleDateString()}
+        </span>
+      ),
+    },
+    {
+      id: 'actions',
+      header: () => <div className="text-right">Actions</div>,
+      cell: ({ row }) => {
+        const u = row.original;
+        return (
+          <div className="text-right">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 text-muted-foreground hover:text-foreground cursor-pointer"
+                >
+                  <EllipsisVertical className="w-4 h-4" />
+                  <span className="sr-only">Open menu</span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuLabel className="text-xs">User Actions</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <PermissionGuard permission="users.roles.update">
+                  <DropdownMenuItem
+                    onClick={() => { setSelectedUser(u); setNewRole(u.role); setModalType('role'); }}
+                    className="cursor-pointer text-xs"
+                  >
+                    <Shield className="w-4 h-4 mr-2 text-muted-foreground" />
+                    Change Role
+                  </DropdownMenuItem>
+                </PermissionGuard>
+                <PermissionGuard permission="users.sessions.revoke">
+                  <DropdownMenuItem
+                    onClick={() => { setSelectedUser(u); setModalType('revoke'); }}
+                    className="cursor-pointer text-xs"
+                  >
+                    <LogOut className="w-4 h-4 mr-2 text-amber-500" />
+                    Revoke Sessions
+                  </DropdownMenuItem>
+                </PermissionGuard>
+                <PermissionGuard permission="users.suspend">
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onClick={() => { setSelectedUser(u); setModalType('suspend'); }}
+                    className={`cursor-pointer text-xs ${
+                      u.is_suspended
+                        ? 'text-emerald-600'
+                        : 'text-destructive focus:text-destructive'
+                    }`}
+                  >
+                    <Ban className="w-4 h-4 mr-2" />
+                    {u.is_suspended ? 'Unsuspend Account' : 'Suspend Account'}
+                  </DropdownMenuItem>
+                </PermissionGuard>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        );
+      },
+    },
+  ];
+
   return (
     <div className="space-y-6">
       {/* Page Header */}
@@ -99,131 +271,66 @@ export default function AdminUsersPage() {
         fallbackIcon={Users}
       />
 
-      {/* Filters Bar */}
-      <div className="p-4 rounded-xl bg-card border border-border flex flex-col sm:flex-row gap-4 items-center justify-between">
-        <div className="relative w-full sm:w-80">
-          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
-          <input
-            type="text"
-            aria-label="Search users by email or name"
-            placeholder={t('adminPages.users.searchPlaceholder')}
-            value={search}
-            onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-            className="w-full pl-9 pr-4 py-2 text-sm rounded-lg bg-background border border-border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary"
-          />
-        </div>
-        <button
-          onClick={fetchUsers}
-          aria-label="Refresh users list"
-          className="p-2 text-muted-foreground hover:text-foreground rounded-lg border border-border bg-background cursor-pointer"
-        >
-          <RefreshCcw className="w-4 h-4" aria-hidden="true" />
-        </button>
-      </div>
-
-      {/* Users Table */}
-      <div className="rounded-2xl bg-card border border-border overflow-hidden shadow-sm">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
-            <thead className="bg-muted/40 text-muted-foreground text-xs uppercase tracking-wider font-semibold border-b border-border">
-              <tr>
-                <th className="px-6 py-4">{t('adminPages.users.colUser')}</th>
-                <th className="px-6 py-4">{t('adminPages.users.colRole')}</th>
-                <th className="px-6 py-4">{t('adminPages.users.colStatus')}</th>
-                <th className="px-6 py-4">{t('adminPages.users.colJoined')}</th>
-                <th className="px-6 py-4 text-right">{t('adminPages.users.colActions')}</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {isLoading ? (
-                <tr>
-                  <td colSpan={5} className="py-12 text-center text-muted-foreground">
-                    <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-2" aria-hidden="true" />
-                    {t('common.loading')}…
-                  </td>
-                </tr>
-              ) : users.length === 0 ? (
-                <tr>
-                  <td colSpan={5} className="py-12 text-center text-muted-foreground">
-                    No users found matching query.
-                  </td>
-                </tr>
-              ) : (
-                users.map((u) => (
-                  <tr key={u.id} className="hover:bg-accent/40 transition-colors">
-                    <td className="px-6 py-4">
-                      <div>
-                        <div className="font-semibold text-foreground">{u.full_name || 'N/A'}</div>
-                        <div className="text-xs text-muted-foreground">{u.email}</div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className={`inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full ${
-                        u.role === 'superadmin'
-                          ? 'bg-purple-500/15 text-purple-600 dark:text-purple-400 border border-purple-500/20'
-                          : u.role === 'admin'
-                          ? 'bg-blue-500/15 text-blue-600 dark:text-blue-400 border border-blue-500/20'
-                          : 'bg-zinc-500/10 text-zinc-600 dark:text-zinc-400'
-                      }`}>
-                        <Shield className="w-3 h-3" />
-                        {u.role}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4">
-                      {u.is_suspended ? (
-                        <span className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full bg-red-500/15 text-red-600 dark:text-red-400">
-                          <Ban className="w-3 h-3" />
-                          Suspended
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
-                          <CheckCircle2 className="w-3 h-3" />
-                          Active
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-6 py-4 text-xs text-muted-foreground">
-                      {new Date(u.created_at).toLocaleDateString()}
-                    </td>
-                    <td className="px-6 py-4 text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        <PermissionGuard permission="users.roles.update">
-                          <button
-                            onClick={() => { setSelectedUser(u); setNewRole(u.role); setModalType('role'); }}
-                            className="px-2.5 py-1.5 text-xs font-medium rounded-lg border border-border hover:bg-accent text-foreground transition-colors"
-                          >
-                            Role
-                          </button>
-                        </PermissionGuard>
-                        <PermissionGuard permission="users.sessions.revoke">
-                          <button
-                            onClick={() => { setSelectedUser(u); setModalType('revoke'); }}
-                            className="px-2.5 py-1.5 text-xs font-medium rounded-lg border border-border hover:bg-amber-500/10 text-amber-600 dark:text-amber-400 transition-colors"
-                          >
-                            Revoke Sessions
-                          </button>
-                        </PermissionGuard>
-                        <PermissionGuard permission="users.suspend">
-                          <button
-                            onClick={() => { setSelectedUser(u); setModalType('suspend'); }}
-                            className={`px-2.5 py-1.5 text-xs font-medium rounded-lg border transition-colors ${
-                              u.is_suspended
-                                ? 'border-emerald-500/30 text-emerald-600 hover:bg-emerald-500/10'
-                                : 'border-red-500/30 text-red-600 hover:bg-red-500/10'
-                            }`}
-                          >
-                            {u.is_suspended ? 'Unsuspend' : 'Suspend'}
-                          </button>
-                        </PermissionGuard>
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
+      {/* Unified DataTable */}
+      <DataTable
+        columns={columns}
+        data={filteredUsers}
+        isLoading={isLoading}
+        enableSelection={true}
+        page={page}
+        pageSize={10}
+        totalCount={meta?.total || users.length}
+        onPageChange={setPage}
+        search={search}
+        onSearchChange={setSearch}
+        searchPlaceholder={t('adminPages.users.searchPlaceholder')}
+        filters={[
+          {
+            id: 'role',
+            label: 'Role',
+            value: roleFilter,
+            onChange: setRoleFilter,
+            options: [
+              { label: 'All Roles', value: 'all' },
+              { label: 'User', value: 'user' },
+              { label: 'Admin', value: 'admin' },
+              { label: 'Super Admin', value: 'superadmin' },
+            ],
+          },
+          {
+            id: 'status',
+            label: 'Status',
+            value: statusFilter,
+            onChange: setStatusFilter,
+            options: [
+              { label: 'All Statuses', value: 'all' },
+              { label: 'Active', value: 'active' },
+              { label: 'Suspended', value: 'suspended' },
+            ],
+          },
+        ]}
+        onRefresh={fetchUsers}
+        bulkActions={[
+          {
+            label: 'Suspend Selected',
+            icon: Ban,
+            variant: 'destructive',
+            onClick: handleBulkSuspend,
+          },
+          {
+            label: 'Unsuspend Selected',
+            icon: CheckCircle2,
+            variant: 'outline',
+            onClick: handleBulkUnsuspend,
+          },
+          {
+            label: 'Revoke Sessions',
+            icon: LogOut,
+            variant: 'outline',
+            onClick: handleBulkRevokeSessions,
+          },
+        ]}
+      />
 
       {/* Action Confirmation Modals */}
       <AnimatePresence>

@@ -53,7 +53,7 @@ func (processor *RedisTaskProcessor) ProcessTaskRecordAuditLog(ctx context.Conte
 		Action:     payload.Action,
 		Resource:   payload.Resource,
 		ResourceID: payload.ResourceID,
-		Payload:    payload.Payload,
+		Payload:    string(payload.Payload),
 		IpAddress:  payload.IPAddress,
 		UserAgent:  payload.UserAgent,
 	})

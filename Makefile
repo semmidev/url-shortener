@@ -24,8 +24,10 @@ run-worker:
 dev:
 	air -c .air.toml
 
-# Seed database with initial schema & data via migrations
-seed: migrate-up
+# Seed database with initial default data
+seed:
+	go run $(LDFLAGS) ./server/cmd/seed
+
 
 # Setup pre-commit git hooks
 setup-hooks:

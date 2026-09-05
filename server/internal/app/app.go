@@ -28,6 +28,7 @@ import (
 	"github.com/semmidev/url-shortener/server/internal/platform/metrics"
 	customMw "github.com/semmidev/url-shortener/server/internal/platform/middleware"
 	"github.com/semmidev/url-shortener/server/internal/platform/outbox"
+	"github.com/semmidev/url-shortener/server/internal/platform/permission"
 	"github.com/semmidev/url-shortener/server/internal/platform/postgres"
 	"github.com/semmidev/url-shortener/server/internal/platform/token"
 	"github.com/semmidev/url-shortener/server/internal/platform/web"
@@ -79,6 +80,13 @@ func Run(cfg config.Config) error {
 	}
 	defer pool.Close()
 	appLogger.Info(ctx, "postgresql database connected successfully")
+
+	// Sync Code-Defined Permissions to Database
+	if err := permission.SyncPermissions(ctx, db.NewStore(pool)); err != nil {
+		appLogger.Warn(ctx, "permission sync warning", "error", err)
+	} else {
+		appLogger.Info(ctx, "permission matrix synced successfully")
+	}
 
 	// Build Application Router
 	r, err := BuildRouter(cfg, pool, appLogger)

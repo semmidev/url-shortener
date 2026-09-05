@@ -21,7 +21,7 @@ INSERT INTO users (
 ) VALUES (
     $1, $2, $3, $4
 )
-RETURNING id, email, password_hash, google_id, avatar_url, full_name, role, created_at, updated_at, is_suspended
+RETURNING id, email, password_hash, google_id, avatar_url, full_name, role, is_suspended, created_at, updated_at
 `
 
 type CreateUserParams struct {
@@ -47,15 +47,15 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 		&i.AvatarUrl,
 		&i.FullName,
 		&i.Role,
+		&i.IsSuspended,
 		&i.CreatedAt,
 		&i.UpdatedAt,
-		&i.IsSuspended,
 	)
 	return i, err
 }
 
 const getUserByEmail = `-- name: GetUserByEmail :one
-SELECT id, email, password_hash, google_id, avatar_url, full_name, role, created_at, updated_at, is_suspended FROM users
+SELECT id, email, password_hash, google_id, avatar_url, full_name, role, is_suspended, created_at, updated_at FROM users
 WHERE email = $1 LIMIT 1
 `
 
@@ -70,15 +70,15 @@ func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error
 		&i.AvatarUrl,
 		&i.FullName,
 		&i.Role,
+		&i.IsSuspended,
 		&i.CreatedAt,
 		&i.UpdatedAt,
-		&i.IsSuspended,
 	)
 	return i, err
 }
 
 const getUserByGoogleID = `-- name: GetUserByGoogleID :one
-SELECT id, email, password_hash, google_id, avatar_url, full_name, role, created_at, updated_at, is_suspended FROM users
+SELECT id, email, password_hash, google_id, avatar_url, full_name, role, is_suspended, created_at, updated_at FROM users
 WHERE google_id = $1 LIMIT 1
 `
 
@@ -93,15 +93,15 @@ func (q *Queries) GetUserByGoogleID(ctx context.Context, googleID pgtype.Text) (
 		&i.AvatarUrl,
 		&i.FullName,
 		&i.Role,
+		&i.IsSuspended,
 		&i.CreatedAt,
 		&i.UpdatedAt,
-		&i.IsSuspended,
 	)
 	return i, err
 }
 
 const getUserByID = `-- name: GetUserByID :one
-SELECT id, email, password_hash, google_id, avatar_url, full_name, role, created_at, updated_at, is_suspended FROM users
+SELECT id, email, password_hash, google_id, avatar_url, full_name, role, is_suspended, created_at, updated_at FROM users
 WHERE id = $1 LIMIT 1
 `
 
@@ -116,9 +116,9 @@ func (q *Queries) GetUserByID(ctx context.Context, id uuid.UUID) (User, error) {
 		&i.AvatarUrl,
 		&i.FullName,
 		&i.Role,
+		&i.IsSuspended,
 		&i.CreatedAt,
 		&i.UpdatedAt,
-		&i.IsSuspended,
 	)
 	return i, err
 }
@@ -129,7 +129,7 @@ SET
     google_id = NULL,
     updated_at = NOW()
 WHERE id = $1
-RETURNING id, email, password_hash, google_id, avatar_url, full_name, role, created_at, updated_at, is_suspended
+RETURNING id, email, password_hash, google_id, avatar_url, full_name, role, is_suspended, created_at, updated_at
 `
 
 func (q *Queries) UnlinkGoogleUser(ctx context.Context, id uuid.UUID) (User, error) {
@@ -143,9 +143,9 @@ func (q *Queries) UnlinkGoogleUser(ctx context.Context, id uuid.UUID) (User, err
 		&i.AvatarUrl,
 		&i.FullName,
 		&i.Role,
+		&i.IsSuspended,
 		&i.CreatedAt,
 		&i.UpdatedAt,
-		&i.IsSuspended,
 	)
 	return i, err
 }
@@ -158,7 +158,7 @@ SET
     avatar_url = COALESCE($4, avatar_url),
     updated_at = NOW()
 WHERE id = $1
-RETURNING id, email, password_hash, google_id, avatar_url, full_name, role, created_at, updated_at, is_suspended
+RETURNING id, email, password_hash, google_id, avatar_url, full_name, role, is_suspended, created_at, updated_at
 `
 
 type UpdateUserParams struct {
@@ -184,9 +184,9 @@ func (q *Queries) UpdateUser(ctx context.Context, arg UpdateUserParams) (User, e
 		&i.AvatarUrl,
 		&i.FullName,
 		&i.Role,
+		&i.IsSuspended,
 		&i.CreatedAt,
 		&i.UpdatedAt,
-		&i.IsSuspended,
 	)
 	return i, err
 }
@@ -206,7 +206,7 @@ ON CONFLICT (email) DO UPDATE SET
     avatar_url = EXCLUDED.avatar_url,
     full_name = EXCLUDED.full_name,
     updated_at = NOW()
-RETURNING id, email, password_hash, google_id, avatar_url, full_name, role, created_at, updated_at, is_suspended
+RETURNING id, email, password_hash, google_id, avatar_url, full_name, role, is_suspended, created_at, updated_at
 `
 
 type UpsertGoogleUserParams struct {
@@ -234,9 +234,9 @@ func (q *Queries) UpsertGoogleUser(ctx context.Context, arg UpsertGoogleUserPara
 		&i.AvatarUrl,
 		&i.FullName,
 		&i.Role,
+		&i.IsSuspended,
 		&i.CreatedAt,
 		&i.UpdatedAt,
-		&i.IsSuspended,
 	)
 	return i, err
 }

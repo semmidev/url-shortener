@@ -2,12 +2,21 @@ import React, { useState, useEffect, startTransition, addTransitionType } from '
 import { Link, useNavigate } from 'react-router-dom';
 import SafeViewTransition from '@/components/SafeViewTransition';
 import DynamicPageHeader from '@/components/DynamicPageHeader';
+import { DataTable, DataTableColumnHeader } from '@/components/data-table';
 import { toast } from 'sonner';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import {
   Link2Icon,
   PlusIcon,
@@ -25,6 +34,7 @@ import {
   ArrowUpDownIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
+  EllipsisVerticalIcon,
 } from 'lucide-react';
 import CreateURLModal from '@/features/urls/components/CreateURLModal';
 import QRCodeModal from '@/features/urls/components/QRCodeModal';
@@ -192,6 +202,227 @@ export default function URLs() {
     );
   };
 
+  const handleBulkDeactivate = async (selectedRows) => {
+    try {
+      await Promise.all(selectedRows.map((r) => updateShortUrl(r.id, { is_active: false })));
+      toast.success(`Deactivated ${selectedRows.length} short URLs`);
+      fetchUrls();
+    } catch (err) {
+      toast.error('Failed to deactivate selected URLs');
+    }
+  };
+
+  const handleBulkActivate = async (selectedRows) => {
+    try {
+      await Promise.all(selectedRows.map((r) => updateShortUrl(r.id, { is_active: true })));
+      toast.success(`Activated ${selectedRows.length} short URLs`);
+      fetchUrls();
+    } catch (err) {
+      toast.error('Failed to activate selected URLs');
+    }
+  };
+
+  const handleBulkDelete = async (selectedRows) => {
+    if (!window.confirm(`Are you sure you want to delete ${selectedRows.length} selected URLs?`)) return;
+    try {
+      await Promise.all(selectedRows.map((r) => deleteShortUrl(r.id)));
+      toast.success(`Deleted ${selectedRows.length} short URLs`);
+      fetchUrls();
+    } catch (err) {
+      toast.error('Failed to delete selected URLs');
+    }
+  };
+
+  const columns = [
+    {
+      accessorKey: 'title',
+      header: ({ column }) => (
+        <DataTableColumnHeader
+          column={column}
+          title="Title & Short URL"
+          sortBy={sortBy}
+          sortDirection={sortDirection}
+          onSortChange={handleSort}
+        />
+      ),
+      cell: ({ row }) => {
+        const item = row.original;
+        return (
+          <div>
+            <SafeViewTransition name={`url-card-${item.id}`} share="morph" default="none">
+              <SafeViewTransition name={`url-title-${item.id}`} share="text-morph" default="none">
+                <Link
+                  to={`/dashboard/urls/${item.id}`}
+                  onClick={() => {
+                    if (typeof addTransitionType === 'function') {
+                      startTransition(() => {
+                        addTransitionType('nav-forward');
+                      });
+                    }
+                  }}
+                  className="font-semibold text-foreground hover:text-primary transition-colors text-left cursor-pointer"
+                >
+                  {item.title || item.short_code}
+                </Link>
+              </SafeViewTransition>
+            </SafeViewTransition>
+            <div>
+              <a
+                href={item.short_url}
+                target="_blank"
+                rel="noreferrer"
+                className="font-mono text-xs text-primary hover:underline"
+              >
+                {item.short_url}
+              </a>
+            </div>
+          </div>
+        );
+      },
+    },
+    {
+      accessorKey: 'original_url',
+      header: "Original URL",
+      cell: ({ row }) => (
+        <div className="max-w-xs truncate text-muted-foreground font-mono text-xs" title={row.original.original_url}>
+          {row.original.original_url}
+        </div>
+      ),
+    },
+    {
+      accessorKey: 'click_count',
+      header: ({ column }) => (
+        <DataTableColumnHeader
+          column={column}
+          title="Total Clicks"
+          sortBy={sortBy}
+          sortDirection={sortDirection}
+          onSortChange={handleSort}
+        />
+      ),
+      cell: ({ row }) => (
+        <Badge variant="outline" className="font-bold font-mono tabular-nums">
+          {row.original.click_count || 0}
+        </Badge>
+      ),
+    },
+    {
+      accessorKey: 'is_active',
+      header: "Status",
+      cell: ({ row }) => {
+        const active = row.original.is_active;
+        return (
+          <Badge
+            className={`text-[11px] font-semibold border ${
+              active
+                ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20 dark:bg-emerald-500/20 dark:text-emerald-400 dark:border-emerald-500/30'
+                : 'bg-rose-500/10 text-rose-600 border-rose-500/20 dark:bg-rose-500/20 dark:text-rose-400 dark:border-rose-500/30'
+            }`}
+          >
+            {active ? 'Active' : 'Inactive'}
+          </Badge>
+        );
+      },
+    },
+    {
+      accessorKey: 'created_at',
+      header: ({ column }) => (
+        <DataTableColumnHeader
+          column={column}
+          title="Created Date"
+          sortBy={sortBy}
+          sortDirection={sortDirection}
+          onSortChange={handleSort}
+        />
+      ),
+      cell: ({ row }) => (
+        <span className="font-mono text-muted-foreground text-xs whitespace-nowrap">
+          {formatDate(row.original.created_at)}
+        </span>
+      ),
+    },
+    {
+      id: 'actions',
+      header: () => <div className="text-right">Actions</div>,
+      cell: ({ row }) => {
+        const item = row.original;
+        return (
+          <div className="text-right">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 text-muted-foreground hover:text-foreground cursor-pointer"
+                >
+                  <EllipsisVerticalIcon className="size-4" />
+                  <span className="sr-only">Open menu</span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuLabel className="text-xs">Link Options</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                {item.is_active && (
+                  <>
+                    <DropdownMenuItem
+                      onClick={() => navigate(`/dashboard/urls/${item.id}`)}
+                      className="cursor-pointer text-xs"
+                    >
+                      <BarChart2Icon className="size-4 mr-2 text-muted-foreground" />
+                      View Analytics
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => handleCopy(item.short_url, item.id)}
+                      className="cursor-pointer text-xs"
+                    >
+                      {copiedId === item.id ? (
+                        <CheckIcon className="size-4 mr-2 text-emerald-500" />
+                      ) : (
+                        <CopyIcon className="size-4 mr-2 text-muted-foreground" />
+                      )}
+                      Copy Short URL
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => setQrModal({ isOpen: true, url: item.short_url, code: item.short_code })}
+                      className="cursor-pointer text-xs"
+                    >
+                      <QrCodeIcon className="size-4 mr-2 text-muted-foreground" />
+                      View QR Code
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => handlePreview(item.short_code)}
+                      className="cursor-pointer text-xs"
+                    >
+                      <EyeIcon className="size-4 mr-2 text-muted-foreground" />
+                      Safety Preview
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                  </>
+                )}
+                <DropdownMenuItem
+                  onClick={() => handleToggleActive(item)}
+                  disabled={togglingId === item.id}
+                  className="cursor-pointer text-xs"
+                >
+                  <PowerIcon className="size-4 mr-2 text-muted-foreground" />
+                  {item.is_active ? 'Deactivate Link' : 'Activate Link'}
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={() => confirmDelete(item.id)}
+                  className="cursor-pointer text-xs text-destructive focus:text-destructive"
+                >
+                  <Trash2Icon className="size-4 mr-2" />
+                  Delete Link
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        );
+      },
+    },
+  ];
+
   return (
     <div className="space-y-6">
       {/* Top Header */}
@@ -206,261 +437,61 @@ export default function URLs() {
         </Button>
       </DynamicPageHeader>
 
-      {/* Filter & Search Bar */}
-      <Card>
-        <CardContent className="pt-6">
-          <div className="flex flex-col sm:flex-row gap-3">
-            <div className="relative flex-1">
-              <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" aria-hidden="true" />
-              <Input
-                placeholder={t("urls.searchPlaceholder")}
-                aria-label={t("urls.searchPlaceholder")}
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="pl-9"
-              />
-            </div>
-            <Select value={activeFilter} onValueChange={setActiveFilter}>
-              <SelectTrigger className="sm:w-44">
-                <SelectValue placeholder={t("urls.filterStatus")} />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">{t("urls.allStatuses")}</SelectItem>
-                <SelectItem value="active">{t("common.active")}</SelectItem>
-                <SelectItem value="inactive">{t("common.inactive")}</SelectItem>
-              </SelectContent>
-            </Select>
-            <Button variant="outline" onClick={fetchUrls} title="Refresh Links" aria-label="Refresh Links" className="cursor-pointer">
-              <RefreshCwIcon className={`size-4 ${loading ? 'animate-spin' : ''}`} aria-hidden="true" />
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Links List / Data Table */}
-      <Card>
-        <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-          <div>
-            <CardTitle>{t("nav.links")}</CardTitle>
-            <CardDescription>Total {total} {t("nav.shortUrls")}.</CardDescription>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-muted-foreground font-medium">Items per page:</span>
-            <Select
-              value={String(limit)}
-              onValueChange={(val) => {
-                setLimit(Number(val));
-                setPage(1);
-              }}
-            >
-              <SelectTrigger className="h-8 w-20 text-xs">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="10">10</SelectItem>
-                <SelectItem value="20">20</SelectItem>
-                <SelectItem value="50">50</SelectItem>
-                <SelectItem value="100">100</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {loading ? (
-            <div className="py-12 text-center text-sm text-muted-foreground">{t("common.loading")}</div>
-          ) : urls.length === 0 ? (
-            <div className="py-12 text-center text-sm text-muted-foreground">{t("dashboard.noRecentUrls")}</div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm">
-                <thead>
-                  <tr className="border-b border-border text-muted-foreground text-xs uppercase tracking-wider">
-                    <th className="py-3 px-3 text-center w-12 font-semibold">#</th>
-                    <th className="py-3 px-3">{renderSortHeader(t("urls.title"), 'title')}</th>
-                    <th className="py-3 px-3 font-semibold">{t("dashboard.originalUrl")}</th>
-                    <th className="py-3 px-3">{renderSortHeader(t("dashboard.created"), 'created_at')}</th>
-                    <th className="py-3 px-3">{renderSortHeader(t("dashboard.clicks"), 'click_count')}</th>
-                    <th className="py-3 px-3 font-semibold">{t("admin.statusHeader")}</th>
-                    <th className="py-3 px-3 text-right">{t("common.actions")}</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border/40">
-                  {urls.map((item, index) => {
-                    const rowNumber = (page - 1) * limit + index + 1;
-                    return (
-                      <tr key={item.id} className="group hover:bg-muted/30 transition-colors">
-                          <td className="py-3 px-3 text-center font-mono text-xs text-muted-foreground font-semibold tabular-nums">
-                            {rowNumber}
-                          </td>
-                          <td className="py-3 px-3">
-                            <SafeViewTransition name={`url-card-${item.id}`} share="morph" default="none">
-                              <SafeViewTransition name={`url-title-${item.id}`} share="text-morph" default="none">
-                                <Link
-                                  to={`/dashboard/urls/${item.id}`}
-                                  onClick={() => {
-                                    if (typeof addTransitionType === 'function') {
-                                      startTransition(() => {
-                                        addTransitionType('nav-forward');
-                                      });
-                                    }
-                                  }}
-                                  className="font-semibold text-foreground hover:text-primary transition-colors text-left cursor-pointer"
-                                >
-                                  {item.title || item.short_code}
-                                </Link>
-                              </SafeViewTransition>
-                            </SafeViewTransition>
-                          <div>
-                            <a
-                              href={item.short_url}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="font-mono text-xs text-primary hover:underline"
-                            >
-                              {item.short_url}
-                            </a>
-                          </div>
-                        </td>
-                        <td className="py-3 px-3 max-w-xs truncate text-muted-foreground text-xs">
-                          {item.original_url}
-                        </td>
-                        <td className="py-3 px-3 whitespace-nowrap text-xs text-muted-foreground font-mono tabular-nums">
-                          {formatDate(item.created_at)}
-                        </td>
-                        <td className="py-3 px-3">
-                          <Badge variant="outline" className="font-bold font-mono tabular-nums">
-                            {item.click_count || 0}
-                          </Badge>
-                        </td>
-                        <td className="py-3 px-3">
-                          <Badge
-                            className={`text-[11px] font-semibold border ${
-                              item.is_active
-                                ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20 dark:bg-emerald-500/20 dark:text-emerald-400 dark:border-emerald-500/30'
-                                : 'bg-rose-500/10 text-rose-600 border-rose-500/20 dark:bg-rose-500/20 dark:text-rose-400 dark:border-rose-500/30'
-                            }`}
-                          >
-                            {item.is_active ? 'Active' : 'Inactive'}
-                          </Badge>
-                        </td>
-                        <td className="py-3 px-3 text-right">
-                          <div className="flex items-center justify-end gap-1">
-                            <Button
-                              size="icon"
-                              variant="ghost"
-                              onClick={() => handleToggleActive(item)}
-                              disabled={togglingId === item.id}
-                              title={item.is_active ? 'Deactivate Link (Turn Off)' : 'Activate Link (Turn On)'}
-                              aria-label={item.is_active ? 'Deactivate link' : 'Activate link'}
-                              className={`cursor-pointer transition-colors ${
-                                item.is_active
-                                  ? 'text-emerald-500 hover:text-rose-500 hover:bg-rose-500/10'
-                                  : 'text-rose-500 hover:text-emerald-500 hover:bg-emerald-500/10'
-                              }`}
-                            >
-                              <PowerIcon className={`size-4 shrink-0 ${togglingId === item.id ? 'animate-spin' : ''}`} />
-                            </Button>
-                            {item.is_active && (
-                              <>
-                                <Button
-                                  size="icon"
-                                  variant="ghost"
-                                  onClick={() => navigate(`/dashboard/urls/${item.id}`)}
-                                  title="View Full Details & Click Events"
-                                  aria-label="View link details"
-                                  className="cursor-pointer"
-                                >
-                                  <BarChart2Icon className="size-4 shrink-0" />
-                                </Button>
-                                <Button
-                                  size="icon"
-                                  variant="ghost"
-                                  onClick={() => handleCopy(item.short_url, item.id)}
-                                  title="Copy Short URL"
-                                  aria-label="Copy short URL"
-                                  className="cursor-pointer"
-                                >
-                                  {copiedId === item.id ? <CheckIcon className="size-4 text-emerald-500 shrink-0" /> : <CopyIcon className="size-4 shrink-0" />}
-                                </Button>
-                                <Button
-                                  size="icon"
-                                  variant="ghost"
-                                  onClick={() => setQrModal({ isOpen: true, url: item.short_url, code: item.short_code })}
-                                  title="View QR Code"
-                                  aria-label="View QR code"
-                                  className="cursor-pointer"
-                                >
-                                  <QrCodeIcon className="size-4 shrink-0" />
-                                </Button>
-                                <Button
-                                  size="icon"
-                                  variant="ghost"
-                                  onClick={() => handlePreview(item.short_code)}
-                                  title="Inspect Link Safety"
-                                  aria-label="Inspect link safety"
-                                  className="cursor-pointer"
-                                >
-                                  <EyeIcon className="size-4 shrink-0" />
-                                </Button>
-                              </>
-                            )}
-                            <Button
-                              size="icon"
-                              variant="ghost"
-                              className="text-destructive hover:text-destructive hover:bg-destructive/10 cursor-pointer"
-                              onClick={() => confirmDelete(item.id)}
-                              title="Delete Short Link"
-                              aria-label="Delete short link"
-                            >
-                              <Trash2Icon className="size-4 shrink-0" />
-                            </Button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
-
-          {/* Pagination Footer Controls */}
-          {total > 0 && (
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 border-t border-border/40 text-xs text-muted-foreground">
-              <div>
-                Showing <span className="font-semibold text-foreground">{(page - 1) * limit + 1}</span> to{' '}
-                <span className="font-semibold text-foreground">{Math.min(page * limit, total)}</span> of{' '}
-                <span className="font-semibold text-foreground">{total}</span> short URLs
-              </div>
-              <div className="flex items-center gap-1.5">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={page <= 1 || loading}
-                  onClick={() => setPage((p) => Math.max(p - 1, 1))}
-                  className="h-8 gap-1 cursor-pointer"
-                >
-                  <ChevronLeftIcon className="size-3.5" />
-                  <span>Prev</span>
-                </Button>
-                <span className="px-2 font-mono text-xs">
-                  Page {page} of {totalPages}
-                </span>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={page >= totalPages || loading}
-                  onClick={() => setPage((p) => Math.min(p + 1, totalPages))}
-                  className="h-8 gap-1 cursor-pointer"
-                >
-                  <span>Next</span>
-                  <ChevronRightIcon className="size-3.5" />
-                </Button>
-              </div>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      {/* Unified DataTable */}
+      <DataTable
+        columns={columns}
+        data={urls}
+        isLoading={loading}
+        enableSelection={true}
+        page={page}
+        pageSize={limit}
+        totalCount={total}
+        onPageChange={setPage}
+        onPageSizeChange={(newSize) => {
+          setLimit(newSize);
+          setPage(1);
+        }}
+        search={search}
+        onSearchChange={setSearch}
+        searchPlaceholder={t("urls.searchPlaceholder")}
+        filters={[
+          {
+            id: 'status',
+            label: t("admin.statusHeader") || 'Status',
+            value: activeFilter,
+            onChange: setActiveFilter,
+            options: [
+              { label: t("urls.allStatuses"), value: 'all' },
+              { label: t("common.active"), value: 'active' },
+              { label: t("common.inactive"), value: 'inactive' },
+            ],
+          },
+        ]}
+        sortBy={sortBy}
+        sortDirection={sortDirection}
+        onSortChange={handleSort}
+        onRefresh={fetchUrls}
+        bulkActions={[
+          {
+            label: 'Deactivate Selected',
+            icon: PowerIcon,
+            variant: 'outline',
+            onClick: handleBulkDeactivate,
+          },
+          {
+            label: 'Activate Selected',
+            icon: PowerIcon,
+            variant: 'outline',
+            onClick: handleBulkActivate,
+          },
+          {
+            label: 'Delete Selected',
+            icon: Trash2Icon,
+            variant: 'destructive',
+            onClick: handleBulkDelete,
+          },
+        ]}
+      />
 
       {/* Modals */}
       <CreateURLModal

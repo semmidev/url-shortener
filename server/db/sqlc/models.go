@@ -18,28 +18,10 @@ type AuditLog struct {
 	Action     string      `json:"action"`
 	Resource   string      `json:"resource"`
 	ResourceID string      `json:"resource_id"`
-	Payload    []byte      `json:"payload"`
+	Payload    string      `json:"payload"`
 	IpAddress  string      `json:"ip_address"`
 	UserAgent  string      `json:"user_agent"`
 	CreatedAt  time.Time   `json:"created_at"`
-}
-
-type NavigationMenu struct {
-	ID             uuid.UUID   `json:"id"`
-	ParentID       pgtype.UUID `json:"parent_id"`
-	Title          string      `json:"title"`
-	TitleID        string      `json:"title_id"`
-	TitleEN        string      `json:"title_en"`
-	Path           string      `json:"path"`
-	Icon           string      `json:"icon"`
-	OrderIndex     int32       `json:"order_index"`
-	IsActive       bool        `json:"is_active"`
-	IsExternal     bool        `json:"is_external"`
-	BadgeText      string      `json:"badge_text"`
-	PermissionCode pgtype.Text `json:"permission_code"`
-	CreatedAt      time.Time   `json:"created_at"`
-	UpdatedAt      time.Time   `json:"updated_at"`
-	IsGroup        bool        `json:"is_group"`
 }
 
 type OutboxEvent struct {
@@ -53,15 +35,6 @@ type OutboxEvent struct {
 	ProcessedAt   pgtype.Timestamptz `json:"processed_at"`
 }
 
-type Permission struct {
-	ID          uuid.UUID `json:"id"`
-	Code        string    `json:"code"`
-	Module      string    `json:"module"`
-	Action      string    `json:"action"`
-	Description string    `json:"description"`
-	CreatedAt   time.Time `json:"created_at"`
-}
-
 type Role struct {
 	ID          uuid.UUID `json:"id"`
 	Name        string    `json:"name"`
@@ -73,8 +46,8 @@ type Role struct {
 }
 
 type RolePermission struct {
-	RoleID       uuid.UUID `json:"role_id"`
-	PermissionID uuid.UUID `json:"permission_id"`
+	RoleID         uuid.UUID `json:"role_id"`
+	PermissionCode string    `json:"permission_code"`
 }
 
 type Session struct {
@@ -97,9 +70,9 @@ type ShortUrl struct {
 	IsActive    bool               `json:"is_active"`
 	ClickCount  int64              `json:"click_count"`
 	ExpiresAt   pgtype.Timestamptz `json:"expires_at"`
+	DeletedAt   pgtype.Timestamptz `json:"deleted_at"`
 	CreatedAt   time.Time          `json:"created_at"`
 	UpdatedAt   time.Time          `json:"updated_at"`
-	DeletedAt   pgtype.Timestamptz `json:"deleted_at"`
 }
 
 type SystemConfig struct {
@@ -128,7 +101,7 @@ type User struct {
 	AvatarUrl    string      `json:"avatar_url"`
 	FullName     string      `json:"full_name"`
 	Role         string      `json:"role"`
+	IsSuspended  bool        `json:"is_suspended"`
 	CreatedAt    time.Time   `json:"created_at"`
 	UpdatedAt    time.Time   `json:"updated_at"`
-	IsSuspended  bool        `json:"is_suspended"`
 }

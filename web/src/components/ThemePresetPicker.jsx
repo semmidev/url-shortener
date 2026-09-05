@@ -4,39 +4,39 @@ import { useI18n } from "@/context/I18nContext"
 import { Button } from "@/components/ui/button"
 
 export const THEMES = [
-  { id: "astro-vista",   name: "Astro Vista",  color: "#0b0f1c" },
-  { id: "claude",        name: "Claude",       color: "#f5f0eb" },
-  { id: "light-green",   name: "Light Green",  color: "#f0faf0" },
-  { id: "mono",          name: "Mono",         color: "#e8e8e8" },
-  { id: "neobrutualism", name: "Neobrutalism", color: "#fff"    },
-  { id: "notebook",      name: "Notebook",     color: "#faf6f0" },
-  { id: "supabase",      name: "Supabase",     color: "#1c1c1c" },
-  { id: "vercel",        name: "Vercel",       color: "#000"    },
-  { id: "whatsapp",      name: "WhatsApp",     color: "#e5ddd8" },
-  { id: "zen",           name: "Zen",          color: "#f8f4f0" },
+  { id: "claude",   name: "Claude",   color: "#f5f0eb" },
+  { id: "whatsapp", name: "WhatsApp", color: "#e5ddd8" },
 ]
 
 export function useThemePreset() {
   const [activePreset, setActivePreset] = useState(() => {
-    return localStorage.getItem("theme-preset") || "vercel"
+    const saved = localStorage.getItem("theme-preset")
+    if (saved === "whatsapp" || saved === "claude") return saved
+    return "claude"
   })
 
   useEffect(() => {
-    const saved = localStorage.getItem("theme-preset") || "vercel"
+    let saved = localStorage.getItem("theme-preset")
+    if (saved !== "whatsapp" && saved !== "claude") {
+      saved = "claude"
+      localStorage.setItem("theme-preset", "claude")
+    }
     document.documentElement.setAttribute("data-theme", saved)
     setActivePreset(saved)
 
     function handleStorage(e) {
       if (e.key === "theme-preset" && e.newValue) {
-        document.documentElement.setAttribute("data-theme", e.newValue)
-        setActivePreset(e.newValue)
+        const val = (e.newValue === "whatsapp" || e.newValue === "claude") ? e.newValue : "claude"
+        document.documentElement.setAttribute("data-theme", val)
+        setActivePreset(val)
       }
     }
 
     function handleCustom(e) {
       if (e.detail) {
-        document.documentElement.setAttribute("data-theme", e.detail)
-        setActivePreset(e.detail)
+        const val = (e.detail === "whatsapp" || e.detail === "claude") ? e.detail : "claude"
+        document.documentElement.setAttribute("data-theme", val)
+        setActivePreset(val)
       }
     }
 
@@ -49,10 +49,11 @@ export function useThemePreset() {
   }, [])
 
   const setPreset = (themeId) => {
-    document.documentElement.setAttribute("data-theme", themeId)
-    localStorage.setItem("theme-preset", themeId)
-    setActivePreset(themeId)
-    window.dispatchEvent(new CustomEvent("theme-preset-changed", { detail: themeId }))
+    const valid = (themeId === "whatsapp" || themeId === "claude") ? themeId : "claude"
+    document.documentElement.setAttribute("data-theme", valid)
+    localStorage.setItem("theme-preset", valid)
+    setActivePreset(valid)
+    window.dispatchEvent(new CustomEvent("theme-preset-changed", { detail: valid }))
   }
 
   return { activePreset, setPreset, THEMES }

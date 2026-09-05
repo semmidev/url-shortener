@@ -22,7 +22,6 @@ import Analytics from '@/features/analytics/pages/AnalyticsPage';
 import AdminDashboardPage from '@/features/admin/pages/AdminDashboardPage';
 import AdminUsersPage from '@/features/admin/pages/AdminUsersPage';
 import AdminRolesPage from '@/features/admin/pages/AdminRolesPage';
-import AdminMenusPage from '@/features/admin/pages/AdminMenusPage';
 import AdminLinksPage from '@/features/admin/pages/AdminLinksPage';
 import AdminAuditLogsPage from '@/features/admin/pages/AdminAuditLogsPage';
 import AdminSystemPage from '@/features/admin/pages/AdminSystemPage';
@@ -150,14 +149,6 @@ export default function App() {
                 element={
                   <PrivateRoute adminOnly>
                     <DirectionalTransition><AdminRolesPage /></DirectionalTransition>
-                  </PrivateRoute>
-                }
-              />
-              <Route
-                path="admin/menus"
-                element={
-                  <PrivateRoute adminOnly>
-                    <DirectionalTransition><AdminMenusPage /></DirectionalTransition>
                   </PrivateRoute>
                 }
               />

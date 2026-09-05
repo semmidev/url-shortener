@@ -58,7 +58,7 @@ INSERT INTO short_urls (
 ) VALUES (
     $1, $2, $3, $4, $5, $6
 )
-RETURNING id, user_id, short_code, original_url, title, is_active, click_count, expires_at, created_at, updated_at, deleted_at
+RETURNING id, user_id, short_code, original_url, title, is_active, click_count, expires_at, deleted_at, created_at, updated_at
 `
 
 type CreateShortURLParams struct {
@@ -89,9 +89,9 @@ func (q *Queries) CreateShortURL(ctx context.Context, arg CreateShortURLParams) 
 		&i.IsActive,
 		&i.ClickCount,
 		&i.ExpiresAt,
+		&i.DeletedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
-		&i.DeletedAt,
 	)
 	return i, err
 }
@@ -140,7 +140,7 @@ func (q *Queries) DeleteShortURL(ctx context.Context, arg DeleteShortURLParams) 
 }
 
 const getShortURLByCode = `-- name: GetShortURLByCode :one
-SELECT id, user_id, short_code, original_url, title, is_active, click_count, expires_at, created_at, updated_at, deleted_at FROM short_urls
+SELECT id, user_id, short_code, original_url, title, is_active, click_count, expires_at, deleted_at, created_at, updated_at FROM short_urls
 WHERE short_code = $1 AND deleted_at IS NULL LIMIT 1
 `
 
@@ -156,15 +156,15 @@ func (q *Queries) GetShortURLByCode(ctx context.Context, shortCode string) (Shor
 		&i.IsActive,
 		&i.ClickCount,
 		&i.ExpiresAt,
+		&i.DeletedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
-		&i.DeletedAt,
 	)
 	return i, err
 }
 
 const getShortURLByID = `-- name: GetShortURLByID :one
-SELECT id, user_id, short_code, original_url, title, is_active, click_count, expires_at, created_at, updated_at, deleted_at FROM short_urls
+SELECT id, user_id, short_code, original_url, title, is_active, click_count, expires_at, deleted_at, created_at, updated_at FROM short_urls
 WHERE id = $1 AND deleted_at IS NULL LIMIT 1
 `
 
@@ -180,9 +180,9 @@ func (q *Queries) GetShortURLByID(ctx context.Context, id uuid.UUID) (ShortUrl, 
 		&i.IsActive,
 		&i.ClickCount,
 		&i.ExpiresAt,
+		&i.DeletedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
-		&i.DeletedAt,
 	)
 	return i, err
 }
@@ -200,7 +200,7 @@ func (q *Queries) IncrementClickCount(ctx context.Context, id uuid.UUID) error {
 }
 
 const listUserShortURLs = `-- name: ListUserShortURLs :many
-SELECT id, user_id, short_code, original_url, title, is_active, click_count, expires_at, created_at, updated_at, deleted_at FROM short_urls
+SELECT id, user_id, short_code, original_url, title, is_active, click_count, expires_at, deleted_at, created_at, updated_at FROM short_urls
 WHERE user_id = $1
   AND deleted_at IS NULL
   AND ($2::text IS NULL OR (
@@ -261,9 +261,9 @@ func (q *Queries) ListUserShortURLs(ctx context.Context, arg ListUserShortURLsPa
 			&i.IsActive,
 			&i.ClickCount,
 			&i.ExpiresAt,
+			&i.DeletedAt,
 			&i.CreatedAt,
 			&i.UpdatedAt,
-			&i.DeletedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -279,7 +279,7 @@ const restoreShortURL = `-- name: RestoreShortURL :one
 UPDATE short_urls
 SET deleted_at = NULL, is_active = TRUE, updated_at = NOW()
 WHERE id = $1 AND (user_id = $2 OR $2 IS NULL) AND deleted_at IS NOT NULL
-RETURNING id, user_id, short_code, original_url, title, is_active, click_count, expires_at, created_at, updated_at, deleted_at
+RETURNING id, user_id, short_code, original_url, title, is_active, click_count, expires_at, deleted_at, created_at, updated_at
 `
 
 type RestoreShortURLParams struct {
@@ -299,9 +299,9 @@ func (q *Queries) RestoreShortURL(ctx context.Context, arg RestoreShortURLParams
 		&i.IsActive,
 		&i.ClickCount,
 		&i.ExpiresAt,
+		&i.DeletedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
-		&i.DeletedAt,
 	)
 	return i, err
 }
@@ -315,7 +315,7 @@ SET
     expires_at = COALESCE($5, expires_at),
     updated_at = NOW()
 WHERE id = $1 AND (user_id = $6 OR $6 IS NULL) AND deleted_at IS NULL
-RETURNING id, user_id, short_code, original_url, title, is_active, click_count, expires_at, created_at, updated_at, deleted_at
+RETURNING id, user_id, short_code, original_url, title, is_active, click_count, expires_at, deleted_at, created_at, updated_at
 `
 
 type UpdateShortURLParams struct {
@@ -346,9 +346,9 @@ func (q *Queries) UpdateShortURL(ctx context.Context, arg UpdateShortURLParams) 
 		&i.IsActive,
 		&i.ClickCount,
 		&i.ExpiresAt,
+		&i.DeletedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
-		&i.DeletedAt,
 	)
 	return i, err
 }

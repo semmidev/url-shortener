@@ -47,35 +47,7 @@ export async function getAdminPermissions() {
   return res.data?.items || res.data?.data || (Array.isArray(res.data) ? res.data : []);
 }
 
-export async function getAdminMenus() {
-  const res = await client.get('/admin/menus');
-  return res.data?.items || res.data?.data || (Array.isArray(res.data) ? res.data : []);
-}
 
-export async function getMyPermittedMenus() {
-  const res = await client.get('/admin/menus/my');
-  return res.data?.items || res.data?.data || (Array.isArray(res.data) ? res.data : []);
-}
-
-export async function createAdminMenu(data) {
-  const res = await client.post('/admin/menus', data);
-  return res.data?.data || res.data;
-}
-
-export async function updateAdminMenu(id, data) {
-  const res = await client.put(`/admin/menus/${id}`, data);
-  return res.data?.data || res.data;
-}
-
-export async function reorderAdminMenus(items) {
-  const res = await client.put('/admin/menus/reorder', { items });
-  return res.data?.data || res.data;
-}
-
-export async function deleteAdminMenu(id) {
-  const res = await client.delete(`/admin/menus/${id}`);
-  return res.data?.data || res.data;
-}
 
 export async function getGlobalLinks(params = {}) {
   const res = await client.get('/admin/links', { params });

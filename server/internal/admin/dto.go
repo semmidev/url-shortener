@@ -56,11 +56,11 @@ type RoleResponse struct {
 }
 
 type PermissionResponse struct {
-	ID          uuid.UUID `json:"id"`
-	Code        string    `json:"code"`
-	Module      string    `json:"module"`
-	Action      string    `json:"action"`
-	Description string    `json:"description"`
+	ID          *uuid.UUID `json:"id,omitempty"`
+	Code        string     `json:"code"`
+	Module      string     `json:"module"`
+	Action      string     `json:"action"`
+	Description string     `json:"description"`
 }
 
 type CreateRoleRequest struct {
@@ -72,65 +72,6 @@ type CreateRoleRequest struct {
 
 type UpdateRolePermissionsRequest struct {
 	Permissions []string `json:"permissions"`
-}
-
-type NavigationMenuResponse struct {
-	ID             uuid.UUID                `json:"id"`
-	ParentID       *uuid.UUID               `json:"parent_id"`
-	Title          string                   `json:"title"`
-	TitleID        string                   `json:"title_id"`
-	TitleEN        string                   `json:"title_en"`
-	Path           string                   `json:"path"`
-	Icon           string                   `json:"icon"`
-	OrderIndex     int32                    `json:"order_index"`
-	IsActive       bool                     `json:"is_active"`
-	IsExternal     bool                     `json:"is_external"`
-	IsGroup        bool                     `json:"is_group"`
-	BadgeText      string                   `json:"badge_text"`
-	PermissionCode *string                  `json:"permission_code"`
-	Children       []NavigationMenuResponse `json:"children,omitempty"`
-	CreatedAt      time.Time                `json:"created_at"`
-	UpdatedAt      time.Time                `json:"updated_at"`
-}
-
-type CreateMenuRequest struct {
-	ParentID       *uuid.UUID `json:"parent_id"`
-	Title          string     `json:"title"`
-	TitleID        string     `json:"title_id"`
-	TitleEN        string     `json:"title_en"`
-	Path           string     `json:"path"`
-	Icon           string     `json:"icon"`
-	OrderIndex     int32      `json:"order_index"`
-	IsActive       bool       `json:"is_active"`
-	IsExternal     bool       `json:"is_external"`
-	IsGroup        bool       `json:"is_group"`
-	BadgeText      string     `json:"badge_text"`
-	PermissionCode *string    `json:"permission_code"`
-}
-
-type UpdateMenuRequest struct {
-	ParentID       *uuid.UUID `json:"parent_id"`
-	Title          string     `json:"title"`
-	TitleID        string     `json:"title_id"`
-	TitleEN        string     `json:"title_en"`
-	Path           string     `json:"path"`
-	Icon           string     `json:"icon"`
-	OrderIndex     int32      `json:"order_index"`
-	IsActive       bool       `json:"is_active"`
-	IsExternal     bool       `json:"is_external"`
-	IsGroup        bool       `json:"is_group"`
-	BadgeText      string     `json:"badge_text"`
-	PermissionCode *string    `json:"permission_code"`
-}
-
-type ReorderMenuItem struct {
-	ID         uuid.UUID  `json:"id"`
-	ParentID   *uuid.UUID `json:"parent_id"`
-	OrderIndex int32      `json:"order_index"`
-}
-
-type ReorderMenusRequest struct {
-	Items []ReorderMenuItem `json:"items"`
 }
 
 type GlobalLinkResponse struct {

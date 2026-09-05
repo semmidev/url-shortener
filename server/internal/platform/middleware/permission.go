@@ -20,8 +20,8 @@ func RequirePermission(queries db.Querier, permissionCode string) func(http.Hand
 
 			// Superadmin or permitted role check
 			hasPerm, err := queries.CheckUserPermission(r.Context(), db.CheckUserPermissionParams{
-				ID:   userID,
-				Code: permissionCode,
+				ID:             userID,
+				PermissionCode: permissionCode,
 			})
 			if err != nil || !hasPerm {
 				web.Error(w, r, apperr.Forbidden("akses ditolak: anda tidak memiliki izin '"+permissionCode+"'"))

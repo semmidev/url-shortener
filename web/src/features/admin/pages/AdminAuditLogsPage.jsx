@@ -1,7 +1,17 @@
 import React, { useEffect, useState } from 'react';
 import DynamicPageHeader from '@/components/DynamicPageHeader';
+import { DataTable } from '@/components/data-table';
 import { motion, AnimatePresence } from 'motion/react';
-import { FileText, Search, RefreshCcw, Eye, Clock, User, Shield } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { FileText, Eye, EllipsisVertical } from 'lucide-react';
 import { toast } from 'sonner';
 import { getAuditLogs } from '../api';
 import { useI18n } from '@/context/I18nContext';
@@ -32,6 +42,91 @@ export default function AdminAuditLogsPage() {
     fetchLogs();
   }, [page, search]);
 
+  const columns = [
+    {
+      accessorKey: 'created_at',
+      header: 'Timestamp',
+      cell: ({ row }) => (
+        <span className="font-mono text-muted-foreground text-xs">
+          {new Date(row.original.created_at).toLocaleString()}
+        </span>
+      ),
+    },
+    {
+      accessorKey: 'actor_email',
+      header: 'Actor Email',
+      cell: ({ row }) => (
+        <span className="font-semibold text-foreground text-xs">
+          {row.original.actor_email}
+        </span>
+      ),
+    },
+    {
+      accessorKey: 'action',
+      header: 'Action',
+      cell: ({ row }) => (
+        <span className="font-mono font-bold text-primary px-2 py-0.5 rounded bg-primary/10 text-xs">
+          {row.original.action}
+        </span>
+      ),
+    },
+    {
+      accessorKey: 'resource',
+      header: 'Target Resource',
+      cell: ({ row }) => {
+        const log = row.original;
+        return (
+          <span className="font-medium text-foreground text-xs">
+            {log.resource} {log.resource_id && <span className="font-mono text-muted-foreground">({log.resource_id})</span>}
+          </span>
+        );
+      },
+    },
+    {
+      accessorKey: 'ip_address',
+      header: 'IP Address',
+      cell: ({ row }) => (
+        <span className="font-mono text-muted-foreground text-xs">
+          {row.original.ip_address || '127.0.0.1'}
+        </span>
+      ),
+    },
+    {
+      id: 'actions',
+      header: () => <div className="text-right">Actions</div>,
+      cell: ({ row }) => {
+        const log = row.original;
+        return (
+          <div className="text-right">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 text-muted-foreground hover:text-foreground cursor-pointer"
+                >
+                  <EllipsisVertical className="w-4 h-4" />
+                  <span className="sr-only">Open menu</span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-44">
+                <DropdownMenuLabel className="text-xs">Log Options</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={() => setSelectedLog(log)}
+                  className="cursor-pointer text-xs"
+                >
+                  <Eye className="w-4 h-4 mr-2 text-muted-foreground" />
+                  Inspect Payload
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        );
+      },
+    },
+  ];
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -41,85 +136,20 @@ export default function AdminAuditLogsPage() {
         fallbackIcon={FileText}
       />
 
-      {/* Filter Bar */}
-      <div className="p-4 rounded-xl bg-card border border-border flex flex-col sm:flex-row gap-4 items-center justify-between">
-        <div className="relative w-full sm:w-96">
-          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-          <input
-            type="text"
-            placeholder={t('adminPages.auditLogs.searchPlaceholder')}
-            value={search}
-            onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-            className="w-full pl-9 pr-4 py-2 text-sm rounded-lg bg-background border border-border focus:outline-none focus:ring-2 focus:ring-primary/20"
-          />
-        </div>
-        <button
-          onClick={fetchLogs}
-          className="p-2 text-muted-foreground hover:text-foreground rounded-lg border border-border bg-background cursor-pointer"
-        >
-          <RefreshCcw className="w-4 h-4" />
-        </button>
-      </div>
-
-      {/* Audit Logs Table */}
-      <div className="rounded-2xl bg-card border border-border overflow-hidden shadow-sm">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
-            <thead className="bg-muted/40 text-muted-foreground text-xs uppercase tracking-wider font-semibold border-b border-border">
-              <tr>
-                <th className="px-6 py-4">Timestamp</th>
-                <th className="px-6 py-4">Actor</th>
-                <th className="px-6 py-4">Action</th>
-                <th className="px-6 py-4">Target Resource</th>
-                <th className="px-6 py-4">IP Address</th>
-                <th className="px-6 py-4 text-right">Details</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {isLoading ? (
-                <tr>
-                  <td colSpan={6} className="py-12 text-center text-muted-foreground">Loading audit log entries…</td>
-                </tr>
-              ) : logs.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="py-12 text-center text-muted-foreground">No audit entries found.</td>
-                </tr>
-              ) : (
-                logs.map((log) => (
-                  <tr key={log.id} className="hover:bg-accent/40 transition-colors text-xs">
-                    <td className="px-6 py-4 text-muted-foreground font-mono">
-                      {new Date(log.created_at).toLocaleString()}
-                    </td>
-                    <td className="px-6 py-4 font-semibold text-foreground">
-                      {log.actor_email}
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className="font-mono font-bold text-primary px-2 py-0.5 rounded bg-primary/10">
-                        {log.action}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-foreground font-medium">
-                      {log.resource} {log.resource_id && <span className="font-mono text-muted-foreground">({log.resource_id})</span>}
-                    </td>
-                    <td className="px-6 py-4 font-mono text-muted-foreground">
-                      {log.ip_address || '127.0.0.1'}
-                    </td>
-                    <td className="px-6 py-4 text-right">
-                      <button
-                        onClick={() => setSelectedLog(log)}
-                        className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-lg border border-border hover:bg-accent text-foreground"
-                      >
-                        <Eye className="w-3.5 h-3.5" />
-                        Payload
-                      </button>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
+      {/* Unified DataTable */}
+      <DataTable
+        columns={columns}
+        data={logs}
+        isLoading={isLoading}
+        page={page}
+        pageSize={10}
+        totalCount={meta?.total || logs.length}
+        onPageChange={setPage}
+        search={search}
+        onSearchChange={setSearch}
+        searchPlaceholder={t('adminPages.auditLogs.searchPlaceholder')}
+        onRefresh={fetchLogs}
+      />
 
       {/* JSON Payload Inspector Modal */}
       <AnimatePresence>
@@ -146,7 +176,7 @@ export default function AdminAuditLogsPage() {
               <div className="pt-2">
                 <label className="text-xs font-semibold text-muted-foreground mb-1 block">Snapshot Payload (JSON Diff):</label>
                 <pre className="p-4 rounded-xl bg-background border border-border/80 font-mono text-xs overflow-x-auto max-h-64 text-emerald-600 dark:text-emerald-400">
-                  {selectedLog.payload ? JSON.stringify(selectedLog.payload, null, 2) : '// No additional payload payload recorded'}
+                  {selectedLog.payload ? JSON.stringify(selectedLog.payload, null, 2) : '// No additional payload recorded'}
                 </pre>
               </div>
             </motion.div>

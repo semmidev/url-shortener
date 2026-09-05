@@ -42,8 +42,6 @@ export default function AdminDashboardPage() {
         title={t('adminPages.dashboard.title')}
         subtitle={t('adminPages.dashboard.subtitle')}
         fallbackIcon={ShieldAlert}
-        titleClassName="text-3xl font-extrabold tracking-tight text-foreground flex items-center gap-3"
-        iconSize="w-8 h-8"
       >
         <button
           onClick={fetchData}

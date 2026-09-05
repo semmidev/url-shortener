@@ -107,7 +107,7 @@ func (l *Logger) Log(ctx context.Context, r *http.Request, params AuditParams) {
 		Action:     params.Action,
 		Resource:   params.Resource,
 		ResourceID: params.ResourceID,
-		Payload:    payloadBytes,
+		Payload:    string(payloadBytes),
 		IpAddress:  ipAddr,
 		UserAgent:  userAgent,
 	}:

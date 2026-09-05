@@ -9,6 +9,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	db "github.com/semmidev/url-shortener/server/db/sqlc"
 	"github.com/semmidev/url-shortener/server/internal/platform/apperr"
+	"github.com/semmidev/url-shortener/server/internal/platform/permission"
 	"github.com/semmidev/url-shortener/server/internal/platform/web"
 )
 
@@ -217,21 +218,31 @@ func (s *Service) ListRoles(ctx context.Context) ([]RoleResponse, error) {
 		return nil, apperr.Internal("gagal mengambil daftar peran", err)
 	}
 
+	permDefMap := make(map[string]permission.Definition)
+	for _, p := range permission.AllPermissions {
+		permDefMap[p.Code] = p
+	}
+
 	res := make([]RoleResponse, len(roles))
 	for i, r := range roles {
-		perms, err := s.q.GetRolePermissions(ctx, r.ID)
+		pCodes, err := s.q.GetRolePermissions(ctx, r.ID)
 		if err != nil {
-			perms = []db.Permission{}
+			pCodes = []string{}
 		}
 
-		permRes := make([]PermissionResponse, len(perms))
-		for j, p := range perms {
-			permRes[j] = PermissionResponse{
-				ID:          p.ID,
-				Code:        p.Code,
-				Module:      p.Module,
-				Action:      p.Action,
-				Description: p.Description,
+		permRes := make([]PermissionResponse, 0, len(pCodes))
+		for _, code := range pCodes {
+			if def, ok := permDefMap[code]; ok {
+				permRes = append(permRes, PermissionResponse{
+					Code:        def.Code,
+					Module:      def.Module,
+					Action:      def.Action,
+					Description: def.Description,
+				})
+			} else {
+				permRes = append(permRes, PermissionResponse{
+					Code: code,
+				})
 			}
 		}
 
@@ -260,19 +271,11 @@ func (s *Service) CreateRole(ctx context.Context, req CreateRoleRequest) (RoleRe
 		return RoleResponse{}, apperr.Internal("gagal membuat peran baru", err)
 	}
 
-	allPerms, _ := s.q.ListPermissions(ctx)
-	permMap := make(map[string]uuid.UUID)
-	for _, p := range allPerms {
-		permMap[p.Code] = p.ID
-	}
-
 	for _, pCode := range req.Permissions {
-		if pID, ok := permMap[pCode]; ok {
-			_ = s.q.AddRolePermission(ctx, db.AddRolePermissionParams{
-				RoleID:       r.ID,
-				PermissionID: pID,
-			})
-		}
+		_ = s.q.AddRolePermission(ctx, db.AddRolePermissionParams{
+			RoleID:         r.ID,
+			PermissionCode: pCode,
+		})
 	}
 
 	return s.getRoleByID(ctx, r.ID)
@@ -283,19 +286,11 @@ func (s *Service) UpdateRolePermissions(ctx context.Context, roleID uuid.UUID, r
 		return RoleResponse{}, apperr.Internal("gagal memperbarui izin peran", err)
 	}
 
-	allPerms, _ := s.q.ListPermissions(ctx)
-	permMap := make(map[string]uuid.UUID)
-	for _, p := range allPerms {
-		permMap[p.Code] = p.ID
-	}
-
 	for _, pCode := range req.Permissions {
-		if pID, ok := permMap[pCode]; ok {
-			_ = s.q.AddRolePermission(ctx, db.AddRolePermissionParams{
-				RoleID:       roleID,
-				PermissionID: pID,
-			})
-		}
+		_ = s.q.AddRolePermission(ctx, db.AddRolePermissionParams{
+			RoleID:         roleID,
+			PermissionCode: pCode,
+		})
 	}
 
 	return s.getRoleByID(ctx, roleID)
@@ -307,15 +302,25 @@ func (s *Service) getRoleByID(ctx context.Context, roleID uuid.UUID) (RoleRespon
 		return RoleResponse{}, apperr.NotFound("peran tidak ditemukan")
 	}
 
-	perms, _ := s.q.GetRolePermissions(ctx, r.ID)
-	permRes := make([]PermissionResponse, len(perms))
-	for j, p := range perms {
-		permRes[j] = PermissionResponse{
-			ID:          p.ID,
-			Code:        p.Code,
-			Module:      p.Module,
-			Action:      p.Action,
-			Description: p.Description,
+	pCodes, _ := s.q.GetRolePermissions(ctx, r.ID)
+	permDefMap := make(map[string]permission.Definition)
+	for _, p := range permission.AllPermissions {
+		permDefMap[p.Code] = p
+	}
+
+	permRes := make([]PermissionResponse, 0, len(pCodes))
+	for _, code := range pCodes {
+		if def, ok := permDefMap[code]; ok {
+			permRes = append(permRes, PermissionResponse{
+				Code:        def.Code,
+				Module:      def.Module,
+				Action:      def.Action,
+				Description: def.Description,
+			})
+		} else {
+			permRes = append(permRes, PermissionResponse{
+				Code: code,
+			})
 		}
 	}
 
@@ -332,15 +337,10 @@ func (s *Service) getRoleByID(ctx context.Context, roleID uuid.UUID) (RoleRespon
 }
 
 func (s *Service) ListPermissions(ctx context.Context) ([]PermissionResponse, error) {
-	perms, err := s.q.ListPermissions(ctx)
-	if err != nil {
-		return nil, apperr.Internal("gagal mengambil daftar izin", err)
-	}
-
-	res := make([]PermissionResponse, len(perms))
-	for i, p := range perms {
+	all := permission.AllPermissions
+	res := make([]PermissionResponse, len(all))
+	for i, p := range all {
 		res[i] = PermissionResponse{
-			ID:          p.ID,
 			Code:        p.Code,
 			Module:      p.Module,
 			Action:      p.Action,
@@ -348,218 +348,6 @@ func (s *Service) ListPermissions(ctx context.Context) ([]PermissionResponse, er
 		}
 	}
 	return res, nil
-}
-
-func (s *Service) ListNavigationMenus(ctx context.Context) ([]NavigationMenuResponse, error) {
-	menus, err := s.q.ListNavigationMenus(ctx)
-	if err != nil {
-		return nil, apperr.Internal("gagal mengambil daftar menu navigasi", err)
-	}
-
-	return buildMenuTree(menus), nil
-}
-
-func (s *Service) GetUserPermittedMenus(ctx context.Context, userID uuid.UUID) ([]NavigationMenuResponse, error) {
-	menus, err := s.q.ListNavigationMenus(ctx)
-	if err != nil {
-		return nil, apperr.Internal("gagal mengambil menu pengguna", err)
-	}
-
-	userPerms, err := s.q.GetUserRolePermissions(ctx, userID)
-	if err != nil {
-		userPerms = []string{}
-	}
-	permMap := make(map[string]bool)
-	for _, p := range userPerms {
-		permMap[p] = true
-	}
-
-	user, _ := s.q.GetUserByID(ctx, userID)
-
-	filtered := make([]db.ListNavigationMenusRow, 0)
-	for _, m := range menus {
-		if !m.IsActive {
-			continue
-		}
-		if !m.PermissionCode.Valid || m.PermissionCode.String == "" {
-			filtered = append(filtered, m)
-			continue
-		}
-		if user.Role == "superadmin" || user.Role == "admin" || permMap[m.PermissionCode.String] {
-			filtered = append(filtered, m)
-		}
-	}
-
-	return buildMenuTree(filtered), nil
-}
-
-func buildMenuTree(items []db.ListNavigationMenusRow) []NavigationMenuResponse {
-	itemMap := make(map[uuid.UUID]*NavigationMenuResponse)
-	var rootUUIDs []uuid.UUID
-
-	// Step 1: Initialize response structs in pointer map
-	for _, m := range items {
-		itemMap[m.ID] = &NavigationMenuResponse{
-			ID:             m.ID,
-			ParentID:       pgUUIDToUUIDPtr(m.ParentID),
-			Title:          m.Title,
-			TitleID:        m.TitleID,
-			TitleEN:        m.TitleEN,
-			Path:           m.Path,
-			Icon:           m.Icon,
-			OrderIndex:     m.OrderIndex,
-			IsActive:       m.IsActive,
-			IsExternal:     m.IsExternal,
-			IsGroup:        m.IsGroup,
-			BadgeText:      m.BadgeText,
-			PermissionCode: pgTextToStringPtr(m.PermissionCode),
-			Children:       []NavigationMenuResponse{},
-			CreatedAt:      m.CreatedAt,
-			UpdatedAt:      m.UpdatedAt,
-		}
-	}
-
-	// Step 2: Build child pointer relationships
-	childrenMap := make(map[uuid.UUID][]*NavigationMenuResponse)
-	for _, m := range items {
-		parentUUID := pgUUIDToUUIDPtr(m.ParentID)
-		if parentUUID != nil && itemMap[*parentUUID] != nil {
-			childrenMap[*parentUUID] = append(childrenMap[*parentUUID], itemMap[m.ID])
-		} else {
-			rootUUIDs = append(rootUUIDs, m.ID)
-		}
-	}
-
-	// Step 3: Recursively assemble response tree
-	var assemble func(id uuid.UUID) NavigationMenuResponse
-	assemble = func(id uuid.UUID) NavigationMenuResponse {
-		item := *itemMap[id]
-		children := childrenMap[id]
-		item.Children = make([]NavigationMenuResponse, len(children))
-		for i, child := range children {
-			item.Children[i] = assemble(child.ID)
-		}
-		return item
-	}
-
-	res := make([]NavigationMenuResponse, len(rootUUIDs))
-	for i, rootID := range rootUUIDs {
-		res[i] = assemble(rootID)
-	}
-
-	return res
-}
-
-func (s *Service) CreateNavigationMenu(ctx context.Context, req CreateMenuRequest) (NavigationMenuResponse, error) {
-	titleID := req.TitleID
-	if titleID == "" {
-		titleID = req.Title
-	}
-	titleEN := req.TitleEN
-	if titleEN == "" {
-		titleEN = req.Title
-	}
-
-	m, err := s.q.CreateNavigationMenu(ctx, db.CreateNavigationMenuParams{
-		ParentID:       uuidToPgUUID(req.ParentID),
-		Title:          req.Title,
-		TitleID:        titleID,
-		TitleEN:        titleEN,
-		Path:           req.Path,
-		Icon:           req.Icon,
-		OrderIndex:     req.OrderIndex,
-		IsActive:       req.IsActive,
-		IsExternal:     req.IsExternal,
-		IsGroup:        req.IsGroup,
-		BadgeText:      req.BadgeText,
-		PermissionCode: stringToPgText(req.PermissionCode),
-	})
-	if err != nil {
-		return NavigationMenuResponse{}, apperr.Internal("gagal membuat item menu baru", err)
-	}
-
-	return NavigationMenuResponse{
-		ID:             m.ID,
-		ParentID:       pgUUIDToUUIDPtr(m.ParentID),
-		Title:          m.Title,
-		TitleID:        m.TitleID,
-		TitleEN:        m.TitleEN,
-		Path:           m.Path,
-		Icon:           m.Icon,
-		OrderIndex:     m.OrderIndex,
-		IsActive:       m.IsActive,
-		IsExternal:     m.IsExternal,
-		IsGroup:        m.IsGroup,
-		BadgeText:      m.BadgeText,
-		PermissionCode: pgTextToStringPtr(m.PermissionCode),
-		CreatedAt:      m.CreatedAt,
-		UpdatedAt:      m.UpdatedAt,
-	}, nil
-}
-
-func (s *Service) UpdateNavigationMenu(ctx context.Context, id uuid.UUID, req CreateMenuRequest) (NavigationMenuResponse, error) {
-	titleID := req.TitleID
-	if titleID == "" {
-		titleID = req.Title
-	}
-	titleEN := req.TitleEN
-	if titleEN == "" {
-		titleEN = req.Title
-	}
-
-	m, err := s.q.UpdateNavigationMenu(ctx, db.UpdateNavigationMenuParams{
-		ID:             id,
-		ParentID:       uuidToPgUUID(req.ParentID),
-		Title:          req.Title,
-		TitleID:        titleID,
-		TitleEN:        titleEN,
-		Path:           req.Path,
-		Icon:           req.Icon,
-		OrderIndex:     req.OrderIndex,
-		IsActive:       req.IsActive,
-		IsExternal:     req.IsExternal,
-		IsGroup:        req.IsGroup,
-		BadgeText:      req.BadgeText,
-		PermissionCode: stringToPgText(req.PermissionCode),
-	})
-	if err != nil {
-		return NavigationMenuResponse{}, apperr.Internal("gagal memperbarui item menu", err)
-	}
-
-	return NavigationMenuResponse{
-		ID:             m.ID,
-		ParentID:       pgUUIDToUUIDPtr(m.ParentID),
-		Title:          m.Title,
-		TitleID:        m.TitleID,
-		TitleEN:        m.TitleEN,
-		Path:           m.Path,
-		Icon:           m.Icon,
-		OrderIndex:     m.OrderIndex,
-		IsActive:       m.IsActive,
-		IsExternal:     m.IsExternal,
-		IsGroup:        m.IsGroup,
-		BadgeText:      m.BadgeText,
-		PermissionCode: pgTextToStringPtr(m.PermissionCode),
-		CreatedAt:      m.CreatedAt,
-		UpdatedAt:      m.UpdatedAt,
-	}, nil
-}
-
-func (s *Service) ReorderNavigationMenus(ctx context.Context, req ReorderMenusRequest) error {
-	for _, item := range req.Items {
-		if err := s.q.UpdateMenuOrderIndex(ctx, db.UpdateMenuOrderIndexParams{
-			ID:         item.ID,
-			OrderIndex: item.OrderIndex,
-			ParentID:   uuidToPgUUID(item.ParentID),
-		}); err != nil {
-			return apperr.Internal("gagal memperbarui urutan menu", err)
-		}
-	}
-	return nil
-}
-
-func (s *Service) DeleteNavigationMenu(ctx context.Context, id uuid.UUID) error {
-	return s.q.DeleteNavigationMenu(ctx, id)
 }
 
 func (s *Service) ListAuditLogs(ctx context.Context, filter web.Filter) (ListAuditLogsResponse, error) {
@@ -588,7 +376,7 @@ func (s *Service) ListAuditLogs(ctx context.Context, filter web.Filter) (ListAud
 			Action:     l.Action,
 			Resource:   l.Resource,
 			ResourceID: l.ResourceID,
-			Payload:    l.Payload,
+			Payload:    json.RawMessage(l.Payload),
 			IPAddress:  l.IpAddress,
 			UserAgent:  l.UserAgent,
 			CreatedAt:  l.CreatedAt,

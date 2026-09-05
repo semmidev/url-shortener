@@ -12,18 +12,18 @@ import (
 )
 
 const addRolePermission = `-- name: AddRolePermission :exec
-INSERT INTO role_permissions (role_id, permission_id)
+INSERT INTO role_permissions (role_id, permission_code)
 VALUES ($1, $2)
 ON CONFLICT DO NOTHING
 `
 
 type AddRolePermissionParams struct {
-	RoleID       uuid.UUID `json:"role_id"`
-	PermissionID uuid.UUID `json:"permission_id"`
+	RoleID         uuid.UUID `json:"role_id"`
+	PermissionCode string    `json:"permission_code"`
 }
 
 func (q *Queries) AddRolePermission(ctx context.Context, arg AddRolePermissionParams) error {
-	_, err := q.db.Exec(ctx, addRolePermission, arg.RoleID, arg.PermissionID)
+	_, err := q.db.Exec(ctx, addRolePermission, arg.RoleID, arg.PermissionCode)
 	return err
 }
 
@@ -33,24 +33,23 @@ SELECT EXISTS (
     FROM users u
     LEFT JOIN roles r ON u.role = r.name
     LEFT JOIN role_permissions rp ON r.id = rp.role_id
-    LEFT JOIN permissions p ON p.id = rp.permission_id
     WHERE u.id = $1 AND (
         u.role = 'superadmin' OR
         u.role = 'admin' OR
         r.name = 'superadmin' OR
         r.name = 'admin' OR
-        p.code = $2
+        rp.permission_code = $2
     )
 ) AS has_permission
 `
 
 type CheckUserPermissionParams struct {
-	ID   uuid.UUID `json:"id"`
-	Code string    `json:"code"`
+	ID             uuid.UUID `json:"id"`
+	PermissionCode string    `json:"permission_code"`
 }
 
 func (q *Queries) CheckUserPermission(ctx context.Context, arg CheckUserPermissionParams) (bool, error) {
-	row := q.db.QueryRow(ctx, checkUserPermission, arg.ID, arg.Code)
+	row := q.db.QueryRow(ctx, checkUserPermission, arg.ID, arg.PermissionCode)
 	var has_permission bool
 	err := row.Scan(&has_permission)
 	return has_permission, err
@@ -146,33 +145,25 @@ func (q *Queries) GetRoleByName(ctx context.Context, name string) (Role, error) 
 }
 
 const getRolePermissions = `-- name: GetRolePermissions :many
-SELECT p.id, p.code, p.module, p.action, p.description, p.created_at
-FROM permissions p
-JOIN role_permissions rp ON p.id = rp.permission_id
-WHERE rp.role_id = $1
-ORDER BY p.module ASC, p.code ASC
+SELECT permission_code
+FROM role_permissions
+WHERE role_id = $1
+ORDER BY permission_code ASC
 `
 
-func (q *Queries) GetRolePermissions(ctx context.Context, roleID uuid.UUID) ([]Permission, error) {
+func (q *Queries) GetRolePermissions(ctx context.Context, roleID uuid.UUID) ([]string, error) {
 	rows, err := q.db.Query(ctx, getRolePermissions, roleID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []Permission{}
+	items := []string{}
 	for rows.Next() {
-		var i Permission
-		if err := rows.Scan(
-			&i.ID,
-			&i.Code,
-			&i.Module,
-			&i.Action,
-			&i.Description,
-			&i.CreatedAt,
-		); err != nil {
+		var permission_code string
+		if err := rows.Scan(&permission_code); err != nil {
 			return nil, err
 		}
-		items = append(items, i)
+		items = append(items, permission_code)
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err
@@ -181,9 +172,8 @@ func (q *Queries) GetRolePermissions(ctx context.Context, roleID uuid.UUID) ([]P
 }
 
 const getUserRolePermissions = `-- name: GetUserRolePermissions :many
-SELECT DISTINCT p.code
-FROM permissions p
-JOIN role_permissions rp ON p.id = rp.permission_id
+SELECT DISTINCT rp.permission_code
+FROM role_permissions rp
 JOIN roles r ON r.id = rp.role_id
 JOIN users u ON u.role = r.name
 WHERE u.id = $1
@@ -197,44 +187,11 @@ func (q *Queries) GetUserRolePermissions(ctx context.Context, id uuid.UUID) ([]s
 	defer rows.Close()
 	items := []string{}
 	for rows.Next() {
-		var code string
-		if err := rows.Scan(&code); err != nil {
+		var permission_code string
+		if err := rows.Scan(&permission_code); err != nil {
 			return nil, err
 		}
-		items = append(items, code)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
-const listPermissions = `-- name: ListPermissions :many
-SELECT id, code, module, action, description, created_at
-FROM permissions
-ORDER BY module ASC, code ASC
-`
-
-func (q *Queries) ListPermissions(ctx context.Context) ([]Permission, error) {
-	rows, err := q.db.Query(ctx, listPermissions)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	items := []Permission{}
-	for rows.Next() {
-		var i Permission
-		if err := rows.Scan(
-			&i.ID,
-			&i.Code,
-			&i.Module,
-			&i.Action,
-			&i.Description,
-			&i.CreatedAt,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
+		items = append(items, permission_code)
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err

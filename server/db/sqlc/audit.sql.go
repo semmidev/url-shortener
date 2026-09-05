@@ -40,7 +40,7 @@ type CreateAuditLogParams struct {
 	Action     string      `json:"action"`
 	Resource   string      `json:"resource"`
 	ResourceID string      `json:"resource_id"`
-	Payload    []byte      `json:"payload"`
+	Payload    string      `json:"payload"`
 	IpAddress  string      `json:"ip_address"`
 	UserAgent  string      `json:"user_agent"`
 }

@@ -35,9 +35,6 @@ func (h *Handler) Mount(r chi.Router, authMw func(http.Handler) http.Handler) {
 	r.Route("/admin", func(r chi.Router) {
 		r.Use(authMw)
 
-		// User menu endpoint accessible to any authenticated user
-		r.Get("/menus/my", h.getUserPermittedMenus)
-
 		// System stats overview
 		r.With(requirePerm("admin.dashboard.read")).Get("/stats/overview", h.getSystemStats)
 		r.With(requirePerm("admin.dashboard.read")).Get("/stats", h.getSystemStats) // alias
@@ -54,13 +51,6 @@ func (h *Handler) Mount(r chi.Router, authMw func(http.Handler) http.Handler) {
 		r.With(requirePerm("roles.create")).Post("/roles", h.createRole)
 		r.With(requirePerm("roles.permissions.update")).Put("/roles/{id}/permissions", h.updateRolePermissions)
 		r.With(requirePerm("roles.read")).Get("/permissions", h.listPermissions)
-
-		// Navigation Menu Builder
-		r.With(requirePerm("menus.read")).Get("/menus", h.listNavigationMenus)
-		r.With(requirePerm("menus.create")).Post("/menus", h.createNavigationMenu)
-		r.With(requirePerm("menus.update")).Put("/menus/reorder", h.reorderNavigationMenus)
-		r.With(requirePerm("menus.update")).Put("/menus/{id}", h.updateNavigationMenu)
-		r.With(requirePerm("menus.update")).Delete("/menus/{id}", h.deleteNavigationMenu)
 
 		// Global Link Control & Oversight
 		r.With(requirePerm("links.read")).Get("/links", h.listGlobalLinks)
@@ -248,126 +238,6 @@ func (h *Handler) listPermissions(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	web.JSON(w, http.StatusOK, res)
-}
-
-func (h *Handler) listNavigationMenus(w http.ResponseWriter, r *http.Request) {
-	res, err := h.svc.ListNavigationMenus(r.Context())
-	if err != nil {
-		web.Error(w, r, err)
-		return
-	}
-	web.JSON(w, http.StatusOK, res)
-}
-
-func (h *Handler) getUserPermittedMenus(w http.ResponseWriter, r *http.Request) {
-	userID, ok := web.UserID(r.Context())
-	if !ok {
-		web.Error(w, r, apperr.Unauthorized("autentikasi diperlukan"))
-		return
-	}
-
-	res, err := h.svc.GetUserPermittedMenus(r.Context(), userID)
-	if err != nil {
-		web.Error(w, r, err)
-		return
-	}
-	web.JSON(w, http.StatusOK, res)
-}
-
-func (h *Handler) createNavigationMenu(w http.ResponseWriter, r *http.Request) {
-	var req CreateMenuRequest
-	if err := web.Decode(r, &req); err != nil {
-		web.Error(w, r, err)
-		return
-	}
-
-	res, err := h.svc.CreateNavigationMenu(r.Context(), req)
-	if err != nil {
-		web.Error(w, r, err)
-		return
-	}
-
-	h.auditLogger.Log(r.Context(), r, audit.AuditParams{
-		Action:     "MENU_CREATED",
-		Resource:   "navigation_menu",
-		ResourceID: res.ID.String(),
-		Payload:    res,
-	})
-
-	web.JSON(w, http.StatusCreated, res)
-}
-
-func (h *Handler) updateNavigationMenu(w http.ResponseWriter, r *http.Request) {
-	idStr := chi.URLParam(r, "id")
-	menuID, err := uuid.Parse(idStr)
-	if err != nil {
-		web.Error(w, r, apperr.Invalid("invalid menu ID"))
-		return
-	}
-
-	var req CreateMenuRequest
-	if err := web.Decode(r, &req); err != nil {
-		web.Error(w, r, err)
-		return
-	}
-
-	res, err := h.svc.UpdateNavigationMenu(r.Context(), menuID, req)
-	if err != nil {
-		web.Error(w, r, err)
-		return
-	}
-
-	h.auditLogger.Log(r.Context(), r, audit.AuditParams{
-		Action:     "MENU_UPDATED",
-		Resource:   "navigation_menu",
-		ResourceID: menuID.String(),
-		Payload:    res,
-	})
-
-	web.JSON(w, http.StatusOK, res)
-}
-
-func (h *Handler) reorderNavigationMenus(w http.ResponseWriter, r *http.Request) {
-	var req ReorderMenusRequest
-	if err := web.Decode(r, &req); err != nil {
-		web.Error(w, r, err)
-		return
-	}
-
-	if err := h.svc.ReorderNavigationMenus(r.Context(), req); err != nil {
-		web.Error(w, r, err)
-		return
-	}
-
-	h.auditLogger.Log(r.Context(), r, audit.AuditParams{
-		Action:   "MENUS_REORDERED",
-		Resource: "navigation_menu",
-		Payload:  req,
-	})
-
-	web.JSON(w, http.StatusOK, map[string]string{"message": "menus reordered successfully"})
-}
-
-func (h *Handler) deleteNavigationMenu(w http.ResponseWriter, r *http.Request) {
-	idStr := chi.URLParam(r, "id")
-	menuID, err := uuid.Parse(idStr)
-	if err != nil {
-		web.Error(w, r, apperr.Invalid("invalid menu ID"))
-		return
-	}
-
-	if err := h.svc.DeleteNavigationMenu(r.Context(), menuID); err != nil {
-		web.Error(w, r, err)
-		return
-	}
-
-	h.auditLogger.Log(r.Context(), r, audit.AuditParams{
-		Action:     "MENU_DELETED",
-		Resource:   "navigation_menu",
-		ResourceID: menuID.String(),
-	})
-
-	web.JSON(w, http.StatusOK, map[string]string{"message": "navigation menu deleted successfully"})
 }
 
 func (h *Handler) listGlobalLinks(w http.ResponseWriter, r *http.Request) {

@@ -1,71 +1,60 @@
-import React, { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react';
-import { getMyPermittedMenus } from '@/features/admin/api';
+import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import { getPermittedNavigation } from '@/config/navigation';
 
 const PermissionContext = createContext(null);
 
 /**
  * PermissionProvider — wraps the entire app to provide:
- *  - permissions: string[]  — active permission codes for current user
- *  - menus: []              — permitted navigation menu tree from DB
- *  - hasPermission(code)    — boolean check
- *  - refetch()              — force re-fetch (call after role/permission changes)
- *  - isLoaded: boolean      — true once first fetch completes
+ *  - permissions: string[]   — active permission codes for current user
+ *  - menus: []               — permitted navigation groups filtered from static code config
+ *  - hasPermission(code)     — boolean check
+ *  - isLoaded: boolean       — true once user state evaluates
  */
 export function PermissionProvider({ children, user }) {
   const [permissions, setPermissions] = useState([]);
   const [menus, setMenus] = useState([]);
   const [isLoaded, setIsLoaded] = useState(false);
-  const lastUserIdRef = useRef(null);
 
-  const fetchPermissions = useCallback(async (currentUser) => {
-    if (!currentUser?.id) {
+  const hasPermission = useCallback(
+    (code) => {
+      if (!code) return true; // no guard = always visible
+      if (!user) return false;
+      // superadmin and admin bypass permission checks
+      if (user.role === 'superadmin' || user.role === 'admin') return true;
+      return permissions.includes(code);
+    },
+    [permissions, user]
+  );
+
+  useEffect(() => {
+    if (!user?.id) {
       setPermissions([]);
       setMenus([]);
       setIsLoaded(true);
       return;
     }
 
-    // Permissions come directly from /auth/me response (already in user object)
-    const perms = Array.isArray(currentUser.permissions) ? currentUser.permissions : [];
+    const perms = Array.isArray(user.permissions) ? user.permissions : [];
     setPermissions(perms);
 
-    // Menus are fetched from /admin/menus/my (permission-filtered tree from DB)
-    try {
-      const menuData = await getMyPermittedMenus();
-      setMenus(Array.isArray(menuData) ? menuData : []);
-    } catch {
-      // If user doesn't have admin access, menus endpoint returns empty or 403
-      setMenus([]);
-    }
+    // Compute static permitted navigation based on current user permissions
+    const permittedNav = getPermittedNavigation((code) => {
+      if (!code) return true;
+      if (user.role === 'superadmin' || user.role === 'admin') return true;
+      return perms.includes(code);
+    });
 
+    setMenus(permittedNav);
     setIsLoaded(true);
-  }, []);
-
-  useEffect(() => {
-    const userId = user?.id ?? null;
-
-    // Only re-fetch when user identity changes (login/logout/role change)
-    if (userId === lastUserIdRef.current && isLoaded) return;
-
-    lastUserIdRef.current = userId;
-    fetchPermissions(user);
-  }, [user, fetchPermissions, isLoaded]);
+  }, [user]);
 
   const refetch = useCallback(() => {
-    // Force re-fetch even if userId hasn't changed (e.g. after permission update)
-    fetchPermissions(user);
-  }, [user, fetchPermissions]);
-
-  const hasPermission = useCallback(
-    (code) => {
-      if (!code) return true; // no guard = always visible
-      if (!user) return false;
-      // superadmin and admin bypass all checks
-      if (user.role === 'superadmin' || user.role === 'admin') return true;
-      return permissions.includes(code);
-    },
-    [permissions, user]
-  );
+    if (user?.id) {
+      const perms = Array.isArray(user.permissions) ? user.permissions : [];
+      setPermissions(perms);
+      setMenus(getPermittedNavigation(hasPermission));
+    }
+  }, [user, hasPermission]);
 
   return (
     <PermissionContext.Provider value={{ permissions, menus, hasPermission, refetch, isLoaded }}>
