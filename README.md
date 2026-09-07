@@ -1,63 +1,62 @@
 # URL Shortener API
 
 <p align="center">
-  <a href="https://github.com/semmidev/url-shortener/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/semmidev/url-shortener/ci.yml?branch=main&label=CI%20Build&style=for-the-badge&logo=githubactions&logoColor=white" alt="CI Status"></a>
-  <a href="https://github.com/semmidev/url-shortener/actions/workflows/security.yml"><img src="https://img.shields.io/github/actions/workflow/status/semmidev/url-shortener/security.yml?branch=main&label=Security%20Audit&style=for-the-badge&logo=githubshield&logoColor=white" alt="Security Status"></a>
-  <a href="https://github.com/semmidev/url-shortener/actions/workflows/codeql.yml"><img src="https://img.shields.io/github/actions/workflow/status/semmidev/url-shortener/codeql.yml?branch=main&label=CodeQL%20SAST&style=for-the-badge&logo=github&logoColor=white" alt="CodeQL SAST Status"></a>
-  <a href="https://github.com/semmidev/url-shortener/actions/workflows/cd.yml"><img src="https://img.shields.io/github/actions/workflow/status/semmidev/url-shortener/cd.yml?label=CD%20Deploy&style=for-the-badge&logo=docker&logoColor=white" alt="CD Status"></a>
-  <a href="https://github.com/semmidev/url-shortener/releases"><img src="https://img.shields.io/github/v/release/semmidev/url-shortener?style=for-the-badge&color=orange&logo=github" alt="Latest Release"></a>
-  <a href="https://github.com/semmidev/url-shortener/blob/main/LICENSE"><img src="https://img.shields.io/github/license/semmidev/url-shortener?style=for-the-badge&color=blue" alt="License"></a>
+  <a href="https://github.com/semmidev/url-shortener/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/semmidev/url-shortener/ci.yml?branch=main&label=CI&style=flat-square" alt="CI Status"></a>
+  <a href="https://github.com/semmidev/url-shortener/actions/workflows/security.yml"><img src="https://img.shields.io/github/actions/workflow/status/semmidev/url-shortener/security.yml?branch=main&label=Security&style=flat-square" alt="Security Status"></a>
+  <a href="https://github.com/semmidev/url-shortener/actions/workflows/cd.yml"><img src="https://img.shields.io/github/actions/workflow/status/semmidev/url-shortener/cd.yml?label=CD&style=flat-square" alt="CD Status"></a>
+  <a href="https://github.com/semmidev/url-shortener/releases"><img src="https://img.shields.io/github/v/release/semmidev/url-shortener?style=flat-square&color=blue" alt="Latest Release"></a>
+  <a href="https://github.com/semmidev/url-shortener/blob/main/LICENSE"><img src="https://img.shields.io/github/license/semmidev/url-shortener?style=flat-square&color=gray" alt="License"></a>
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Backend-Go_1.27.0-00ADD8?style=for-the-badge&logo=go&logoColor=white" alt="Go Backend">
-  <img src="https://img.shields.io/badge/Router-Chi_v5.3.0-00ADD8?style=for-the-badge&logo=go&logoColor=white" alt="Chi Router">
-  <img src="https://img.shields.io/badge/Frontend-React_19-61DAFB?style=for-the-badge&logo=react&logoColor=black" alt="React Frontend">
-  <img src="https://img.shields.io/badge/Database-PostgreSQL_18-4169E1?style=for-the-badge&logo=postgresql&logoColor=white" alt="PostgreSQL">
-  <img src="https://img.shields.io/badge/Queue-Asynq_Redis-DC382D?style=for-the-badge&logo=redis&logoColor=white" alt="Asynq Worker Queue">
-  <img src="https://img.shields.io/badge/Styling-Tailwind_v4-06B6D4?style=for-the-badge&logo=tailwindcss&logoColor=white" alt="Tailwind CSS">
-  <img src="https://img.shields.io/badge/Container-Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white" alt="Docker">
+  <img src="https://img.shields.io/badge/Go-1.27.0-00ADD8?style=flat-square" alt="Go">
+  <img src="https://img.shields.io/badge/Chi-v5.3.0-00ADD8?style=flat-square" alt="Chi Router">
+  <img src="https://img.shields.io/badge/React-19-61DAFB?style=flat-square" alt="React">
+  <img src="https://img.shields.io/badge/PostgreSQL-18-4169E1?style=flat-square" alt="PostgreSQL">
+  <img src="https://img.shields.io/badge/AuthZ-Casbin-2496ED?style=flat-square" alt="Casbin RBAC">
+  <img src="https://img.shields.io/badge/Concurrency-destel%2Frill-FF6C37?style=flat-square" alt="destel/rill">
+  <img src="https://img.shields.io/badge/Queue-Asynq_Redis-DC382D?style=flat-square" alt="Asynq">
 </p>
 
-A clean, modern, enterprise-grade URL Shortener REST API backend written in Go using **Modular Monolith** architecture, **Go-Chi (v5.3.0)**, **Asynq Redis Worker Queues**, and **PostgreSQL 18**. Features interactive Scalar API Reference UI & Swagger documentation, automatic database migrations, SSRF prevention, worker queue offloading (preventing unbounded goroutine explosion), enterprise CI/CD security pipelines (CodeQL SAST v4, Trivy, Hadolint, GitLeaks, Govulncheck), structured wide-event logging, multi-language input validation, tiered rate limiting, and containerized testing support.
+A high-performance, enterprise-grade Multi-Tenant SaaS URL Shortener REST API written in Go using **Modular Monolith** architecture, **Casbin RBAC Decision Engine**, **destel/rill concurrency pipelines**, **Asynq Redis Worker Queues**, and **PostgreSQL 18**. Features embedded React 19 SPA frontend single-binary distribution, Scalar & Swagger interactive API documentation, automated database migrations, SSRF prevention, structured wide-event logging, transactional outbox event streaming, and multi-layered CI/CD security pipelines.
 
 ---
 
-### 📸 Previews
+### Previews
 
-#### 📊 Dashboard Overview
+#### Dashboard Overview
 ![Dashboard Preview](docs/ss/1-dashboard.png)
 
-#### 🔗 Short URLs Management
+#### Short URLs Management
 ![Short URLs Preview](docs/ss/2-urls.png)
 
-#### 📖 Interactive Scalar API Reference
+#### Interactive Scalar API Reference
 ![Scalar API Reference Preview](docs/ss/3-docs.png)
 
-#### ⚡ Swagger Interactive API Docs
+#### Swagger Interactive API Docs
 ![Swagger API Docs Preview](docs/ss/4-docs.png)
 
 ---
 
-## 📋 Table of Contents
-- [🚀 Quick Start & Setup Guide](#-quick-start--setup-guide)
-- [🏗️ System Architecture & Data Flow](#️-system-architecture--data-flow)
-- [🛡️ Enterprise Security & CI/CD Pipelines](#️-enterprise-security--cicd-pipelines)
-- [🛠️ Makefile Commands](#️-makefile-commands)
-- [🏗️ Architectural & Code Style Decisions (ADRs)](#-architectural--code-style-decisions-adrs)
-- [📦 Release & Deployment Workflow](#-release--deployment-workflow)
-- [🛠️ Implementing a New Feature (Workflow Guide)](#️-implementing-a-new-feature-workflow-guide)
-- [🧪 Testing Guide](#-testing-guide)
-- [⚙️ Environment Variables Reference](#️-environment-variables-reference)
+## Table of Contents
+- [Quick Start & Setup Guide](#quick-start--setup-guide)
+- [System Architecture & Data Flow](#system-architecture--data-flow)
+- [Enterprise Security & CI/CD Pipelines](#enterprise-security--cicd-pipelines)
+- [Makefile Commands](#makefile-commands)
+- [Architectural & Code Style Decisions (ADRs)](#architectural--code-style-decisions-adrs)
+- [Release & Deployment Workflow](#release--deployment-workflow)
+- [Implementing a New Feature (Workflow Guide)](#implementing-a-new-feature-workflow-guide)
+- [Testing Guide](#testing-guide)
+- [Environment Variables Reference](#environment-variables-reference)
 
 ---
 
-## 🚀 Quick Start & Setup Guide
+## Quick Start & Setup Guide
 
 ### 1. Prerequisites
-- **Go**: `v1.22+` (or latest `v1.27.0`)
-- **Docker** / **Podman**: Required for local PostgreSQL & Redis containers and Testcontainers E2E testing.
-- **Make**: Executing build, test, and container scripts.
+- **Go**: `v1.22+` (or `v1.27.0`)
+- **Docker** / **Podman**: Required for local PostgreSQL & Redis containers and Testcontainers integration testing.
+- **Make**: For running build, test, migration, and development commands.
 
 ### 2. Run Application Locally
 
@@ -92,141 +91,127 @@ Once the server is running (`http://localhost:8080`):
 
 ---
 
-## 🏗️ System Architecture & Data Flow
+## System Architecture & Data Flow
 
-### High-Level Architecture Diagram (Modular Monolith Component Layering)
+### Multi-Tenant SaaS Architecture Diagram
 
 ```mermaid
 graph TD
     Client["Client / Web SPA / Mobile"] --> |HTTP Request| Router["Chi Router (HTTP Server)"]
 
     subgraph MiddlewareStack["Middleware Stack (customMw)"]
-        CORS["CORS Middleware (customMw.CORS)"]
+        CORS["CORS Middleware"]
         SecureHeaders["Secure Headers & Strict CSP"]
-        ClientIP["Web Client IP Resolver (GetClientIP)"]
+        ClientIP["Client IP Resolver"]
         Timeout["Request Timeout (10s)"]
         LoggerMW["Wide Event Logging (slog)"]
         RateLimiter["Redis Rate Limiter"]
         AuthMW["JWT Auth Middleware"]
-        CasbinAuthz["Casbin Decision Engine (RequirePermission)"]
+        TenantMW["Tenant Context Middleware (X-Tenant-ID)"]
     end
 
     Router --> MiddlewareStack
 
     subgraph Handlers["HTTP Handlers Layer"]
-        RedirectH["RedirectHandler"]
+        TenantH["TenantHandler"]
         UserH["UserHandler"]
         URLH["URLHandler"]
+        RedirectH["RedirectHandler"]
         AnalyticsH["AnalyticsHandler"]
-        AdminH["AdminHandler"]
         SPAH["Embedded SPA Handler"]
     end
 
     MiddlewareStack --> Handlers
 
     subgraph Services["Core Business Logic Layer"]
+        TenantSvc["TenantService (Multi-Tenant SaaS)"]
         UserSvc["UserService"]
         URLSvc["URLService (SSRF Safe)"]
         AnalyticsSvc["AnalyticsService"]
-        AdminSvc["AdminService"]
     end
 
+    TenantH --> TenantSvc
     UserH --> UserSvc
     URLH --> URLSvc
     RedirectH --> URLSvc
     AnalyticsH --> AnalyticsSvc
-    AdminH --> AdminSvc
-
-    subgraph WorkerQueues["Asynchronous Task & Worker Architecture"]
-        TaskDistributor["Asynq TaskDistributor (Redis Worker Queue)"]
-        BoundedFallback["Bounded Channel Worker Pool (Fallback)"]
-        OutboxWorker["Outbox Worker (Async Event Stream)"]
-        CleanupWorker["URL Expiration Worker"]
-    end
-
-    RedirectH -.->|Enqueue TaskRecordClickAnalytics| TaskDistributor
-    RedirectH -.->|Non-blocking Fallback| BoundedFallback
-    AdminH -.->|Enqueue TaskRecordAuditLog| TaskDistributor
-
-    CleanupWorker -.-> URLSvc
-    OutboxWorker -.-> AnalyticsH
 
     subgraph PlatformLayer["Platform & Infrastructure Layer"]
+        Casbin["Casbin RBAC Engine (authz.Authorizer)"]
+        RillPipeline["Rill Concurrency Pipeline (destel/rill)"]
+        TaskDistributor["Asynq TaskDistributor (Redis Worker Queue)"]
+        OutboxWorker["Outbox Event Streaming Worker"]
+        CleanupWorker["URL Expiration Cleanup Worker"]
         JWTMaker["JWT Token Maker"]
         RedisCache["Redis Cache (L1 Cache & Rate Limit)"]
-        EventPub["Event Publisher (NATS / InMemory)"]
         SQLCStore["SQLC Store (PostgreSQL DAO)"]
     end
 
+    TenantSvc --> Casbin
+    TenantSvc --> SQLCStore
     UserSvc --> JWTMaker
     UserSvc --> RedisCache
     UserSvc --> SQLCStore
+    URLSvc --> Casbin
     URLSvc --> RedisCache
     URLSvc --> SQLCStore
+    AnalyticsSvc --> Casbin
+    AnalyticsSvc --> RillPipeline
     AnalyticsSvc --> SQLCStore
-    AdminSvc --> RedisCache
-    AdminSvc --> SQLCStore
 
-    OutboxWorker --> SQLCStore
-    OutboxWorker --> EventPub
+    RedirectH -.->|Enqueue Click Task| TaskDistributor
+    CleanupWorker -.->|Clean Expired URLs| URLSvc
+    OutboxWorker -.->|Stream Events| AnalyticsH
 
     subgraph DataStorage["Data Persistence Layer"]
-        PostgreSQL[("PostgreSQL Database")]
+        PostgreSQL[("PostgreSQL 18 Database")]
         RedisDB[("Redis Store")]
-        NATS[("NATS JetStream Broker")]
     end
 
     SQLCStore --> PostgreSQL
     RedisCache --> RedisDB
-    EventPub --> NATS
 ```
 
-### Redirection & Bounded Worker Queue Analytics Sequence (`GET /{code}`)
+### Multi-Tenant Request & Authorization Flow (`POST /api/v1/urls`)
 
 ```mermaid
 sequenceDiagram
     autonumber
     actor User as Client / User Browser
-    participant Chi as Chi Router & Middleware
-    participant RedH as RedirectHandler
+    participant Chi as Chi Router
+    participant TenantMW as TenantContext Middleware
+    participant AuthMW as Auth Middleware
+    participant URLH as URLHandler
     participant URLSvc as URLService
+    participant Casbin as Casbin Authorizer
     participant Redis as Redis Cache
     participant DB as PostgreSQL (SQLC)
-    participant TaskDist as Asynq TaskDistributor / Worker Pool
-    participant WorkerProc as TaskProcessor (Asynq Worker)
+    participant TaskDist as Asynq TaskDistributor
 
-    User->>Chi: GET /{code}
-    Chi->>Chi: Apply Rate Limiting, CORS, & Wide Event Logging
-    Chi->>RedH: Handled by Redirect(w, r)
-    RedH->>URLSvc: GetByCode(shortCode)
+    User->>Chi: POST /api/v1/urls (Header: Authorization, X-Tenant-ID)
+    Chi->>AuthMW: Validate JWT Access Token
+    AuthMW->>TenantMW: Extract X-Tenant-ID & Attach TenantID to Context
+    TenantMW->>URLH: Dispatch to Handler
+    URLH->>URLSvc: Create(ctx, CreateURLRequest)
 
-    URLSvc->>Redis: Get("url:code:" + shortCode)
-    alt Cache Hit (L1 Fast Path)
-        Redis-->>URLSvc: Return Cached URL Data
-    else Cache Miss (DB Lookup)
-        URLSvc->>DB: Query GetURLByShortCode
-        DB-->>URLSvc: Return DB Record
-        URLSvc->>Redis: Set("url:code:" + shortCode, URLData, TTL)
+    URLSvc->>Casbin: Can(ctx, UserID, TenantID, "urls.create")
+    alt Allowed by Casbin Policy
+        Casbin-->>URLSvc: true
+    else Denied / Insufficient Role
+        Casbin-->>URLSvc: false
+        URLSvc-->>User: 403 Forbidden (Anda tidak memiliki izin)
     end
 
-    URLSvc-->>RedH: Return Target Destination URL
-    RedH-->>User: 307 Temporary Redirect (Location: target_url)
-
-    par Offloaded Async Click & Analytics Logging (Zero Goroutine Explosion)
-        RedH->>TaskDist: Enqueue TaskRecordClickAnalytics(URLID, ClientIP, UserAgent, Referrer)
-        alt Asynq Redis Worker Queue
-            TaskDist->>WorkerProc: Asynq Worker Pick Task
-            WorkerProc->>DB: IncrementClickCount & RecordClick
-        else Fallback Bounded Queue (No Redis)
-            TaskDist->>WorkerProc: Fixed Channel Worker Pool Process
-            WorkerProc->>DB: IncrementClickCount & RecordClick
-        end
-    end
+    URLSvc->>DB: Check & Insert Short URL (SQLC Tx)
+    DB-->>URLSvc: Return Created Record
+    URLSvc->>Redis: Set("url:code:" + shortCode, URLData, TTL)
+    URLSvc-->>URLH: Return URLResponse
+    URLH-->>User: 201 Created (JSON Response)
 ```
 
 ---
 
-## 🛡️ Enterprise Security & CI/CD Pipelines
+## Enterprise Security & CI/CD Pipelines
 
 This repository implements a multi-layered security & quality audit pipeline:
 
@@ -240,14 +225,15 @@ This repository implements a multi-layered security & quality audit pipeline:
 | **golangci-lint** | Static Code Quality & Deprecation Checker | [`.github/workflows/ci.yml`](.github/workflows/ci.yml) |
 
 ### Key Security Safeguards
+- **Multi-Tenant SaaS & RBAC Isolation**: Fine-grained Casbin decision engine authorizer enforcing per-tenant role permissions (`owner`, `admin`, `member`, custom roles).
 - **SSRF Protection**: URL creation enforces scheme validation (`http`, `https`) and strictly rejects loopback IPs (`127.0.0.1`, `::1`), private CIDR ranges (`10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`), and `localhost` hostnames.
 - **Client IP Resolution**: Safe `web.GetClientIP(r)` header extraction (`CF-Connecting-IP`, `X-Forwarded-For`, `X-Real-IP`) to prevent IP spoofing attacks.
-- **Unbounded Goroutine Offloading**: Asynq Redis Task Queue with a 10,000-buffer Bounded Channel Worker Pool fallback prevents goroutine leakage under high traffic.
+- **Unbounded Goroutine Offloading**: Asynq Redis Task Queue offloads asynchronous analytics processing safely under high concurrency.
 - **HTTP Hardening**: Strict CSP headers (`connect-src`), anti-caching headers on error responses (`Cache-Control: no-store`), and isolated management server endpoints.
 
 ---
 
-## 🛠️ Makefile Commands
+## Makefile Commands
 
 ```bash
 make run               # Run backend API server locally
@@ -279,7 +265,7 @@ make clean             # Clean build artifacts
 
 ---
 
-## 🏗️ Architectural & Code Style Decisions (ADRs)
+## Architectural & Code Style Decisions (ADRs)
 
 All major architectural and code style decisions are formally documented in our [Architecture Decision Records (`docs/adr`)](docs/adr/README.md).
 
@@ -327,35 +313,35 @@ All major architectural and code style decisions are formally documented in our 
 
 ---
 
-## 📦 Release & Deployment Workflow
+## Release & Deployment Workflow
 
 This project enforces a **Release-Driven CI/CD Strategy** following industry best practices:
 
 - **CI (`.github/workflows/ci.yml`)**: Runs linting (`golangci-lint`), unit tests, and integration tests on every `push` and `pull_request` to `main` / `master`.
 - **Security Audit (`.github/workflows/security.yml` & `codeql.yml`)**: Runs CodeQL SAST (v4), GitLeaks, Govulncheck, Hadolint, and Trivy image scanning.
-- **CD (`.github/workflows/cd.yml`)**: Triggers **ONLY when a Git release tag (`v*`) is pushed**. Builds and pushes multi-architecture Docker images to Docker Hub with Semantic Versioning tags (`1.9.2`, `1.9`, `1`, `latest`).
+- **CD (`.github/workflows/cd.yml`)**: Triggers **ONLY when a Git release tag (`v*`) is pushed**. Builds and pushes multi-architecture Docker images to Docker Hub with Semantic Versioning tags (`1.12.3`, `1.12`, `1`, `latest`).
 - **Release Automation (`.goreleaser.yaml` & `.github/workflows/release.yml`)**: Triggers on Git tag push (`v*`). Builds cross-platform static Go binaries (embedding compiled React SPA assets), generates changelogs from Conventional Commits, and publishes artifacts to **GitHub Releases**.
 
 ### How to Trigger a New Release (Docker Hub Image & GitHub Release)
 
-To publish a new production version (e.g. `v1.9.2`):
+To publish a new production version (e.g. `v1.12.3`):
 
 ```bash
 # 1. Create a semantic versioning Git tag locally
-git tag -a v1.9.2 -m "v1.9.2 Rilis Keamanan, Refactoring Worker Queue, dan Otomasi CI Security Pipelines"
+git tag -a v1.12.3 -m "v1.12.3 Rilis Keamanan, Refactoring Authorizer, dan Otomasi Multi-Tenant SaaS"
 
 # 2. Push the tag to GitHub to trigger CI/CD & GoReleaser workflows
-git push origin v1.9.2
+git push origin v1.12.3
 ```
 
 Once pushed, GitHub Actions automatically:
 1. Runs CI & Security tests.
 2. Generates GitHub Release binaries (`.tar.gz`, `.zip`), checksums, and changelog notes.
-3. Builds and pushes versioned container images (`username/repository:1.9.2`, `1.9`, `1`, `latest`) to Docker Hub.
+3. Builds and pushes versioned container images (`username/repository:1.12.3`, `1.12`, `1`, `latest`) to Docker Hub.
 
 ---
 
-## 🛠️ Implementing a New Feature (Workflow Guide)
+## Implementing a New Feature (Workflow Guide)
 
 When adding a new feature or domain module to the backend API, follow these standard steps:
 
@@ -393,7 +379,7 @@ When adding a new feature or domain module to the backend API, follow these stan
 
 ### Step 5: Verification & Testing
 1. Add unit tests in domain package (e.g. `server/internal/<module>/<module>_test.go`).
-2. Add E2E integration test scenarios to `server/internal/e2e/e2e_test.go` within the Table-Driven test cases slice.
+2. Add E2E integration test scenarios to `server/internal/e2e/` within the test suite.
 3. Run verification suite:
    ```bash
    make test              # Run unit tests
@@ -402,7 +388,7 @@ When adding a new feature or domain module to the backend API, follow these stan
 
 ---
 
-## 🧪 Testing Guide
+## Testing Guide
 
 ```bash
 # Run unit tests only (ignores integration build tags automatically)
@@ -417,7 +403,7 @@ make test-all
 
 ---
 
-## ⚙️ Environment Variables Reference
+## Environment Variables Reference
 
 | Variable | Type | Default | Description |
 | :--- | :--- | :--- | :--- |
