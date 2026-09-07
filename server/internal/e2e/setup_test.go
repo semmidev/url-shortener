@@ -99,7 +99,7 @@ func setupTestServer(t *testing.T) (*httptest.Server, *pgxpool.Pool) {
 	return ts, pool
 }
 
-func executeRequest(t *testing.T, method, urlStr, bearerToken string, body any) (*http.Response, APIResponse) {
+func executeRequestWithHeaders(t *testing.T, method, urlStr, bearerToken string, headers map[string]string, body any) (*http.Response, APIResponse) {
 	t.Helper()
 	var bodyReader io.Reader
 	if body != nil {
@@ -114,6 +114,9 @@ func executeRequest(t *testing.T, method, urlStr, bearerToken string, body any) 
 	req.Header.Set("Content-Type", "application/json")
 	if bearerToken != "" {
 		req.Header.Set("Authorization", "Bearer "+bearerToken)
+	}
+	for k, v := range headers {
+		req.Header.Set(k, v)
 	}
 
 	client := &http.Client{
@@ -135,4 +138,16 @@ func executeRequest(t *testing.T, method, urlStr, bearerToken string, body any) 
 	}
 
 	return resp, apiResp
+}
+
+func executeRequest(t *testing.T, method, urlStr, bearerToken string, body any) (*http.Response, APIResponse) {
+	return executeRequestWithHeaders(t, method, urlStr, bearerToken, nil, body)
+}
+
+func executeRequestWithTenant(t *testing.T, method, urlStr, bearerToken, tenantID string, body any) (*http.Response, APIResponse) {
+	headers := map[string]string{}
+	if tenantID != "" {
+		headers["X-Tenant-ID"] = tenantID
+	}
+	return executeRequestWithHeaders(t, method, urlStr, bearerToken, headers, body)
 }

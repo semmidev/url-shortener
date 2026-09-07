@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/semmidev/url-shortener/server/internal/analytics"
+	"github.com/semmidev/url-shortener/server/internal/tenant"
 	"github.com/semmidev/url-shortener/server/internal/url"
 	"github.com/semmidev/url-shortener/server/internal/user"
 	"github.com/stretchr/testify/assert"
@@ -25,6 +26,7 @@ func TestE2E_FullApplicationFlow(t *testing.T) {
 	var (
 		accessToken  string
 		refreshToken string
+		tenantID     string
 		createdURLID string
 		customCode   = "e2e-table-code"
 	)
@@ -34,6 +36,7 @@ func TestE2E_FullApplicationFlow(t *testing.T) {
 		method         string
 		url            func() string
 		token          func() string
+		tenant         func() string
 		body           func() any
 		expectedStatus int
 		verify         func(t *testing.T, resp *http.Response, apiResp APIResponse)
@@ -43,6 +46,7 @@ func TestE2E_FullApplicationFlow(t *testing.T) {
 			method:         http.MethodGet,
 			url:            func() string { return ts.URL + "/health" },
 			token:          func() string { return "" },
+			tenant:         func() string { return "" },
 			body:           func() any { return nil },
 			expectedStatus: http.StatusOK,
 			verify: func(t *testing.T, resp *http.Response, apiResp APIResponse) {
@@ -54,6 +58,7 @@ func TestE2E_FullApplicationFlow(t *testing.T) {
 			method:         http.MethodGet,
 			url:            func() string { return ts.URL + "/version" },
 			token:          func() string { return "" },
+			tenant:         func() string { return "" },
 			body:           func() any { return nil },
 			expectedStatus: http.StatusOK,
 			verify: func(t *testing.T, resp *http.Response, apiResp APIResponse) {
@@ -65,6 +70,7 @@ func TestE2E_FullApplicationFlow(t *testing.T) {
 			method: http.MethodPost,
 			url:    func() string { return ts.URL + "/api/v1/auth/register" },
 			token:  func() string { return "" },
+			tenant: func() string { return "" },
 			body: func() any {
 				return user.RegisterRequest{
 					Email:    "table_user@example.com",
@@ -89,6 +95,7 @@ func TestE2E_FullApplicationFlow(t *testing.T) {
 			method: http.MethodPost,
 			url:    func() string { return ts.URL + "/api/v1/auth/register" },
 			token:  func() string { return "" },
+			tenant: func() string { return "" },
 			body: func() any {
 				return user.RegisterRequest{
 					Email:    "table_user@example.com",
@@ -106,6 +113,7 @@ func TestE2E_FullApplicationFlow(t *testing.T) {
 			method: http.MethodPost,
 			url:    func() string { return ts.URL + "/api/v1/auth/login" },
 			token:  func() string { return "" },
+			tenant: func() string { return "" },
 			body: func() any {
 				return user.LoginRequest{
 					Email:    "table_user@example.com",
@@ -124,6 +132,7 @@ func TestE2E_FullApplicationFlow(t *testing.T) {
 			method:         http.MethodGet,
 			url:            func() string { return ts.URL + "/api/v1/auth/me" },
 			token:          func() string { return accessToken },
+			tenant:         func() string { return "" },
 			body:           func() any { return nil },
 			expectedStatus: http.StatusOK,
 			verify: func(t *testing.T, resp *http.Response, apiResp APIResponse) {
@@ -137,6 +146,7 @@ func TestE2E_FullApplicationFlow(t *testing.T) {
 			method: http.MethodPost,
 			url:    func() string { return ts.URL + "/api/v1/auth/refresh" },
 			token:  func() string { return "" },
+			tenant: func() string { return "" },
 			body: func() any {
 				return user.RefreshTokenRequest{RefreshToken: refreshToken}
 			},
@@ -148,10 +158,32 @@ func TestE2E_FullApplicationFlow(t *testing.T) {
 			},
 		},
 		{
-			name:   "8. Create Short URL (Custom Code)",
+			name:   "8. Create Tenant (SaaS Multi-Tenancy)",
+			method: http.MethodPost,
+			url:    func() string { return ts.URL + "/api/v1/tenants" },
+			token:  func() string { return accessToken },
+			tenant: func() string { return "" },
+			body: func() any {
+				return tenant.CreateTenantRequest{
+					Name: "E2E Main Organization",
+					Slug: "e2e-main-org",
+				}
+			},
+			expectedStatus: http.StatusCreated,
+			verify: func(t *testing.T, resp *http.Response, apiResp APIResponse) {
+				var tRes tenant.TenantResponse
+				_ = json.Unmarshal(apiResp.Data, &tRes)
+				assert.Equal(t, "E2E Main Organization", tRes.Name)
+				tenantID = tRes.ID.String()
+				require.NotEmpty(t, tenantID)
+			},
+		},
+		{
+			name:   "9. Create Short URL (Custom Code)",
 			method: http.MethodPost,
 			url:    func() string { return ts.URL + "/api/v1/urls" },
 			token:  func() string { return accessToken },
+			tenant: func() string { return tenantID },
 			body: func() any {
 				return url.CreateURLRequest{
 					OriginalURL: "https://example.com/target-page",
@@ -168,10 +200,11 @@ func TestE2E_FullApplicationFlow(t *testing.T) {
 			},
 		},
 		{
-			name:   "9. Create Duplicate Custom Short Code",
+			name:   "10. Create Duplicate Custom Short Code",
 			method: http.MethodPost,
 			url:    func() string { return ts.URL + "/api/v1/urls" },
 			token:  func() string { return accessToken },
+			tenant: func() string { return tenantID },
 			body: func() any {
 				return url.CreateURLRequest{
 					OriginalURL: "https://another-domain.com",
@@ -184,12 +217,13 @@ func TestE2E_FullApplicationFlow(t *testing.T) {
 			},
 		},
 		{
-			name:   "10. List User Short URLs (DataTable Filter & Search)",
+			name:   "11. List User Short URLs (DataTable Filter & Search)",
 			method: http.MethodGet,
 			url: func() string {
 				return ts.URL + "/api/v1/urls?search=Table&sort_by=created_at&sort_direction=desc&active=1"
 			},
 			token:          func() string { return accessToken },
+			tenant:         func() string { return tenantID },
 			body:           func() any { return nil },
 			expectedStatus: http.StatusOK,
 			verify: func(t *testing.T, resp *http.Response, apiResp APIResponse) {
@@ -200,10 +234,11 @@ func TestE2E_FullApplicationFlow(t *testing.T) {
 			},
 		},
 		{
-			name:           "11. Get URL By ID",
+			name:           "12. Get URL By ID",
 			method:         http.MethodGet,
 			url:            func() string { return fmt.Sprintf("%s/api/v1/urls/%s", ts.URL, createdURLID) },
 			token:          func() string { return accessToken },
+			tenant:         func() string { return tenantID },
 			body:           func() any { return nil },
 			expectedStatus: http.StatusOK,
 			verify: func(t *testing.T, resp *http.Response, apiResp APIResponse) {
@@ -213,10 +248,11 @@ func TestE2E_FullApplicationFlow(t *testing.T) {
 			},
 		},
 		{
-			name:   "12. Update URL",
+			name:   "13. Update URL",
 			method: http.MethodPut,
 			url:    func() string { return fmt.Sprintf("%s/api/v1/urls/%s", ts.URL, createdURLID) },
 			token:  func() string { return accessToken },
+			tenant: func() string { return tenantID },
 			body: func() any {
 				newTitle := "Updated Table Link Title"
 				newURL := "https://example.com/updated-page"
@@ -234,10 +270,11 @@ func TestE2E_FullApplicationFlow(t *testing.T) {
 			},
 		},
 		{
-			name:           "13. Public Redirection Endpoint",
+			name:           "14. Public Redirection Endpoint",
 			method:         http.MethodGet,
 			url:            func() string { return ts.URL + "/" + customCode },
 			token:          func() string { return "" },
+			tenant:         func() string { return "" },
 			body:           func() any { return nil },
 			expectedStatus: http.StatusTemporaryRedirect,
 			verify: func(t *testing.T, resp *http.Response, apiResp APIResponse) {
@@ -245,10 +282,11 @@ func TestE2E_FullApplicationFlow(t *testing.T) {
 			},
 		},
 		{
-			name:           "14. Get URL Analytics Summary",
+			name:           "15. Get URL Analytics Summary",
 			method:         http.MethodGet,
 			url:            func() string { return fmt.Sprintf("%s/api/v1/urls/%s/analytics", ts.URL, createdURLID) },
 			token:          func() string { return accessToken },
+			tenant:         func() string { return tenantID },
 			body:           func() any { return nil },
 			expectedStatus: http.StatusOK,
 			verify: func(t *testing.T, resp *http.Response, apiResp APIResponse) {
@@ -259,10 +297,11 @@ func TestE2E_FullApplicationFlow(t *testing.T) {
 			},
 		},
 		{
-			name:           "15. Delete Short URL",
+			name:           "16. Delete Short URL",
 			method:         http.MethodDelete,
 			url:            func() string { return fmt.Sprintf("%s/api/v1/urls/%s", ts.URL, createdURLID) },
 			token:          func() string { return accessToken },
+			tenant:         func() string { return tenantID },
 			body:           func() any { return nil },
 			expectedStatus: http.StatusOK,
 			verify: func(t *testing.T, resp *http.Response, apiResp APIResponse) {
@@ -270,10 +309,11 @@ func TestE2E_FullApplicationFlow(t *testing.T) {
 			},
 		},
 		{
-			name:           "16. Redirection After Delete (404)",
+			name:           "17. Redirection After Delete (404)",
 			method:         http.MethodGet,
 			url:            func() string { return ts.URL + "/" + customCode },
 			token:          func() string { return "" },
+			tenant:         func() string { return "" },
 			body:           func() any { return nil },
 			expectedStatus: http.StatusNotFound,
 			verify: func(t *testing.T, resp *http.Response, apiResp APIResponse) {
@@ -284,7 +324,7 @@ func TestE2E_FullApplicationFlow(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			resp, apiResp := executeRequest(t, tc.method, tc.url(), tc.token(), tc.body())
+			resp, apiResp := executeRequestWithTenant(t, tc.method, tc.url(), tc.token(), tc.tenant(), tc.body())
 			assert.Equal(t, tc.expectedStatus, resp.StatusCode)
 			if tc.verify != nil {
 				tc.verify(t, resp, apiResp)
