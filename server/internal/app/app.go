@@ -18,10 +18,10 @@ import (
 
 	db "github.com/semmidev/url-shortener/server/db/sqlc"
 	"github.com/semmidev/url-shortener/server/docs"
-	"github.com/semmidev/url-shortener/server/internal/admin"
 	"github.com/semmidev/url-shortener/server/internal/analytics"
 	"github.com/semmidev/url-shortener/server/internal/config"
 	"github.com/semmidev/url-shortener/server/internal/platform/audit"
+	"github.com/semmidev/url-shortener/server/internal/platform/authz"
 	"github.com/semmidev/url-shortener/server/internal/platform/cache"
 	"github.com/semmidev/url-shortener/server/internal/platform/eventbus"
 	"github.com/semmidev/url-shortener/server/internal/platform/logger"
@@ -32,6 +32,7 @@ import (
 	"github.com/semmidev/url-shortener/server/internal/platform/postgres"
 	"github.com/semmidev/url-shortener/server/internal/platform/token"
 	"github.com/semmidev/url-shortener/server/internal/platform/web"
+	"github.com/semmidev/url-shortener/server/internal/tenant"
 	"github.com/semmidev/url-shortener/server/internal/url"
 	"github.com/semmidev/url-shortener/server/internal/user"
 	spaweb "github.com/semmidev/url-shortener/server/internal/web"
@@ -184,17 +185,30 @@ func BuildRouter(cfg config.Config, pool *pgxpool.Pool, appLogger *logger.Logger
 		}, appLogger)
 	}
 
+	// Initialize Casbin Decision Engine Authorizer
+	authorizer, err := authz.NewCasbinAuthorizer(store)
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialize casbin authorizer: %w", err)
+	}
+	if err := authorizer.SyncPolicies(context.Background()); err != nil {
+		appLogger.Warn(context.Background(), "casbin initial policy sync warning", "error", err)
+	} else {
+		appLogger.Info(context.Background(), "casbin decision engine initialized and synced successfully")
+	}
+
 	// Initialize Services
 	userSvc := user.NewService(store, tokenMaker, cfg, appLogger, redisCache)
 	userSvc.SetMetricsRecorder(appMetrics)
+	userSvc.SetAuthorizer(authorizer)
 
 	urlSvc := url.NewService(store, cfg, redisCache)
 	urlSvc.SetMetricsRecorder(appMetrics)
+	urlSvc.SetAuthorizer(authorizer)
 	urlSvc.StartExpirationCleanupWorker(context.Background(), 1*time.Minute)
 
 	analyticsSvc := analytics.NewService(store)
+	analyticsSvc.SetAuthorizer(authorizer)
 	auditLogger := audit.NewLogger(store)
-	adminSvc := admin.NewService(store)
 
 	if taskDistributor != nil {
 		urlSvc.SetTaskDistributor(taskDistributor)
@@ -208,10 +222,12 @@ func BuildRouter(cfg config.Config, pool *pgxpool.Pool, appLogger *logger.Logger
 	}
 
 	// Initialize Handlers
+	tenantSvc := tenant.NewService(store, authorizer)
+	tenantH := tenant.NewHandler(tenantSvc)
+
 	userH := user.NewHandler(userSvc)
 	urlH := url.NewHandler(urlSvc)
 	analyticsH := analytics.NewHandler(analyticsSvc)
-	adminH := admin.NewHandler(adminSvc, store, auditLogger)
 
 	redirectH := url.NewRedirectHandler(urlSvc, analyticsH, spaHandler)
 	redirectH.SetMetricsRecorder(appMetrics)
@@ -238,6 +254,7 @@ func BuildRouter(cfg config.Config, pool *pgxpool.Pool, appLogger *logger.Logger
 	r.Use(customMw.WideEventLogging(appLogger))
 
 	authMw := customMw.Auth(tokenMaker)
+	tenantMw := customMw.TenantContext(store)
 
 	// Internal Management & Observability Server (Private /metrics & Go 1.27 /debug/pprof)
 	if cfg.ManagementEnabled && cfg.ManagementAddress != "" {
@@ -334,15 +351,16 @@ func BuildRouter(cfg config.Config, pool *pgxpool.Pool, appLogger *logger.Logger
 
 	// API v1 Routes
 	r.Route("/api/v1", func(r chi.Router) {
+		r.Use(tenantMw)
 		r.Route("/auth", func(r chi.Router) {
 			r.Use(authRateLimitMw)
 			userH.Mount(r, authMw)
 		})
 		r.Group(func(r chi.Router) {
 			r.Use(apiRateLimitMw)
+			tenantH.Mount(r, authMw)
 			urlH.Mount(r, authMw)
 			analyticsH.Mount(r, authMw)
-			adminH.Mount(r, authMw)
 		})
 	})
 

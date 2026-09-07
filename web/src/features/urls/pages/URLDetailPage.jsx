@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import QRCodeModal from '@/features/urls/components/QRCodeModal';
 import { getShortUrlByID, getShortUrlAnalytics } from '@/features/urls/api';
+import PermissionGuard from '@/components/PermissionGuard';
 
 export default function URLDetailPage() {
   const { t } = useI18n();
@@ -161,73 +162,75 @@ export default function URLDetailPage() {
       </Card>
     </SafeViewTransition>
 
-      {/* Analytics Metric Cards */}
-      <div className="grid gap-4 md:grid-cols-2">
+      {/* Analytics Metric Cards & Click Event Logs */}
+      <PermissionGuard permission="analytics.read">
+        <div className="grid gap-4 md:grid-cols-2">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">{t("urls.totalClicksCount")}</CardTitle>
+              <MousePointerClickIcon className="size-4 text-primary" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold">{analytics?.total_clicks ?? urlData.click_count ?? 0}</div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">{t("analytics.uniqueVisitors")}</CardTitle>
+              <UsersIcon className="size-4 text-emerald-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold">{analytics?.unique_visitors ?? 0}</div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Click Event Log Table */}
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">{t("urls.totalClicksCount")}</CardTitle>
-            <MousePointerClickIcon className="size-4 text-primary" />
+          <CardHeader>
+            <CardTitle>{t("analytics.overview")}</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold">{analytics?.total_clicks ?? urlData.click_count ?? 0}</div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">{t("analytics.uniqueVisitors")}</CardTitle>
-            <UsersIcon className="size-4 text-emerald-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold">{analytics?.unique_visitors ?? 0}</div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Click Event Log Table */}
-      <Card>
-        <CardHeader>
-          <CardTitle>{t("analytics.overview")}</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {!analytics?.recent_clicks || analytics.recent_clicks.length === 0 ? (
-            <div className="py-8 text-center text-sm text-muted-foreground">
-              No click events recorded yet. Share your short link to start collecting analytics!
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm">
-                <thead>
-                  <tr className="border-b border-border text-muted-foreground text-xs uppercase tracking-wider">
-                    <th className="py-3 px-2">Clicked At</th>
-                    <th className="py-3 px-2">IP Address</th>
-                    <th className="py-3 px-2">Device / Browser</th>
-                    <th className="py-3 px-2">Referrer</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border/40">
-                  {analytics.recent_clicks.map((click) => (
-                    <tr key={click.id} className="hover:bg-muted/30 transition-colors">
-                      <td className="py-3 px-2 font-medium">
-                        {click.clicked_at ? new Date(click.clicked_at).toLocaleString() : 'N/A'}
-                      </td>
-                      <td className="py-3 px-2 font-mono text-xs text-muted-foreground">
-                        {click.ip_address || '127.0.0.1'}
-                      </td>
-                      <td className="py-3 px-2 max-w-xs truncate text-xs text-muted-foreground">
-                        {click.device_type ? `${click.device_type} • ` : ''}{click.user_agent || 'Direct'}
-                      </td>
-                      <td className="py-3 px-2 text-xs">
-                        <Badge variant="outline">{click.referrer || 'Direct / None'}</Badge>
-                      </td>
+            {!analytics?.recent_clicks || analytics.recent_clicks.length === 0 ? (
+              <div className="py-8 text-center text-sm text-muted-foreground">
+                No click events recorded yet. Share your short link to start collecting analytics!
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-sm">
+                  <thead>
+                    <tr className="border-b border-border text-muted-foreground text-xs uppercase tracking-wider">
+                      <th className="py-3 px-2">Clicked At</th>
+                      <th className="py-3 px-2">IP Address</th>
+                      <th className="py-3 px-2">Device / Browser</th>
+                      <th className="py-3 px-2">Referrer</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+                  </thead>
+                  <tbody className="divide-y divide-border/40">
+                    {analytics.recent_clicks.map((click) => (
+                      <tr key={click.id} className="hover:bg-muted/30 transition-colors">
+                        <td className="py-3 px-2 font-medium">
+                          {click.clicked_at ? new Date(click.clicked_at).toLocaleString() : 'N/A'}
+                        </td>
+                        <td className="py-3 px-2 font-mono text-xs text-muted-foreground">
+                          {click.ip_address || '127.0.0.1'}
+                        </td>
+                        <td className="py-3 px-2 max-w-xs truncate text-xs text-muted-foreground">
+                          {click.device_type ? `${click.device_type} • ` : ''}{click.user_agent || 'Direct'}
+                        </td>
+                        <td className="py-3 px-2 text-xs">
+                          <Badge variant="outline">{click.referrer || 'Direct / None'}</Badge>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </PermissionGuard>
 
       {/* QR Code Modal */}
       {isQrOpen && (

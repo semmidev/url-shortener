@@ -8,14 +8,24 @@ import (
 
 	db "github.com/semmidev/url-shortener/server/db/sqlc"
 	"github.com/semmidev/url-shortener/server/internal/platform/apperr"
+	"github.com/semmidev/url-shortener/server/internal/platform/authz"
+	"github.com/semmidev/url-shortener/server/internal/platform/permission"
+	"github.com/semmidev/url-shortener/server/internal/platform/web"
 )
 
 type Service struct {
-	store db.Store
+	store      db.Store
+	authorizer authz.Authorizer
 }
 
 func NewService(store db.Store) *Service {
 	return &Service{store: store}
+}
+
+func (s *Service) SetAuthorizer(a authz.Authorizer) {
+	if s != nil {
+		s.authorizer = a
+	}
 }
 
 func parseDeviceType(ua string) string {
@@ -51,6 +61,19 @@ func (s *Service) RecordClick(ctx context.Context, req RecordClickRequest) (*Rec
 }
 
 func (s *Service) GetAnalyticsSummary(ctx context.Context, req GetAnalyticsSummaryRequest) (*AnalyticsSummaryResponse, error) {
+	if s.authorizer != nil {
+		if userID, ok := web.UserID(ctx); ok {
+			var domain string
+			if tID, ok := web.TenantID(ctx); ok {
+				domain = tID.String()
+			}
+			can, _ := s.authorizer.Can(ctx, userID, domain, permission.AnalyticsRead)
+			if !can {
+				return nil, apperr.Forbidden("anda tidak memiliki izin untuk melihat analitik (analytics.read)")
+			}
+		}
+	}
+
 	summary, err := s.store.GetURLAnalyticsSummary(ctx, req.URLID)
 	if err != nil {
 		return nil, apperr.MapDBError(err, "analytics summary not found for this URL", "")
@@ -101,6 +124,17 @@ func (s *Service) GetAnalyticsSummary(ctx context.Context, req GetAnalyticsSumma
 }
 
 func (s *Service) GetUserDashboard(ctx context.Context, req UserDashboardRequest) (*UserDashboardResponse, error) {
+	if s.authorizer != nil {
+		var domain string
+		if tID, ok := web.TenantID(ctx); ok {
+			domain = tID.String()
+		}
+		can, _ := s.authorizer.Can(ctx, req.UserID, domain, permission.AnalyticsRead)
+		if !can {
+			return nil, apperr.Forbidden("anda tidak memiliki izin untuk melihat analitik (analytics.read)")
+		}
+	}
+
 	pgUserID := pgtype.UUID{Bytes: req.UserID, Valid: true}
 
 	summary, err := s.store.GetUserDashboardSummary(ctx, pgUserID)

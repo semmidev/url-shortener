@@ -108,7 +108,7 @@ graph TD
         LoggerMW["Wide Event Logging (slog)"]
         RateLimiter["Redis Rate Limiter"]
         AuthMW["JWT Auth Middleware"]
-        RoleMW["Role Admin Guard"]
+        CasbinAuthz["Casbin Decision Engine (RequirePermission)"]
     end
 
     Router --> MiddlewareStack
@@ -308,6 +308,8 @@ All major architectural and code style decisions are formally documented in our 
 | **backend-0021** | Prometheus Metrics Instrumentation & `/metrics` Scrape Endpoint | [Read Record](docs/adr/backend-0021-prometheus-metrics-instrumentation.md) |
 | **backend-0022** | Go 1.27 Upgrade & Generic Methods Integration | [Read Record](docs/adr/backend-0022-go-127-upgrade-and-generic-methods.md) |
 | **backend-0023** | Strict API-Only HTTP Request Logging Filter | [Read Record](docs/adr/backend-0023-strict-api-only-http-request-logging-filter.md) |
+| **backend-0024** | Casbin Decision Engine Authorization Architecture | [Read Record](docs/adr/backend-0024-casbin-decision-engine-authorization.md) |
+| **backend-0025** | Multi-Tenant SaaS Architecture Transformation | [Read Record](docs/adr/backend-0025-multi-tenant-saas-architecture.md) |
 | **frontend-0001** | Single-Binary SPA Embedding with Go `embed.FS` | [Read Record](docs/adr/frontend-0001-single-binary-spa-embedding.md) |
 | **frontend-0002** | Browser HTML Navigation Redirection for Inactive/Expired URLs | [Read Record](docs/adr/frontend-0002-browser-html-navigation-redirection.md) |
 | **frontend-0003** | Global Progress Loading Indicator & Debounced Search Inputs | [Read Record](docs/adr/frontend-0003-global-progress-indicator-and-debounced-search.md) |

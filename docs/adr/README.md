@@ -31,6 +31,8 @@ This directory contains the Architecture Decision Records (ADRs) for the URL Sho
 | [backend-0021](backend-0021-prometheus-metrics-instrumentation.md) | Prometheus Metrics Instrumentation & `/metrics` Scrape Endpoint | Accepted | 2026-08-21 |
 | [backend-0022](backend-0022-go-127-upgrade-and-generic-methods.md) | Go 1.27 Upgrade & Generic Methods Integration | Accepted | 2026-08-22 |
 | [backend-0023](backend-0023-strict-api-only-http-request-logging-filter.md) | Strict API-Only HTTP Request Logging Filter | Accepted | 2026-08-22 |
+| [backend-0024](backend-0024-casbin-decision-engine-authorization.md) | Casbin Decision Engine Authorization Architecture | Accepted | 2026-09-07 |
+| [backend-0025](backend-0025-multi-tenant-saas-architecture.md) | Multi-Tenant SaaS Architecture Transformation | Accepted | 2026-09-07 |
 
 ### 🎨 Frontend (`frontend-*`)
 

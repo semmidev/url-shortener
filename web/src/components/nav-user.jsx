@@ -5,6 +5,7 @@ import {
 } from "@/components/ui/avatar"
 import { useAuthStore } from "@/features/auth/store"
 import { useI18n } from "@/context/I18nContext"
+import { useTenant } from "@/context/TenantContext"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -28,25 +29,13 @@ import {
   CircleUserRoundIcon,
   LogOutIcon,
   CheckIcon,
-  PaletteIcon,
-  ShieldCheckIcon,
+  Building2Icon,
+  PlusIcon,
+  KeyIcon,
   UserIcon,
 } from "lucide-react"
 import { startTransition, addTransitionType } from "react"
 import { useNavigate } from "react-router-dom"
-
-const THEMES = [
-  { id: "astro-vista", name: "Astro Vista" },
-  { id: "claude",      name: "Claude"      },
-  { id: "light-green", name: "Light Green" },
-  { id: "mono",        name: "Mono"        },
-  { id: "neobrutualism", name: "Neobrutalism" },
-  { id: "notebook",   name: "Notebook"    },
-  { id: "supabase",   name: "Supabase"    },
-  { id: "vercel",     name: "Vercel"      },
-  { id: "whatsapp",   name: "WhatsApp"    },
-  { id: "zen",        name: "Zen"         },
-]
 
 function getInitials(name) {
   if (!name) return "??"
@@ -60,8 +49,8 @@ export function NavUser({ user }) {
   const { t } = useI18n()
   const { isMobile, setOpenMobile } = useSidebar()
   const navigate = useNavigate()
+  const { tenants, activeTenant, selectTenant, openJoinModal, openCreateModal } = useTenant()
   const initials = getInitials(user.name)
-  const isAdmin = user?.role === "admin"
 
   return (
     <SidebarMenu>
@@ -85,7 +74,7 @@ export function NavUser({ user }) {
           </DropdownMenuTrigger>
 
           <DropdownMenuContent
-            className="min-w-60"
+            className="min-w-64"
             side={isMobile ? "bottom" : "right"}
             align="end"
             sideOffset={4}>
@@ -101,10 +90,7 @@ export function NavUser({ user }) {
                   <div className="grid flex-1 min-w-0 text-left text-sm leading-tight">
                     <span className="truncate font-medium">{user.name}</span>
                     <span className="truncate text-xs text-muted-foreground flex items-center gap-1">
-                      {isAdmin
-                        ? <><ShieldCheckIcon className="size-3" aria-hidden="true" /> {t("common.administrator")}</>
-                        : <><UserIcon className="size-3" aria-hidden="true" /> Member</>
-                      }
+                      <UserIcon className="size-3" aria-hidden="true" /> {user.email}
                     </span>
                   </div>
                 </div>
@@ -113,7 +99,53 @@ export function NavUser({ user }) {
 
             <DropdownMenuSeparator />
 
-            {/* Account link */}
+            {/* Workspace Switcher Submenu */}
+            <DropdownMenuGroup>
+              <DropdownMenuSub>
+                <DropdownMenuSubTrigger className="cursor-pointer">
+                  <Building2Icon className="mr-2 size-4 text-primary" aria-hidden="true" />
+                  <span className="truncate font-medium">
+                    {activeTenant ? activeTenant.name : "Pilih Workspace"}
+                  </span>
+                </DropdownMenuSubTrigger>
+                <DropdownMenuSubContent className="min-w-52">
+                  <DropdownMenuLabel className="text-xs text-muted-foreground font-semibold px-2 py-1">
+                    Daftar Workspace
+                  </DropdownMenuLabel>
+                  {tenants.map((t) => (
+                    <DropdownMenuItem
+                      key={t.id}
+                      className="cursor-pointer flex items-center justify-between py-1.5"
+                      onClick={() => selectTenant(t)}
+                    >
+                      <span className="truncate font-medium">{t.name}</span>
+                      {t.id === activeTenant?.id && (
+                        <CheckIcon className="size-4 text-primary shrink-0 ml-2" aria-hidden="true" />
+                      )}
+                    </DropdownMenuItem>
+                  ))}
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    className="cursor-pointer text-primary focus:text-primary"
+                    onClick={() => openJoinModal()}
+                  >
+                    <KeyIcon className="mr-2 size-4" aria-hidden="true" />
+                    Gabung Workspace
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    className="cursor-pointer text-primary focus:text-primary"
+                    onClick={() => openCreateModal()}
+                  >
+                    <PlusIcon className="mr-2 size-4" aria-hidden="true" />
+                    Buat Workspace Baru
+                  </DropdownMenuItem>
+                </DropdownMenuSubContent>
+              </DropdownMenuSub>
+            </DropdownMenuGroup>
+
+            <DropdownMenuSeparator />
+
+            {/* Account Profile link */}
             <DropdownMenuGroup>
               <DropdownMenuItem
                 className="cursor-pointer"

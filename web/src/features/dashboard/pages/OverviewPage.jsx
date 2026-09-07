@@ -20,9 +20,14 @@ import {
   ArrowUpIcon,
   ArrowDownIcon,
   ArrowUpDownIcon,
+  Building2,
+  Key,
+  Plus,
 } from 'lucide-react';
 import QRCodeModal from '@/features/urls/components/QRCodeModal';
 import { getOverviewMetrics, quickCreateShortUrl } from '@/features/dashboard/api';
+import { useTenant } from '@/context/TenantContext';
+import PermissionGuard from '@/components/PermissionGuard';
 
 function formatDate(dateStr) {
   if (!dateStr) return '-';
@@ -39,6 +44,7 @@ function formatDate(dateStr) {
 
 export default function Overview() {
   const { t } = useI18n();
+  const { activeTenant, tenants, openJoinModal, openCreateModal } = useTenant();
   const [stats, setStats] = useState({ totalUrls: 0, totalClicks: 0, activeUrls: 0 });
   const [recentUrls, setRecentUrls] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -176,6 +182,35 @@ export default function Overview() {
         fallbackIcon={LayoutDashboardIcon}
       />
 
+      {/* Workspace Onboarding Banner if user has no tenants */}
+      {(!activeTenant || tenants.length === 0) && (
+        <Card className="border-primary/40 bg-gradient-to-r from-primary/10 via-primary/5 to-background shadow-md">
+          <CardContent className="p-6 flex flex-col md:flex-row items-center justify-between gap-6">
+            <div className="flex items-center gap-4">
+              <div className="size-14 rounded-2xl bg-primary text-primary-foreground flex items-center justify-center font-bold text-2xl shadow-lg shrink-0">
+                <Building2 className="w-7 h-7" />
+              </div>
+              <div className="space-y-1">
+                <h3 className="text-xl font-bold text-foreground">Selamat Datang! Mulai dengan Workspace</h3>
+                <p className="text-sm text-muted-foreground max-w-xl">
+                  Kelola dan perpendek link secara efisien bersama tim Anda. Bergabunglah dengan workspace menggunakan kode gabung, atau buat workspace baru untuk proyek Anda.
+                </p>
+              </div>
+            </div>
+            <div className="flex flex-wrap items-center gap-3 shrink-0">
+              <Button onClick={openJoinModal} className="gap-2 cursor-pointer shadow-sm">
+                <Key className="w-4 h-4" />
+                Gabung Kode Workspace
+              </Button>
+              <Button onClick={openCreateModal} variant="outline" className="gap-2 cursor-pointer">
+                <Plus className="w-4 h-4" />
+                Buat Workspace Baru
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Metrics Cards */}
       <div className="grid gap-4 md:grid-cols-3">
         <Card className="border-border/60 bg-card/60 backdrop-blur-sm">
@@ -210,76 +245,78 @@ export default function Overview() {
       </div>
 
       {/* Quick Shorten Widget */}
-      <Card className="border-primary/30 bg-primary/5">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-lg">
-            <SparklesIcon className="size-5 text-primary" />
-            {t("dashboard.quickShorten")}
-          </CardTitle>
-          <CardDescription>{t("dashboard.quickShortenDesc")}</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleQuickShorten} className="space-y-4">
-            <div className="flex flex-col sm:flex-row gap-3">
-              <Input
-                type="url"
-                aria-label={t("dashboard.originalUrl")}
-                placeholder={t("dashboard.originalUrlPlaceholder")}
-                value={originalUrl}
-                onChange={(e) => setOriginalUrl(e.target.value)}
-                required
-                className="flex-1 bg-background"
-              />
-              <Input
-                type="text"
-                aria-label="Custom alias"
-                autoComplete="off"
-                spellCheck={false}
-                placeholder={t("dashboard.customCodePlaceholder")}
-                value={customCode}
-                onChange={(e) => setCustomCode(e.target.value)}
-                className="sm:w-56 bg-background"
-              />
-              <Button type="submit" disabled={shortening} className="cursor-pointer">
-                {shortening ? t("dashboard.shorteningBtn") : t("dashboard.shortenBtn")}
-              </Button>
-            </div>
-          </form>
+      <PermissionGuard permission="urls.create">
+        <Card className="border-primary/30 bg-primary/5">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <SparklesIcon className="size-5 text-primary" />
+              {t("dashboard.quickShorten")}
+            </CardTitle>
+            <CardDescription>{t("dashboard.quickShortenDesc")}</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleQuickShorten} className="space-y-4">
+              <div className="flex flex-col sm:flex-row gap-3">
+                <Input
+                  type="url"
+                  aria-label={t("dashboard.originalUrl")}
+                  placeholder={t("dashboard.originalUrlPlaceholder")}
+                  value={originalUrl}
+                  onChange={(e) => setOriginalUrl(e.target.value)}
+                  required
+                  className="flex-1 bg-background"
+                />
+                <Input
+                  type="text"
+                  aria-label="Custom alias"
+                  autoComplete="off"
+                  spellCheck={false}
+                  placeholder={t("dashboard.customCodePlaceholder")}
+                  value={customCode}
+                  onChange={(e) => setCustomCode(e.target.value)}
+                  className="sm:w-56 bg-background"
+                />
+                <Button type="submit" disabled={shortening} className="cursor-pointer">
+                  {shortening ? t("dashboard.shorteningBtn") : t("dashboard.shortenBtn")}
+                </Button>
+              </div>
+            </form>
 
-          {/* Created URL Result Banner */}
-          {createdUrl && (
-            <div className="mt-4 p-4 rounded-lg bg-background border border-border/80 flex flex-col sm:flex-row items-center justify-between gap-3 animate-in fade-in">
-              <div className="flex items-center gap-3 min-w-0">
-                <Badge variant="secondary" className="bg-primary/10 text-primary font-mono shrink-0">
-                  {createdUrl.short_code}
-                </Badge>
-                <a
-                  href={createdUrl.short_url}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="font-medium text-primary hover:underline text-sm truncate"
-                >
-                  {createdUrl.short_url}
-                </a>
+            {/* Created URL Result Banner */}
+            {createdUrl && (
+              <div className="mt-4 p-4 rounded-lg bg-background border border-border/80 flex flex-col sm:flex-row items-center justify-between gap-3 animate-in fade-in">
+                <div className="flex items-center gap-3 min-w-0">
+                  <Badge variant="secondary" className="bg-primary/10 text-primary font-mono shrink-0">
+                    {createdUrl.short_code}
+                  </Badge>
+                  <a
+                    href={createdUrl.short_url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="font-medium text-primary hover:underline text-sm truncate"
+                  >
+                    {createdUrl.short_url}
+                  </a>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <Button size="sm" variant="outline" onClick={() => handleCopy(createdUrl.short_url)}>
+                    {copied ? <CheckIcon className="size-4 text-emerald-500 mr-1" /> : <CopyIcon className="size-4 mr-1" />}
+                    {copied ? t("common.copied") : t("common.copy")}
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setQrModal({ isOpen: true, url: createdUrl.short_url, code: createdUrl.short_code })}
+                  >
+                    <QrCodeIcon className="size-4 mr-1" />
+                    {t("common.qrCode")}
+                  </Button>
+                </div>
               </div>
-              <div className="flex items-center gap-2 shrink-0">
-                <Button size="sm" variant="outline" onClick={() => handleCopy(createdUrl.short_url)}>
-                  {copied ? <CheckIcon className="size-4 text-emerald-500 mr-1" /> : <CopyIcon className="size-4 mr-1" />}
-                  {copied ? t("common.copied") : t("common.copy")}
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => setQrModal({ isOpen: true, url: createdUrl.short_url, code: createdUrl.short_code })}
-                >
-                  <QrCodeIcon className="size-4 mr-1" />
-                  {t("common.qrCode")}
-                </Button>
-              </div>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+            )}
+          </CardContent>
+        </Card>
+      </PermissionGuard>
 
       {/* Recent URLs Section */}
       <Card>

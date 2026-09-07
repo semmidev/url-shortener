@@ -8,6 +8,7 @@ package db
 import (
 	"context"
 
+	"github.com/jackc/pgx/v5/pgtype"
 	"uuid"
 )
 
@@ -27,34 +28,6 @@ func (q *Queries) AddRolePermission(ctx context.Context, arg AddRolePermissionPa
 	return err
 }
 
-const checkUserPermission = `-- name: CheckUserPermission :one
-SELECT EXISTS (
-    SELECT 1
-    FROM users u
-    LEFT JOIN roles r ON u.role = r.name
-    LEFT JOIN role_permissions rp ON r.id = rp.role_id
-    WHERE u.id = $1 AND (
-        u.role = 'superadmin' OR
-        u.role = 'admin' OR
-        r.name = 'superadmin' OR
-        r.name = 'admin' OR
-        rp.permission_code = $2
-    )
-) AS has_permission
-`
-
-type CheckUserPermissionParams struct {
-	ID             uuid.UUID `json:"id"`
-	PermissionCode string    `json:"permission_code"`
-}
-
-func (q *Queries) CheckUserPermission(ctx context.Context, arg CheckUserPermissionParams) (bool, error) {
-	row := q.db.QueryRow(ctx, checkUserPermission, arg.ID, arg.PermissionCode)
-	var has_permission bool
-	err := row.Scan(&has_permission)
-	return has_permission, err
-}
-
 const clearRolePermissions = `-- name: ClearRolePermissions :exec
 DELETE FROM role_permissions
 WHERE role_id = $1
@@ -66,22 +39,31 @@ func (q *Queries) ClearRolePermissions(ctx context.Context, roleID uuid.UUID) er
 }
 
 const createRole = `-- name: CreateRole :one
-INSERT INTO roles (name, display_name, description, is_system)
-VALUES ($1, $2, $3, false)
-RETURNING id, name, display_name, description, is_system, created_at, updated_at
+INSERT INTO roles (tenant_id, name, display_name, description, is_system)
+VALUES ($1, $2, $3, $4, $5)
+RETURNING id, tenant_id, name, display_name, description, is_system, created_at, updated_at
 `
 
 type CreateRoleParams struct {
-	Name        string `json:"name"`
-	DisplayName string `json:"display_name"`
-	Description string `json:"description"`
+	TenantID    pgtype.UUID `json:"tenant_id"`
+	Name        string      `json:"name"`
+	DisplayName string      `json:"display_name"`
+	Description string      `json:"description"`
+	IsSystem    bool        `json:"is_system"`
 }
 
 func (q *Queries) CreateRole(ctx context.Context, arg CreateRoleParams) (Role, error) {
-	row := q.db.QueryRow(ctx, createRole, arg.Name, arg.DisplayName, arg.Description)
+	row := q.db.QueryRow(ctx, createRole,
+		arg.TenantID,
+		arg.Name,
+		arg.DisplayName,
+		arg.Description,
+		arg.IsSystem,
+	)
 	var i Role
 	err := row.Scan(
 		&i.ID,
+		&i.TenantID,
 		&i.Name,
 		&i.DisplayName,
 		&i.Description,
@@ -103,7 +85,7 @@ func (q *Queries) DeleteRole(ctx context.Context, id uuid.UUID) error {
 }
 
 const getRoleByID = `-- name: GetRoleByID :one
-SELECT id, name, display_name, description, is_system, created_at, updated_at
+SELECT id, tenant_id, name, display_name, description, is_system, created_at, updated_at
 FROM roles
 WHERE id = $1
 `
@@ -113,6 +95,7 @@ func (q *Queries) GetRoleByID(ctx context.Context, id uuid.UUID) (Role, error) {
 	var i Role
 	err := row.Scan(
 		&i.ID,
+		&i.TenantID,
 		&i.Name,
 		&i.DisplayName,
 		&i.Description,
@@ -124,9 +107,9 @@ func (q *Queries) GetRoleByID(ctx context.Context, id uuid.UUID) (Role, error) {
 }
 
 const getRoleByName = `-- name: GetRoleByName :one
-SELECT id, name, display_name, description, is_system, created_at, updated_at
+SELECT id, tenant_id, name, display_name, description, is_system, created_at, updated_at
 FROM roles
-WHERE name = $1
+WHERE name = $1 LIMIT 1
 `
 
 func (q *Queries) GetRoleByName(ctx context.Context, name string) (Role, error) {
@@ -134,6 +117,7 @@ func (q *Queries) GetRoleByName(ctx context.Context, name string) (Role, error) 
 	var i Role
 	err := row.Scan(
 		&i.ID,
+		&i.TenantID,
 		&i.Name,
 		&i.DisplayName,
 		&i.Description,
@@ -171,16 +155,49 @@ func (q *Queries) GetRolePermissions(ctx context.Context, roleID uuid.UUID) ([]s
 	return items, nil
 }
 
-const getUserRolePermissions = `-- name: GetUserRolePermissions :many
+const getTenantRoleByName = `-- name: GetTenantRoleByName :one
+SELECT id, tenant_id, name, display_name, description, is_system, created_at, updated_at
+FROM roles
+WHERE name = $1 AND (tenant_id = $2 OR tenant_id IS NULL)
+ORDER BY tenant_id DESC LIMIT 1
+`
+
+type GetTenantRoleByNameParams struct {
+	Name     string      `json:"name"`
+	TenantID pgtype.UUID `json:"tenant_id"`
+}
+
+func (q *Queries) GetTenantRoleByName(ctx context.Context, arg GetTenantRoleByNameParams) (Role, error) {
+	row := q.db.QueryRow(ctx, getTenantRoleByName, arg.Name, arg.TenantID)
+	var i Role
+	err := row.Scan(
+		&i.ID,
+		&i.TenantID,
+		&i.Name,
+		&i.DisplayName,
+		&i.Description,
+		&i.IsSystem,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const getUserTenantPermissions = `-- name: GetUserTenantPermissions :many
 SELECT DISTINCT rp.permission_code
 FROM role_permissions rp
 JOIN roles r ON r.id = rp.role_id
-JOIN users u ON u.role = r.name
-WHERE u.id = $1
+JOIN tenant_memberships tm ON tm.role = r.name
+WHERE tm.user_id = $1 AND tm.tenant_id = $2
 `
 
-func (q *Queries) GetUserRolePermissions(ctx context.Context, id uuid.UUID) ([]string, error) {
-	rows, err := q.db.Query(ctx, getUserRolePermissions, id)
+type GetUserTenantPermissionsParams struct {
+	UserID   uuid.UUID `json:"user_id"`
+	TenantID uuid.UUID `json:"tenant_id"`
+}
+
+func (q *Queries) GetUserTenantPermissions(ctx context.Context, arg GetUserTenantPermissionsParams) ([]string, error) {
+	rows, err := q.db.Query(ctx, getUserTenantPermissions, arg.UserID, arg.TenantID)
 	if err != nil {
 		return nil, err
 	}
@@ -200,7 +217,7 @@ func (q *Queries) GetUserRolePermissions(ctx context.Context, id uuid.UUID) ([]s
 }
 
 const listRoles = `-- name: ListRoles :many
-SELECT id, name, display_name, description, is_system, created_at, updated_at
+SELECT id, tenant_id, name, display_name, description, is_system, created_at, updated_at
 FROM roles
 ORDER BY is_system DESC, name ASC
 `
@@ -216,6 +233,79 @@ func (q *Queries) ListRoles(ctx context.Context) ([]Role, error) {
 		var i Role
 		if err := rows.Scan(
 			&i.ID,
+			&i.TenantID,
+			&i.Name,
+			&i.DisplayName,
+			&i.Description,
+			&i.IsSystem,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listSystemRoles = `-- name: ListSystemRoles :many
+SELECT id, tenant_id, name, display_name, description, is_system, created_at, updated_at
+FROM roles
+WHERE tenant_id IS NULL
+ORDER BY is_system DESC, name ASC
+`
+
+func (q *Queries) ListSystemRoles(ctx context.Context) ([]Role, error) {
+	rows, err := q.db.Query(ctx, listSystemRoles)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Role{}
+	for rows.Next() {
+		var i Role
+		if err := rows.Scan(
+			&i.ID,
+			&i.TenantID,
+			&i.Name,
+			&i.DisplayName,
+			&i.Description,
+			&i.IsSystem,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listTenantRoles = `-- name: ListTenantRoles :many
+SELECT id, tenant_id, name, display_name, description, is_system, created_at, updated_at
+FROM roles
+WHERE tenant_id = $1 OR tenant_id IS NULL
+ORDER BY is_system DESC, name ASC
+`
+
+func (q *Queries) ListTenantRoles(ctx context.Context, tenantID pgtype.UUID) ([]Role, error) {
+	rows, err := q.db.Query(ctx, listTenantRoles, tenantID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Role{}
+	for rows.Next() {
+		var i Role
+		if err := rows.Scan(
+			&i.ID,
+			&i.TenantID,
 			&i.Name,
 			&i.DisplayName,
 			&i.Description,
@@ -237,7 +327,7 @@ const updateRole = `-- name: UpdateRole :one
 UPDATE roles
 SET display_name = $2, description = $3, updated_at = NOW()
 WHERE id = $1 AND is_system = false
-RETURNING id, name, display_name, description, is_system, created_at, updated_at
+RETURNING id, tenant_id, name, display_name, description, is_system, created_at, updated_at
 `
 
 type UpdateRoleParams struct {
@@ -251,6 +341,7 @@ func (q *Queries) UpdateRole(ctx context.Context, arg UpdateRoleParams) (Role, e
 	var i Role
 	err := row.Scan(
 		&i.ID,
+		&i.TenantID,
 		&i.Name,
 		&i.DisplayName,
 		&i.Description,

@@ -51,4 +51,5 @@ export function clearTokens() {
   localStorage.removeItem(AUTH_FLAG_KEY);
   localStorage.removeItem(ACCESS_TOKEN_KEY);
   localStorage.removeItem(REFRESH_TOKEN_KEY);
+  localStorage.removeItem('active_tenant_id');
 }

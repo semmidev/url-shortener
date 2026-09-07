@@ -92,8 +92,9 @@ type GetURLByIDRequest struct {
 }
 
 type ListUserShortURLsRequest struct {
-	UserID uuid.UUID  `json:"-"`
-	Filter web.Filter `json:"filter"`
+	UserID   uuid.UUID  `json:"-"`
+	Filter   web.Filter `json:"filter"`
+	ScopeAll bool       `json:"scope_all"`
 }
 
 type UpdateURLRequest struct {

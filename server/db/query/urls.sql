@@ -1,13 +1,14 @@
 -- name: CreateShortURL :one
 INSERT INTO short_urls (
     user_id,
+    tenant_id,
     short_code,
     original_url,
     title,
     is_active,
     expires_at
 ) VALUES (
-    $1, $2, $3, $4, $5, $6
+    $1, $2, $3, $4, $5, $6, $7
 )
 RETURNING *;
 
@@ -21,7 +22,8 @@ WHERE id = $1 AND deleted_at IS NULL LIMIT 1;
 
 -- name: ListUserShortURLs :many
 SELECT * FROM short_urls
-WHERE user_id = sqlc.arg('user_id')
+WHERE (user_id = sqlc.arg('user_id') OR sqlc.arg('user_id') IS NULL)
+  AND (tenant_id = sqlc.narg('tenant_id')::uuid OR sqlc.narg('tenant_id')::uuid IS NULL)
   AND deleted_at IS NULL
   AND (sqlc.narg('search')::text IS NULL OR (
       title ILIKE '%' || sqlc.narg('search')::text || '%' OR
@@ -44,7 +46,8 @@ LIMIT sqlc.arg('limit_val') OFFSET sqlc.arg('offset_val');
 
 -- name: CountUserShortURLs :one
 SELECT COUNT(*) FROM short_urls
-WHERE user_id = sqlc.arg('user_id')
+WHERE (user_id = sqlc.arg('user_id') OR sqlc.arg('user_id') IS NULL)
+  AND (tenant_id = sqlc.narg('tenant_id')::uuid OR sqlc.narg('tenant_id')::uuid IS NULL)
   AND deleted_at IS NULL
   AND (sqlc.narg('search')::text IS NULL OR (
       title ILIKE '%' || sqlc.narg('search')::text || '%' OR

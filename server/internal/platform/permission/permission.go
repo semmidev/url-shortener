@@ -29,6 +29,13 @@ const (
 	AuditRead              = "audit.read"
 	SystemConfigRead       = "system.config.read"
 	SystemConfigUpdate     = "system.config.update"
+
+	// Multi-Tenant Governance Permissions
+	TenantsRead          = "tenants.read"
+	TenantsCreate        = "tenants.create"
+	TenantsUpdate        = "tenants.update"
+	TenantsDelete        = "tenants.delete"
+	TenantsMembersManage = "tenants.members.manage"
 )
 
 type Definition struct {
@@ -151,6 +158,36 @@ var AllPermissions = []Definition{
 		Action:      "update_config",
 		Description: "Modify system configurations and feature flags",
 	},
+	{
+		Code:        TenantsRead,
+		Module:      "tenants",
+		Action:      "read",
+		Description: "View platform tenants list and details",
+	},
+	{
+		Code:        TenantsCreate,
+		Module:      "tenants",
+		Action:      "create",
+		Description: "Create new platform tenants",
+	},
+	{
+		Code:        TenantsUpdate,
+		Module:      "tenants",
+		Action:      "update",
+		Description: "Update tenant configurations",
+	},
+	{
+		Code:        TenantsDelete,
+		Module:      "tenants",
+		Action:      "delete",
+		Description: "Delete platform tenants",
+	},
+	{
+		Code:        TenantsMembersManage,
+		Module:      "tenants",
+		Action:      "manage_members",
+		Description: "Manage tenant membership and roles",
+	},
 }
 
 // UserDefaultPermissions are permissions automatically assigned to standard regular users
@@ -162,10 +199,9 @@ var UserDefaultPermissions = []string{
 	AnalyticsRead,
 }
 
-// SyncPermissions ensures system roles hold their designated permissions.
+// SyncPermissions ensures system default tenant roles hold their designated permissions.
 func SyncPermissions(ctx context.Context, q db.Querier) error {
-	// Superadmin and Admin get ALL permissions
-	for _, roleName := range []string{"superadmin", "admin"} {
+	for _, roleName := range []string{"owner", "admin"} {
 		role, err := q.GetRoleByName(ctx, roleName)
 		if err != nil {
 			continue
@@ -178,12 +214,11 @@ func SyncPermissions(ctx context.Context, q db.Querier) error {
 		}
 	}
 
-	// Regular user role gets user default permissions
-	userRole, err := q.GetRoleByName(ctx, "user")
+	memberRole, err := q.GetRoleByName(ctx, "member")
 	if err == nil {
 		for _, code := range UserDefaultPermissions {
 			_ = q.AddRolePermission(ctx, db.AddRolePermissionParams{
-				RoleID:         userRole.ID,
+				RoleID:         memberRole.ID,
 				PermissionCode: code,
 			})
 		}

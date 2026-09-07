@@ -75,7 +75,7 @@ func (q *Queries) GetSystemStats(ctx context.Context) (GetSystemStatsRow, error)
 }
 
 const listAllUsers = `-- name: ListAllUsers :many
-SELECT id, email, full_name, role, is_suspended, created_at, updated_at
+SELECT id, email, full_name, is_suspended, created_at, updated_at
 FROM users
 WHERE ($1::text IS NULL OR (
     email ILIKE '%' || $1::text || '%' OR
@@ -95,7 +95,6 @@ type ListAllUsersRow struct {
 	ID          uuid.UUID `json:"id"`
 	Email       string    `json:"email"`
 	FullName    string    `json:"full_name"`
-	Role        string    `json:"role"`
 	IsSuspended bool      `json:"is_suspended"`
 	CreatedAt   time.Time `json:"created_at"`
 	UpdatedAt   time.Time `json:"updated_at"`
@@ -114,7 +113,6 @@ func (q *Queries) ListAllUsers(ctx context.Context, arg ListAllUsersParams) ([]L
 			&i.ID,
 			&i.Email,
 			&i.FullName,
-			&i.Role,
 			&i.IsSuspended,
 			&i.CreatedAt,
 			&i.UpdatedAt,
@@ -232,7 +230,7 @@ const setUserSuspended = `-- name: SetUserSuspended :one
 UPDATE users
 SET is_suspended = $2, updated_at = NOW()
 WHERE id = $1
-RETURNING id, email, full_name, role, is_suspended, created_at, updated_at
+RETURNING id, email, full_name, is_suspended, created_at, updated_at
 `
 
 type SetUserSuspendedParams struct {
@@ -244,7 +242,6 @@ type SetUserSuspendedRow struct {
 	ID          uuid.UUID `json:"id"`
 	Email       string    `json:"email"`
 	FullName    string    `json:"full_name"`
-	Role        string    `json:"role"`
 	IsSuspended bool      `json:"is_suspended"`
 	CreatedAt   time.Time `json:"created_at"`
 	UpdatedAt   time.Time `json:"updated_at"`
@@ -257,44 +254,6 @@ func (q *Queries) SetUserSuspended(ctx context.Context, arg SetUserSuspendedPara
 		&i.ID,
 		&i.Email,
 		&i.FullName,
-		&i.Role,
-		&i.IsSuspended,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-	)
-	return i, err
-}
-
-const updateUserRole = `-- name: UpdateUserRole :one
-UPDATE users
-SET role = $2, updated_at = NOW()
-WHERE id = $1
-RETURNING id, email, full_name, role, is_suspended, created_at, updated_at
-`
-
-type UpdateUserRoleParams struct {
-	ID   uuid.UUID `json:"id"`
-	Role string    `json:"role"`
-}
-
-type UpdateUserRoleRow struct {
-	ID          uuid.UUID `json:"id"`
-	Email       string    `json:"email"`
-	FullName    string    `json:"full_name"`
-	Role        string    `json:"role"`
-	IsSuspended bool      `json:"is_suspended"`
-	CreatedAt   time.Time `json:"created_at"`
-	UpdatedAt   time.Time `json:"updated_at"`
-}
-
-func (q *Queries) UpdateUserRole(ctx context.Context, arg UpdateUserRoleParams) (UpdateUserRoleRow, error) {
-	row := q.db.QueryRow(ctx, updateUserRole, arg.ID, arg.Role)
-	var i UpdateUserRoleRow
-	err := row.Scan(
-		&i.ID,
-		&i.Email,
-		&i.FullName,
-		&i.Role,
 		&i.IsSuspended,
 		&i.CreatedAt,
 		&i.UpdatedAt,

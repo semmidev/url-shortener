@@ -19,7 +19,21 @@ const (
 	userIDKey ctxKey = iota + 1
 	userRoleKey
 	sessionIDKey
+	tenantIDKey
 )
+
+// WithTenantID adds active tenant ID to context and enriches wide event context.
+func WithTenantID(ctx context.Context, tenantID uuid.UUID) context.Context {
+	ctx = context.WithValue(ctx, tenantIDKey, tenantID)
+	logger.Enrich(ctx, "auth.tenant_id", tenantID.String())
+	return ctx
+}
+
+// TenantID retrieves tenant ID from context.
+func TenantID(ctx context.Context) (uuid.UUID, bool) {
+	id, ok := ctx.Value(tenantIDKey).(uuid.UUID)
+	return id, ok
+}
 
 type Response struct {
 	Success bool              `json:"success"`

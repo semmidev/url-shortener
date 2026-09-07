@@ -40,6 +40,8 @@ import CreateURLModal from '@/features/urls/components/CreateURLModal';
 import QRCodeModal from '@/features/urls/components/QRCodeModal';
 import PreviewModal from '@/features/urls/components/PreviewModal';
 import DeleteConfirmModal from '@/features/urls/components/DeleteConfirmModal';
+import PermissionGuard from '@/components/PermissionGuard';
+import { usePermission } from '@/hooks/usePermission';
 
 import { getShortUrls, updateShortUrl, deleteShortUrl, previewShortUrl } from '@/features/urls/api';
 import { useDebounce } from '@/hooks/use-debounce';
@@ -60,6 +62,7 @@ function formatDate(dateStr) {
 
 export default function URLs() {
   const { t } = useI18n();
+  const { hasPermission } = usePermission();
   const navigate = useNavigate();
   const [urls, setUrls] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -364,13 +367,15 @@ export default function URLs() {
                 <DropdownMenuSeparator />
                 {item.is_active && (
                   <>
-                    <DropdownMenuItem
-                      onClick={() => navigate(`/dashboard/urls/${item.id}`)}
-                      className="cursor-pointer text-xs"
-                    >
-                      <BarChart2Icon className="size-4 mr-2 text-muted-foreground" />
-                      View Analytics
-                    </DropdownMenuItem>
+                    <PermissionGuard permission="analytics.read">
+                      <DropdownMenuItem
+                        onClick={() => navigate(`/dashboard/urls/${item.id}`)}
+                        className="cursor-pointer text-xs"
+                      >
+                        <BarChart2Icon className="size-4 mr-2 text-muted-foreground" />
+                        View Analytics
+                      </DropdownMenuItem>
+                    </PermissionGuard>
                     <DropdownMenuItem
                       onClick={() => handleCopy(item.short_url, item.id)}
                       className="cursor-pointer text-xs"
@@ -396,31 +401,64 @@ export default function URLs() {
                       <EyeIcon className="size-4 mr-2 text-muted-foreground" />
                       Safety Preview
                     </DropdownMenuItem>
-                    <DropdownMenuSeparator />
                   </>
                 )}
-                <DropdownMenuItem
-                  onClick={() => handleToggleActive(item)}
-                  disabled={togglingId === item.id}
-                  className="cursor-pointer text-xs"
-                >
-                  <PowerIcon className="size-4 mr-2 text-muted-foreground" />
-                  {item.is_active ? 'Deactivate Link' : 'Activate Link'}
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  onClick={() => confirmDelete(item.id)}
-                  className="cursor-pointer text-xs text-destructive focus:text-destructive"
-                >
-                  <Trash2Icon className="size-4 mr-2" />
-                  Delete Link
-                </DropdownMenuItem>
+                <PermissionGuard permission="urls.update">
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onClick={() => handleToggleActive(item)}
+                    disabled={togglingId === item.id}
+                    className="cursor-pointer text-xs"
+                  >
+                    <PowerIcon className="size-4 mr-2 text-muted-foreground" />
+                    {item.is_active ? 'Deactivate Link' : 'Activate Link'}
+                  </DropdownMenuItem>
+                </PermissionGuard>
+                <PermissionGuard permission="urls.delete">
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onClick={() => confirmDelete(item.id)}
+                    className="cursor-pointer text-xs text-destructive focus:text-destructive"
+                  >
+                    <Trash2Icon className="size-4 mr-2" />
+                    Delete Link
+                  </DropdownMenuItem>
+                </PermissionGuard>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
         );
       },
     },
+  ];
+
+  const bulkActions = [
+    ...(hasPermission('urls.update')
+      ? [
+          {
+            label: 'Deactivate Selected',
+            icon: PowerIcon,
+            variant: 'outline',
+            onClick: handleBulkDeactivate,
+          },
+          {
+            label: 'Activate Selected',
+            icon: PowerIcon,
+            variant: 'outline',
+            onClick: handleBulkActivate,
+          },
+        ]
+      : []),
+    ...(hasPermission('urls.delete')
+      ? [
+          {
+            label: 'Delete Selected',
+            icon: Trash2Icon,
+            variant: 'destructive',
+            onClick: handleBulkDelete,
+          },
+        ]
+      : []),
   ];
 
   return (
@@ -431,10 +469,12 @@ export default function URLs() {
         subtitle={t("urls.subtitle")}
         fallbackIcon={Link2Icon}
       >
-        <Button onClick={() => setIsCreateOpen(true)} className="cursor-pointer">
-          <PlusIcon className="size-4 shrink-0" />
-          <span>{t("dashboard.createUrlBtn")}</span>
-        </Button>
+        <PermissionGuard permission="urls.create">
+          <Button onClick={() => setIsCreateOpen(true)} className="cursor-pointer">
+            <PlusIcon className="size-4 shrink-0" />
+            <span>{t("dashboard.createUrlBtn")}</span>
+          </Button>
+        </PermissionGuard>
       </DynamicPageHeader>
 
       {/* Unified DataTable */}
@@ -471,26 +511,7 @@ export default function URLs() {
         sortDirection={sortDirection}
         onSortChange={handleSort}
         onRefresh={fetchUrls}
-        bulkActions={[
-          {
-            label: 'Deactivate Selected',
-            icon: PowerIcon,
-            variant: 'outline',
-            onClick: handleBulkDeactivate,
-          },
-          {
-            label: 'Activate Selected',
-            icon: PowerIcon,
-            variant: 'outline',
-            onClick: handleBulkActivate,
-          },
-          {
-            label: 'Delete Selected',
-            icon: Trash2Icon,
-            variant: 'destructive',
-            onClick: handleBulkDelete,
-          },
-        ]}
+        bulkActions={bulkActions}
       />
 
       {/* Modals */}

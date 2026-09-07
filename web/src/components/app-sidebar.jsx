@@ -2,6 +2,7 @@ import * as React from "react"
 import { useNavigate } from "react-router-dom"
 import { useAuthStore } from "@/features/auth/store"
 import { usePermission } from "@/hooks/usePermission"
+import { useTenant } from "@/context/TenantContext"
 import { NavMain } from "@/components/nav-main"
 import { NavUser } from "@/components/nav-user"
 import { useI18n } from "@/context/I18nContext"
@@ -27,7 +28,7 @@ function menuToNavItem(menu, language) {
   const icon = resolveIcon(menu.icon, { className: "size-4" })
   const subIcon = resolveIcon(menu.icon, { className: "size-3.5" })
 
-  const isExactRoute = menu.path === "/dashboard" || menu.path === "/dashboard/admin"
+  const isExactRoute = menu.path === "/dashboard"
   const title = language === 'id'
     ? (menu.title_id || menu.title)
     : (menu.title_en || menu.title)
@@ -53,7 +54,7 @@ function menuToNavItem(menu, language) {
           url: child.path,
           icon: resolveIcon(child.icon, { className: "size-3.5" }) || subIcon,
           badge: child.badge_text || undefined,
-          exact: child.path === "/dashboard" || child.path === "/dashboard/admin",
+          exact: child.path === "/dashboard",
         }
       }),
     }
@@ -66,6 +67,7 @@ export function AppSidebar({ ...props }) {
   const user = useAuthStore((s) => s.user)
   const navigate = useNavigate()
   const { menus, isLoaded } = usePermission()
+  const { tenants, activeTenant, selectTenant, openJoinModal, openCreateModal } = useTenant()
   const { language, t } = useI18n()
 
   const sidebarUser = {
@@ -73,7 +75,6 @@ export function AppSidebar({ ...props }) {
     email: user?.email || "",
     avatar: user?.avatar_url || "",
     avatar_url: user?.avatar_url || "",
-    role: user?.role,
   }
 
   // Organize menus into Group Sections (is_group = true) and standalone items
@@ -94,21 +95,18 @@ export function AppSidebar({ ...props }) {
 
   return (
     <Sidebar style={{ viewTransitionName: 'app-sidebar' }} collapsible="icon" {...props}>
-      <SidebarHeader className="h-(--header-height) justify-center border-b border-border/40 px-2 shrink-0 group-data-[collapsible=icon]:px-0! group-data-[collapsible=icon]:justify-center!">
+      <SidebarHeader className="border-b border-border/40 p-3 shrink-0 group-data-[collapsible=icon]:px-0! group-data-[collapsible=icon]:justify-center!">
         <SidebarMenu className="group-data-[collapsible=icon]:items-center">
           <SidebarMenuItem>
-            <SidebarMenuButton
-              size="lg"
-              className="group-data-[collapsible=icon]:size-8! group-data-[collapsible=icon]:p-0! group-data-[collapsible=icon]:justify-center! hover:bg-sidebar-accent/50 transition-colors cursor-pointer"
-              render={<button onClick={() => navigate("/dashboard")} />}
-            >
-              <div className="flex aspect-square size-8 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground font-bold transition-transform duration-200 group-hover/menu-button:scale-105 shadow-xs">
+            <div className="flex items-center gap-2.5 group-data-[collapsible=icon]:justify-center">
+              <div className="flex aspect-square size-8 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground font-bold shadow-xs">
                 <ZapIcon className="size-4 shrink-0" />
               </div>
-              <div className="grid flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden">
-                <span className="truncate font-bold text-foreground tracking-tight">URL Shortener</span>
+              <div className="grid flex-1 text-left text-xs leading-tight group-data-[collapsible=icon]:hidden">
+                <span className="font-bold text-foreground text-sm tracking-tight truncate">URL Shortener</span>
+                <span className="text-[11px] text-muted-foreground truncate">{activeTenant?.name || "Belum ada Workspace"}</span>
               </div>
-            </SidebarMenuButton>
+            </div>
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarHeader>

@@ -1,5 +1,5 @@
 -- name: ListAllUsers :many
-SELECT id, email, full_name, role, is_suspended, created_at, updated_at
+SELECT id, email, full_name, is_suspended, created_at, updated_at
 FROM users
 WHERE (sqlc.narg('search')::text IS NULL OR (
     email ILIKE '%' || sqlc.narg('search')::text || '%' OR
@@ -19,13 +19,7 @@ WHERE (sqlc.narg('search')::text IS NULL OR (
 UPDATE users
 SET is_suspended = $2, updated_at = NOW()
 WHERE id = $1
-RETURNING id, email, full_name, role, is_suspended, created_at, updated_at;
-
--- name: UpdateUserRole :one
-UPDATE users
-SET role = $2, updated_at = NOW()
-WHERE id = $1
-RETURNING id, email, full_name, role, is_suspended, created_at, updated_at;
+RETURNING id, email, full_name, is_suspended, created_at, updated_at;
 
 -- name: GetSystemStats :one
 SELECT

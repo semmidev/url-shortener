@@ -2,10 +2,9 @@
 INSERT INTO users (
     email,
     password_hash,
-    full_name,
-    role
+    full_name
 ) VALUES (
-    $1, $2, $3, $4
+    $1, $2, $3
 )
 RETURNING *;
 
@@ -26,10 +25,9 @@ INSERT INTO users (
     email,
     google_id,
     avatar_url,
-    full_name,
-    role
+    full_name
 ) VALUES (
-    $1, $2, $3, $4, $5
+    $1, $2, $3, $4
 )
 ON CONFLICT (email) DO UPDATE SET
     google_id = EXCLUDED.google_id,
@@ -55,4 +53,3 @@ SET
     updated_at = NOW()
 WHERE id = $1
 RETURNING *;
-

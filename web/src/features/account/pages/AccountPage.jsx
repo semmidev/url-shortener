@@ -201,9 +201,9 @@ export default function Account() {
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <Badge variant={user.role === 'admin' ? 'default' : 'secondary'} className="px-3 py-1 gap-1 uppercase tracking-wide text-xs">
-                {user.role === 'admin' ? <ShieldCheckIcon className="size-3.5" /> : <BadgeCheckIcon className="size-3.5" />}
-                {user.role}
+              <Badge variant="secondary" className="px-3 py-1 gap-1 uppercase tracking-wide text-xs">
+                <BadgeCheckIcon className="size-3.5 text-emerald-500" />
+                Active Account
               </Badge>
             </div>
           </div>

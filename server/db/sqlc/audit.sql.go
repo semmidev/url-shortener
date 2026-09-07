@@ -7,8 +7,10 @@ package db
 
 import (
 	"context"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
+	"uuid"
 )
 
 const countAuditLogs = `-- name: CountAuditLogs :one
@@ -45,7 +47,20 @@ type CreateAuditLogParams struct {
 	UserAgent  string      `json:"user_agent"`
 }
 
-func (q *Queries) CreateAuditLog(ctx context.Context, arg CreateAuditLogParams) (AuditLog, error) {
+type CreateAuditLogRow struct {
+	ID         uuid.UUID   `json:"id"`
+	ActorID    pgtype.UUID `json:"actor_id"`
+	ActorEmail string      `json:"actor_email"`
+	Action     string      `json:"action"`
+	Resource   string      `json:"resource"`
+	ResourceID string      `json:"resource_id"`
+	Payload    string      `json:"payload"`
+	IpAddress  string      `json:"ip_address"`
+	UserAgent  string      `json:"user_agent"`
+	CreatedAt  time.Time   `json:"created_at"`
+}
+
+func (q *Queries) CreateAuditLog(ctx context.Context, arg CreateAuditLogParams) (CreateAuditLogRow, error) {
 	row := q.db.QueryRow(ctx, createAuditLog,
 		arg.ActorID,
 		arg.ActorEmail,
@@ -56,7 +71,7 @@ func (q *Queries) CreateAuditLog(ctx context.Context, arg CreateAuditLogParams) 
 		arg.IpAddress,
 		arg.UserAgent,
 	)
-	var i AuditLog
+	var i CreateAuditLogRow
 	err := row.Scan(
 		&i.ID,
 		&i.ActorID,
@@ -79,15 +94,28 @@ ORDER BY created_at DESC
 LIMIT $1
 `
 
-func (q *Queries) GetRecentAuditLogs(ctx context.Context, limit int32) ([]AuditLog, error) {
+type GetRecentAuditLogsRow struct {
+	ID         uuid.UUID   `json:"id"`
+	ActorID    pgtype.UUID `json:"actor_id"`
+	ActorEmail string      `json:"actor_email"`
+	Action     string      `json:"action"`
+	Resource   string      `json:"resource"`
+	ResourceID string      `json:"resource_id"`
+	Payload    string      `json:"payload"`
+	IpAddress  string      `json:"ip_address"`
+	UserAgent  string      `json:"user_agent"`
+	CreatedAt  time.Time   `json:"created_at"`
+}
+
+func (q *Queries) GetRecentAuditLogs(ctx context.Context, limit int32) ([]GetRecentAuditLogsRow, error) {
 	rows, err := q.db.Query(ctx, getRecentAuditLogs, limit)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []AuditLog{}
+	items := []GetRecentAuditLogsRow{}
 	for rows.Next() {
-		var i AuditLog
+		var i GetRecentAuditLogsRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.ActorID,
@@ -128,15 +156,28 @@ type ListAuditLogsParams struct {
 	LimitVal  int32       `json:"limit_val"`
 }
 
-func (q *Queries) ListAuditLogs(ctx context.Context, arg ListAuditLogsParams) ([]AuditLog, error) {
+type ListAuditLogsRow struct {
+	ID         uuid.UUID   `json:"id"`
+	ActorID    pgtype.UUID `json:"actor_id"`
+	ActorEmail string      `json:"actor_email"`
+	Action     string      `json:"action"`
+	Resource   string      `json:"resource"`
+	ResourceID string      `json:"resource_id"`
+	Payload    string      `json:"payload"`
+	IpAddress  string      `json:"ip_address"`
+	UserAgent  string      `json:"user_agent"`
+	CreatedAt  time.Time   `json:"created_at"`
+}
+
+func (q *Queries) ListAuditLogs(ctx context.Context, arg ListAuditLogsParams) ([]ListAuditLogsRow, error) {
 	rows, err := q.db.Query(ctx, listAuditLogs, arg.Search, arg.OffsetVal, arg.LimitVal)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []AuditLog{}
+	items := []ListAuditLogsRow{}
 	for rows.Next() {
-		var i AuditLog
+		var i ListAuditLogsRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.ActorID,

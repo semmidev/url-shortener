@@ -16,28 +16,21 @@ const createUser = `-- name: CreateUser :one
 INSERT INTO users (
     email,
     password_hash,
-    full_name,
-    role
+    full_name
 ) VALUES (
-    $1, $2, $3, $4
+    $1, $2, $3
 )
-RETURNING id, email, password_hash, google_id, avatar_url, full_name, role, is_suspended, created_at, updated_at
+RETURNING id, email, password_hash, google_id, avatar_url, full_name, is_suspended, created_at, updated_at
 `
 
 type CreateUserParams struct {
 	Email        string      `json:"email"`
 	PasswordHash pgtype.Text `json:"password_hash"`
 	FullName     string      `json:"full_name"`
-	Role         string      `json:"role"`
 }
 
 func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, error) {
-	row := q.db.QueryRow(ctx, createUser,
-		arg.Email,
-		arg.PasswordHash,
-		arg.FullName,
-		arg.Role,
-	)
+	row := q.db.QueryRow(ctx, createUser, arg.Email, arg.PasswordHash, arg.FullName)
 	var i User
 	err := row.Scan(
 		&i.ID,
@@ -46,7 +39,6 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 		&i.GoogleID,
 		&i.AvatarUrl,
 		&i.FullName,
-		&i.Role,
 		&i.IsSuspended,
 		&i.CreatedAt,
 		&i.UpdatedAt,
@@ -55,7 +47,7 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 }
 
 const getUserByEmail = `-- name: GetUserByEmail :one
-SELECT id, email, password_hash, google_id, avatar_url, full_name, role, is_suspended, created_at, updated_at FROM users
+SELECT id, email, password_hash, google_id, avatar_url, full_name, is_suspended, created_at, updated_at FROM users
 WHERE email = $1 LIMIT 1
 `
 
@@ -69,7 +61,6 @@ func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error
 		&i.GoogleID,
 		&i.AvatarUrl,
 		&i.FullName,
-		&i.Role,
 		&i.IsSuspended,
 		&i.CreatedAt,
 		&i.UpdatedAt,
@@ -78,7 +69,7 @@ func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error
 }
 
 const getUserByGoogleID = `-- name: GetUserByGoogleID :one
-SELECT id, email, password_hash, google_id, avatar_url, full_name, role, is_suspended, created_at, updated_at FROM users
+SELECT id, email, password_hash, google_id, avatar_url, full_name, is_suspended, created_at, updated_at FROM users
 WHERE google_id = $1 LIMIT 1
 `
 
@@ -92,7 +83,6 @@ func (q *Queries) GetUserByGoogleID(ctx context.Context, googleID pgtype.Text) (
 		&i.GoogleID,
 		&i.AvatarUrl,
 		&i.FullName,
-		&i.Role,
 		&i.IsSuspended,
 		&i.CreatedAt,
 		&i.UpdatedAt,
@@ -101,7 +91,7 @@ func (q *Queries) GetUserByGoogleID(ctx context.Context, googleID pgtype.Text) (
 }
 
 const getUserByID = `-- name: GetUserByID :one
-SELECT id, email, password_hash, google_id, avatar_url, full_name, role, is_suspended, created_at, updated_at FROM users
+SELECT id, email, password_hash, google_id, avatar_url, full_name, is_suspended, created_at, updated_at FROM users
 WHERE id = $1 LIMIT 1
 `
 
@@ -115,7 +105,6 @@ func (q *Queries) GetUserByID(ctx context.Context, id uuid.UUID) (User, error) {
 		&i.GoogleID,
 		&i.AvatarUrl,
 		&i.FullName,
-		&i.Role,
 		&i.IsSuspended,
 		&i.CreatedAt,
 		&i.UpdatedAt,
@@ -129,7 +118,7 @@ SET
     google_id = NULL,
     updated_at = NOW()
 WHERE id = $1
-RETURNING id, email, password_hash, google_id, avatar_url, full_name, role, is_suspended, created_at, updated_at
+RETURNING id, email, password_hash, google_id, avatar_url, full_name, is_suspended, created_at, updated_at
 `
 
 func (q *Queries) UnlinkGoogleUser(ctx context.Context, id uuid.UUID) (User, error) {
@@ -142,7 +131,6 @@ func (q *Queries) UnlinkGoogleUser(ctx context.Context, id uuid.UUID) (User, err
 		&i.GoogleID,
 		&i.AvatarUrl,
 		&i.FullName,
-		&i.Role,
 		&i.IsSuspended,
 		&i.CreatedAt,
 		&i.UpdatedAt,
@@ -158,7 +146,7 @@ SET
     avatar_url = COALESCE($4, avatar_url),
     updated_at = NOW()
 WHERE id = $1
-RETURNING id, email, password_hash, google_id, avatar_url, full_name, role, is_suspended, created_at, updated_at
+RETURNING id, email, password_hash, google_id, avatar_url, full_name, is_suspended, created_at, updated_at
 `
 
 type UpdateUserParams struct {
@@ -183,7 +171,6 @@ func (q *Queries) UpdateUser(ctx context.Context, arg UpdateUserParams) (User, e
 		&i.GoogleID,
 		&i.AvatarUrl,
 		&i.FullName,
-		&i.Role,
 		&i.IsSuspended,
 		&i.CreatedAt,
 		&i.UpdatedAt,
@@ -196,17 +183,16 @@ INSERT INTO users (
     email,
     google_id,
     avatar_url,
-    full_name,
-    role
+    full_name
 ) VALUES (
-    $1, $2, $3, $4, $5
+    $1, $2, $3, $4
 )
 ON CONFLICT (email) DO UPDATE SET
     google_id = EXCLUDED.google_id,
     avatar_url = EXCLUDED.avatar_url,
     full_name = EXCLUDED.full_name,
     updated_at = NOW()
-RETURNING id, email, password_hash, google_id, avatar_url, full_name, role, is_suspended, created_at, updated_at
+RETURNING id, email, password_hash, google_id, avatar_url, full_name, is_suspended, created_at, updated_at
 `
 
 type UpsertGoogleUserParams struct {
@@ -214,7 +200,6 @@ type UpsertGoogleUserParams struct {
 	GoogleID  pgtype.Text `json:"google_id"`
 	AvatarUrl string      `json:"avatar_url"`
 	FullName  string      `json:"full_name"`
-	Role      string      `json:"role"`
 }
 
 func (q *Queries) UpsertGoogleUser(ctx context.Context, arg UpsertGoogleUserParams) (User, error) {
@@ -223,7 +208,6 @@ func (q *Queries) UpsertGoogleUser(ctx context.Context, arg UpsertGoogleUserPara
 		arg.GoogleID,
 		arg.AvatarUrl,
 		arg.FullName,
-		arg.Role,
 	)
 	var i User
 	err := row.Scan(
@@ -233,7 +217,6 @@ func (q *Queries) UpsertGoogleUser(ctx context.Context, arg UpsertGoogleUserPara
 		&i.GoogleID,
 		&i.AvatarUrl,
 		&i.FullName,
-		&i.Role,
 		&i.IsSuspended,
 		&i.CreatedAt,
 		&i.UpdatedAt,

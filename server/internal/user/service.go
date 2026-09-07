@@ -19,12 +19,14 @@ import (
 	db "github.com/semmidev/url-shortener/server/db/sqlc"
 	"github.com/semmidev/url-shortener/server/internal/config"
 	"github.com/semmidev/url-shortener/server/internal/platform/apperr"
+	"github.com/semmidev/url-shortener/server/internal/platform/authz"
 	"github.com/semmidev/url-shortener/server/internal/platform/breaker"
 	"github.com/semmidev/url-shortener/server/internal/platform/cache"
 	"github.com/semmidev/url-shortener/server/internal/platform/crypto"
 	"github.com/semmidev/url-shortener/server/internal/platform/logger"
 	"github.com/semmidev/url-shortener/server/internal/platform/retry"
 	"github.com/semmidev/url-shortener/server/internal/platform/token"
+	"github.com/semmidev/url-shortener/server/internal/platform/web"
 )
 
 // emailAttemptEntry tracks failed login attempts for a specific email.
@@ -49,6 +51,7 @@ type Service struct {
 	appLogger     *logger.Logger
 	cache         cache.Cache
 	metrics       MetricsRecorder
+	authorizer    authz.Authorizer
 	googleBreaker *breaker.CircuitBreaker
 	oneTimeCodes  sync.Map // fallback in-memory store
 	emailAttempts sync.Map // fallback in-memory store
@@ -72,6 +75,12 @@ func NewService(store db.Store, tokenMaker *token.JWTMaker, cfg config.Config, a
 func (s *Service) SetMetricsRecorder(m MetricsRecorder) {
 	if s != nil {
 		s.metrics = m
+	}
+}
+
+func (s *Service) SetAuthorizer(a authz.Authorizer) {
+	if s != nil {
+		s.authorizer = a
 	}
 }
 
@@ -166,7 +175,6 @@ func toUserResponse(u db.User) UserResponse {
 		AvatarURL:   u.AvatarUrl,
 		GoogleID:    googleID,
 		HasPassword: hasPassword,
-		Role:        u.Role,
 		CreatedAt:   u.CreatedAt,
 		UpdatedAt:   u.UpdatedAt,
 	}
@@ -200,7 +208,6 @@ func (s *Service) Register(ctx context.Context, req RegisterRequest) (*LoginResp
 			Email:        req.Email,
 			PasswordHash: pgtype.Text{String: hashedPassword, Valid: true},
 			FullName:     req.FullName,
-			Role:         string(RoleUser),
 		})
 		if txErr != nil {
 			return txErr
@@ -414,7 +421,6 @@ func (s *Service) HandleGoogleCallback(ctx context.Context, req HandleGoogleCall
 			GoogleID:  pgtype.Text{String: gUser.ID, Valid: true},
 			AvatarUrl: gUser.Picture,
 			FullName:  gUser.Name,
-			Role:      string(RoleUser),
 		})
 		if txErr != nil {
 			return txErr
@@ -487,7 +493,7 @@ func (s *Service) createSessionAndTokensWithQuerier(ctx context.Context, q db.Qu
 
 	refreshTokenStr, refreshPayload, err := s.tokenMaker.CreateToken(
 		user.ID,
-		user.Role,
+		"",
 		sessionID,
 		s.cfg.RefreshTokenDuration,
 	)
@@ -510,7 +516,7 @@ func (s *Service) createSessionAndTokensWithQuerier(ctx context.Context, q db.Qu
 
 	accessTokenStr, accessPayload, err := s.tokenMaker.CreateToken(
 		user.ID,
-		user.Role,
+		"",
 		sessionID,
 		s.cfg.AccessTokenDuration,
 	)
@@ -519,8 +525,15 @@ func (s *Service) createSessionAndTokensWithQuerier(ctx context.Context, q db.Qu
 	}
 
 	userResp := toUserResponse(user)
-	if perms, err := q.GetUserRolePermissions(ctx, user.ID); err == nil {
-		userResp.Permissions = perms
+	domain := authz.DefaultDomain
+	tenants, err := s.store.ListUserTenants(ctx, user.ID)
+	if err == nil && len(tenants) > 0 {
+		domain = tenants[0].ID.String()
+	}
+	if s.authorizer != nil {
+		if perms, err := s.authorizer.GetPermissionsForUser(ctx, user.ID, domain); err == nil {
+			userResp.Permissions = perms
+		}
 	}
 	if userResp.Permissions == nil {
 		userResp.Permissions = []string{}
@@ -564,7 +577,7 @@ func (s *Service) RefreshToken(ctx context.Context, req RefreshTokenRequest) (*R
 
 	accessTokenStr, accessPayload, err := s.tokenMaker.CreateToken(
 		session.UserID,
-		refreshPayload.Role,
+		"",
 		session.ID,
 		s.cfg.AccessTokenDuration,
 	)
@@ -586,10 +599,21 @@ func (s *Service) GetProfile(ctx context.Context, req GetProfileRequest) (*UserR
 
 	res := toUserResponse(user)
 
-	// Fetch active permission codes for this user (used by FE RBAC context)
-	perms, err := s.store.GetUserRolePermissions(ctx, req.UserID)
-	if err == nil {
-		res.Permissions = perms
+	// Fetch active permission codes for this user in their current tenant domain
+	domain := authz.DefaultDomain
+	if tenantID, ok := web.TenantID(ctx); ok && tenantID != (uuid.UUID{}) {
+		domain = tenantID.String()
+	} else {
+		tenants, err := s.store.ListUserTenants(ctx, req.UserID)
+		if err == nil && len(tenants) > 0 {
+			domain = tenants[0].ID.String()
+		}
+	}
+
+	if s.authorizer != nil {
+		if perms, err := s.authorizer.GetPermissionsForUser(ctx, req.UserID, domain); err == nil {
+			res.Permissions = perms
+		}
 	}
 	if res.Permissions == nil {
 		res.Permissions = []string{}

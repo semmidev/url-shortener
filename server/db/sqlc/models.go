@@ -14,6 +14,7 @@ import (
 type AuditLog struct {
 	ID         uuid.UUID   `json:"id"`
 	ActorID    pgtype.UUID `json:"actor_id"`
+	TenantID   pgtype.UUID `json:"tenant_id"`
 	ActorEmail string      `json:"actor_email"`
 	Action     string      `json:"action"`
 	Resource   string      `json:"resource"`
@@ -36,13 +37,14 @@ type OutboxEvent struct {
 }
 
 type Role struct {
-	ID          uuid.UUID `json:"id"`
-	Name        string    `json:"name"`
-	DisplayName string    `json:"display_name"`
-	Description string    `json:"description"`
-	IsSystem    bool      `json:"is_system"`
-	CreatedAt   time.Time `json:"created_at"`
-	UpdatedAt   time.Time `json:"updated_at"`
+	ID          uuid.UUID   `json:"id"`
+	TenantID    pgtype.UUID `json:"tenant_id"`
+	Name        string      `json:"name"`
+	DisplayName string      `json:"display_name"`
+	Description string      `json:"description"`
+	IsSystem    bool        `json:"is_system"`
+	CreatedAt   time.Time   `json:"created_at"`
+	UpdatedAt   time.Time   `json:"updated_at"`
 }
 
 type RolePermission struct {
@@ -64,6 +66,7 @@ type Session struct {
 type ShortUrl struct {
 	ID          uuid.UUID          `json:"id"`
 	UserID      pgtype.UUID        `json:"user_id"`
+	TenantID    pgtype.UUID        `json:"tenant_id"`
 	ShortCode   string             `json:"short_code"`
 	OriginalUrl string             `json:"original_url"`
 	Title       string             `json:"title"`
@@ -80,6 +83,22 @@ type SystemConfig struct {
 	Value       string    `json:"value"`
 	Description string    `json:"description"`
 	UpdatedAt   time.Time `json:"updated_at"`
+}
+
+type Tenant struct {
+	ID        uuid.UUID `json:"id"`
+	Name      string    `json:"name"`
+	Slug      string    `json:"slug"`
+	JoinCode  string    `json:"join_code"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
+type TenantMembership struct {
+	TenantID  uuid.UUID `json:"tenant_id"`
+	UserID    uuid.UUID `json:"user_id"`
+	Role      string    `json:"role"`
+	CreatedAt time.Time `json:"created_at"`
 }
 
 type UrlAnalytic struct {
@@ -100,7 +119,6 @@ type User struct {
 	GoogleID     pgtype.Text `json:"google_id"`
 	AvatarUrl    string      `json:"avatar_url"`
 	FullName     string      `json:"full_name"`
-	Role         string      `json:"role"`
 	IsSuspended  bool        `json:"is_suspended"`
 	CreatedAt    time.Time   `json:"created_at"`
 	UpdatedAt    time.Time   `json:"updated_at"`

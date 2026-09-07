@@ -1,28 +1,46 @@
 -- name: ListRoles :many
-SELECT id, name, display_name, description, is_system, created_at, updated_at
+SELECT id, tenant_id, name, display_name, description, is_system, created_at, updated_at
 FROM roles
 ORDER BY is_system DESC, name ASC;
 
+-- name: ListSystemRoles :many
+SELECT id, tenant_id, name, display_name, description, is_system, created_at, updated_at
+FROM roles
+WHERE tenant_id IS NULL
+ORDER BY is_system DESC, name ASC;
+
+-- name: ListTenantRoles :many
+SELECT id, tenant_id, name, display_name, description, is_system, created_at, updated_at
+FROM roles
+WHERE tenant_id = $1 OR tenant_id IS NULL
+ORDER BY is_system DESC, name ASC;
+
 -- name: GetRoleByID :one
-SELECT id, name, display_name, description, is_system, created_at, updated_at
+SELECT id, tenant_id, name, display_name, description, is_system, created_at, updated_at
 FROM roles
 WHERE id = $1;
 
 -- name: GetRoleByName :one
-SELECT id, name, display_name, description, is_system, created_at, updated_at
+SELECT id, tenant_id, name, display_name, description, is_system, created_at, updated_at
 FROM roles
-WHERE name = $1;
+WHERE name = $1 LIMIT 1;
+
+-- name: GetTenantRoleByName :one
+SELECT id, tenant_id, name, display_name, description, is_system, created_at, updated_at
+FROM roles
+WHERE name = $1 AND (tenant_id = $2 OR tenant_id IS NULL)
+ORDER BY tenant_id DESC LIMIT 1;
 
 -- name: CreateRole :one
-INSERT INTO roles (name, display_name, description, is_system)
-VALUES ($1, $2, $3, false)
-RETURNING id, name, display_name, description, is_system, created_at, updated_at;
+INSERT INTO roles (tenant_id, name, display_name, description, is_system)
+VALUES ($1, $2, $3, $4, $5)
+RETURNING id, tenant_id, name, display_name, description, is_system, created_at, updated_at;
 
 -- name: UpdateRole :one
 UPDATE roles
 SET display_name = $2, description = $3, updated_at = NOW()
 WHERE id = $1 AND is_system = false
-RETURNING id, name, display_name, description, is_system, created_at, updated_at;
+RETURNING id, tenant_id, name, display_name, description, is_system, created_at, updated_at;
 
 -- name: DeleteRole :exec
 DELETE FROM roles
@@ -43,24 +61,9 @@ INSERT INTO role_permissions (role_id, permission_code)
 VALUES ($1, $2)
 ON CONFLICT DO NOTHING;
 
--- name: GetUserRolePermissions :many
+-- name: GetUserTenantPermissions :many
 SELECT DISTINCT rp.permission_code
 FROM role_permissions rp
 JOIN roles r ON r.id = rp.role_id
-JOIN users u ON u.role = r.name
-WHERE u.id = $1;
-
--- name: CheckUserPermission :one
-SELECT EXISTS (
-    SELECT 1
-    FROM users u
-    LEFT JOIN roles r ON u.role = r.name
-    LEFT JOIN role_permissions rp ON r.id = rp.role_id
-    WHERE u.id = $1 AND (
-        u.role = 'superadmin' OR
-        u.role = 'admin' OR
-        r.name = 'superadmin' OR
-        r.name = 'admin' OR
-        rp.permission_code = $2
-    )
-) AS has_permission;
+JOIN tenant_memberships tm ON tm.role = r.name
+WHERE tm.user_id = $1 AND tm.tenant_id = $2;

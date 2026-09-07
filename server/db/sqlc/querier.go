@@ -13,24 +13,27 @@ import (
 
 type Querier interface {
 	AddRolePermission(ctx context.Context, arg AddRolePermissionParams) error
-	CheckUserPermission(ctx context.Context, arg CheckUserPermissionParams) (bool, error)
+	AddTenantMember(ctx context.Context, arg AddTenantMemberParams) (TenantMembership, error)
 	ClearRolePermissions(ctx context.Context, roleID uuid.UUID) error
+	CountAllTenantsAdmin(ctx context.Context, search pgtype.Text) (int64, error)
 	CountAllUsers(ctx context.Context, search pgtype.Text) (int64, error)
 	CountAuditLogs(ctx context.Context, search pgtype.Text) (int64, error)
 	CountGlobalLinks(ctx context.Context, search pgtype.Text) (int64, error)
 	CountUserShortURLs(ctx context.Context, arg CountUserShortURLsParams) (int64, error)
-	CreateAuditLog(ctx context.Context, arg CreateAuditLogParams) (AuditLog, error)
+	CreateAuditLog(ctx context.Context, arg CreateAuditLogParams) (CreateAuditLogRow, error)
 	CreateOutboxEvent(ctx context.Context, arg CreateOutboxEventParams) (OutboxEvent, error)
 	CreateRole(ctx context.Context, arg CreateRoleParams) (Role, error)
 	CreateSession(ctx context.Context, arg CreateSessionParams) (Session, error)
 	CreateShortURL(ctx context.Context, arg CreateShortURLParams) (ShortUrl, error)
+	CreateTenant(ctx context.Context, arg CreateTenantParams) (Tenant, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
 	DeactivateExpiredURLs(ctx context.Context) ([]string, error)
 	DeleteRole(ctx context.Context, id uuid.UUID) error
 	DeleteSessionsByUserID(ctx context.Context, userID uuid.UUID) error
 	DeleteShortURL(ctx context.Context, arg DeleteShortURLParams) error
+	DeleteTenantAdmin(ctx context.Context, id uuid.UUID) error
 	GetPendingOutboxEvents(ctx context.Context, limit int32) ([]OutboxEvent, error)
-	GetRecentAuditLogs(ctx context.Context, limit int32) ([]AuditLog, error)
+	GetRecentAuditLogs(ctx context.Context, limit int32) ([]GetRecentAuditLogsRow, error)
 	GetRoleByID(ctx context.Context, id uuid.UUID) (Role, error)
 	GetRoleByName(ctx context.Context, name string) (Role, error)
 	GetRolePermissions(ctx context.Context, roleID uuid.UUID) ([]string, error)
@@ -39,6 +42,11 @@ type Querier interface {
 	GetShortURLByID(ctx context.Context, id uuid.UUID) (ShortUrl, error)
 	GetSystemConfigByKey(ctx context.Context, key string) (SystemConfig, error)
 	GetSystemStats(ctx context.Context) (GetSystemStatsRow, error)
+	GetTenantByID(ctx context.Context, id uuid.UUID) (Tenant, error)
+	GetTenantByJoinCode(ctx context.Context, joinCode string) (Tenant, error)
+	GetTenantBySlug(ctx context.Context, slug string) (Tenant, error)
+	GetTenantMembership(ctx context.Context, arg GetTenantMembershipParams) (TenantMembership, error)
+	GetTenantRoleByName(ctx context.Context, arg GetTenantRoleByNameParams) (Role, error)
 	GetURLAnalyticsSummary(ctx context.Context, urlID uuid.UUID) (GetURLAnalyticsSummaryRow, error)
 	GetURLClicksOverTime(ctx context.Context, urlID uuid.UUID) ([]GetURLClicksOverTimeRow, error)
 	GetUserByEmail(ctx context.Context, email string) (User, error)
@@ -48,18 +56,26 @@ type Querier interface {
 	GetUserCountryBreakdown(ctx context.Context, userID pgtype.UUID) ([]GetUserCountryBreakdownRow, error)
 	GetUserDashboardSummary(ctx context.Context, userID pgtype.UUID) (GetUserDashboardSummaryRow, error)
 	GetUserDeviceBreakdown(ctx context.Context, userID pgtype.UUID) ([]GetUserDeviceBreakdownRow, error)
-	GetUserRolePermissions(ctx context.Context, id uuid.UUID) ([]string, error)
+	GetUserTenantPermissions(ctx context.Context, arg GetUserTenantPermissionsParams) ([]string, error)
 	GetUserTopReferrers(ctx context.Context, arg GetUserTopReferrersParams) ([]GetUserTopReferrersRow, error)
 	IncrementClickCount(ctx context.Context, id uuid.UUID) error
+	ListAllTenantMemberships(ctx context.Context) ([]TenantMembership, error)
+	ListAllTenantsAdmin(ctx context.Context, arg ListAllTenantsAdminParams) ([]ListAllTenantsAdminRow, error)
 	ListAllUsers(ctx context.Context, arg ListAllUsersParams) ([]ListAllUsersRow, error)
-	ListAuditLogs(ctx context.Context, arg ListAuditLogsParams) ([]AuditLog, error)
+	ListAuditLogs(ctx context.Context, arg ListAuditLogsParams) ([]ListAuditLogsRow, error)
 	ListGlobalLinks(ctx context.Context, arg ListGlobalLinksParams) ([]ListGlobalLinksRow, error)
 	ListRecentClicksByUrlID(ctx context.Context, arg ListRecentClicksByUrlIDParams) ([]UrlAnalytic, error)
 	ListRoles(ctx context.Context) ([]Role, error)
 	ListSystemConfigs(ctx context.Context) ([]SystemConfig, error)
+	ListSystemRoles(ctx context.Context) ([]Role, error)
+	ListTenantMembers(ctx context.Context, tenantID uuid.UUID) ([]ListTenantMembersRow, error)
+	ListTenantRoles(ctx context.Context, tenantID pgtype.UUID) ([]Role, error)
 	ListUserShortURLs(ctx context.Context, arg ListUserShortURLsParams) ([]ShortUrl, error)
+	ListUserTenants(ctx context.Context, userID uuid.UUID) ([]ListUserTenantsRow, error)
 	MarkOutboxEventProcessed(ctx context.Context, id uuid.UUID) error
 	RecordClick(ctx context.Context, arg RecordClickParams) (UrlAnalytic, error)
+	RegenerateTenantJoinCode(ctx context.Context, arg RegenerateTenantJoinCodeParams) (Tenant, error)
+	RemoveTenantMember(ctx context.Context, arg RemoveTenantMemberParams) error
 	RestoreShortURL(ctx context.Context, arg RestoreShortURLParams) (ShortUrl, error)
 	RevokeSession(ctx context.Context, id uuid.UUID) error
 	SetURLActiveStatus(ctx context.Context, arg SetURLActiveStatusParams) (SetURLActiveStatusRow, error)
@@ -67,8 +83,9 @@ type Querier interface {
 	UnlinkGoogleUser(ctx context.Context, id uuid.UUID) (User, error)
 	UpdateRole(ctx context.Context, arg UpdateRoleParams) (Role, error)
 	UpdateShortURL(ctx context.Context, arg UpdateShortURLParams) (ShortUrl, error)
+	UpdateTenant(ctx context.Context, arg UpdateTenantParams) (Tenant, error)
+	UpdateTenantMemberRole(ctx context.Context, arg UpdateTenantMemberRoleParams) (TenantMembership, error)
 	UpdateUser(ctx context.Context, arg UpdateUserParams) (User, error)
-	UpdateUserRole(ctx context.Context, arg UpdateUserRoleParams) (UpdateUserRoleRow, error)
 	UpsertGoogleUser(ctx context.Context, arg UpsertGoogleUserParams) (User, error)
 	UpsertSystemConfig(ctx context.Context, arg UpsertSystemConfigParams) (SystemConfig, error)
 }

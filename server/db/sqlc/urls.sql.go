@@ -14,20 +14,22 @@ import (
 
 const countUserShortURLs = `-- name: CountUserShortURLs :one
 SELECT COUNT(*) FROM short_urls
-WHERE user_id = $1
+WHERE (user_id = $1 OR $1 IS NULL)
+  AND (tenant_id = $2::uuid OR $2::uuid IS NULL)
   AND deleted_at IS NULL
-  AND ($2::text IS NULL OR (
-      title ILIKE '%' || $2::text || '%' OR
-      short_code ILIKE '%' || $2::text || '%' OR
-      original_url ILIKE '%' || $2::text || '%'
+  AND ($3::text IS NULL OR (
+      title ILIKE '%' || $3::text || '%' OR
+      short_code ILIKE '%' || $3::text || '%' OR
+      original_url ILIKE '%' || $3::text || '%'
   ))
-  AND ($3::boolean IS NULL OR is_active = $3::boolean)
-  AND ($4::timestamptz IS NULL OR created_at >= $4::timestamptz)
-  AND ($5::timestamptz IS NULL OR created_at <= $5::timestamptz)
+  AND ($4::boolean IS NULL OR is_active = $4::boolean)
+  AND ($5::timestamptz IS NULL OR created_at >= $5::timestamptz)
+  AND ($6::timestamptz IS NULL OR created_at <= $6::timestamptz)
 `
 
 type CountUserShortURLsParams struct {
 	UserID    pgtype.UUID        `json:"user_id"`
+	TenantID  pgtype.UUID        `json:"tenant_id"`
 	Search    pgtype.Text        `json:"search"`
 	IsActive  pgtype.Bool        `json:"is_active"`
 	StartDate pgtype.Timestamptz `json:"start_date"`
@@ -37,6 +39,7 @@ type CountUserShortURLsParams struct {
 func (q *Queries) CountUserShortURLs(ctx context.Context, arg CountUserShortURLsParams) (int64, error) {
 	row := q.db.QueryRow(ctx, countUserShortURLs,
 		arg.UserID,
+		arg.TenantID,
 		arg.Search,
 		arg.IsActive,
 		arg.StartDate,
@@ -50,19 +53,21 @@ func (q *Queries) CountUserShortURLs(ctx context.Context, arg CountUserShortURLs
 const createShortURL = `-- name: CreateShortURL :one
 INSERT INTO short_urls (
     user_id,
+    tenant_id,
     short_code,
     original_url,
     title,
     is_active,
     expires_at
 ) VALUES (
-    $1, $2, $3, $4, $5, $6
+    $1, $2, $3, $4, $5, $6, $7
 )
-RETURNING id, user_id, short_code, original_url, title, is_active, click_count, expires_at, deleted_at, created_at, updated_at
+RETURNING id, user_id, tenant_id, short_code, original_url, title, is_active, click_count, expires_at, deleted_at, created_at, updated_at
 `
 
 type CreateShortURLParams struct {
 	UserID      pgtype.UUID        `json:"user_id"`
+	TenantID    pgtype.UUID        `json:"tenant_id"`
 	ShortCode   string             `json:"short_code"`
 	OriginalUrl string             `json:"original_url"`
 	Title       string             `json:"title"`
@@ -73,6 +78,7 @@ type CreateShortURLParams struct {
 func (q *Queries) CreateShortURL(ctx context.Context, arg CreateShortURLParams) (ShortUrl, error) {
 	row := q.db.QueryRow(ctx, createShortURL,
 		arg.UserID,
+		arg.TenantID,
 		arg.ShortCode,
 		arg.OriginalUrl,
 		arg.Title,
@@ -83,6 +89,7 @@ func (q *Queries) CreateShortURL(ctx context.Context, arg CreateShortURLParams) 
 	err := row.Scan(
 		&i.ID,
 		&i.UserID,
+		&i.TenantID,
 		&i.ShortCode,
 		&i.OriginalUrl,
 		&i.Title,
@@ -140,7 +147,7 @@ func (q *Queries) DeleteShortURL(ctx context.Context, arg DeleteShortURLParams) 
 }
 
 const getShortURLByCode = `-- name: GetShortURLByCode :one
-SELECT id, user_id, short_code, original_url, title, is_active, click_count, expires_at, deleted_at, created_at, updated_at FROM short_urls
+SELECT id, user_id, tenant_id, short_code, original_url, title, is_active, click_count, expires_at, deleted_at, created_at, updated_at FROM short_urls
 WHERE short_code = $1 AND deleted_at IS NULL LIMIT 1
 `
 
@@ -150,6 +157,7 @@ func (q *Queries) GetShortURLByCode(ctx context.Context, shortCode string) (Shor
 	err := row.Scan(
 		&i.ID,
 		&i.UserID,
+		&i.TenantID,
 		&i.ShortCode,
 		&i.OriginalUrl,
 		&i.Title,
@@ -164,7 +172,7 @@ func (q *Queries) GetShortURLByCode(ctx context.Context, shortCode string) (Shor
 }
 
 const getShortURLByID = `-- name: GetShortURLByID :one
-SELECT id, user_id, short_code, original_url, title, is_active, click_count, expires_at, deleted_at, created_at, updated_at FROM short_urls
+SELECT id, user_id, tenant_id, short_code, original_url, title, is_active, click_count, expires_at, deleted_at, created_at, updated_at FROM short_urls
 WHERE id = $1 AND deleted_at IS NULL LIMIT 1
 `
 
@@ -174,6 +182,7 @@ func (q *Queries) GetShortURLByID(ctx context.Context, id uuid.UUID) (ShortUrl, 
 	err := row.Scan(
 		&i.ID,
 		&i.UserID,
+		&i.TenantID,
 		&i.ShortCode,
 		&i.OriginalUrl,
 		&i.Title,
@@ -200,31 +209,33 @@ func (q *Queries) IncrementClickCount(ctx context.Context, id uuid.UUID) error {
 }
 
 const listUserShortURLs = `-- name: ListUserShortURLs :many
-SELECT id, user_id, short_code, original_url, title, is_active, click_count, expires_at, deleted_at, created_at, updated_at FROM short_urls
-WHERE user_id = $1
+SELECT id, user_id, tenant_id, short_code, original_url, title, is_active, click_count, expires_at, deleted_at, created_at, updated_at FROM short_urls
+WHERE (user_id = $1 OR $1 IS NULL)
+  AND (tenant_id = $2::uuid OR $2::uuid IS NULL)
   AND deleted_at IS NULL
-  AND ($2::text IS NULL OR (
-      title ILIKE '%' || $2::text || '%' OR
-      short_code ILIKE '%' || $2::text || '%' OR
-      original_url ILIKE '%' || $2::text || '%'
+  AND ($3::text IS NULL OR (
+      title ILIKE '%' || $3::text || '%' OR
+      short_code ILIKE '%' || $3::text || '%' OR
+      original_url ILIKE '%' || $3::text || '%'
   ))
-  AND ($3::boolean IS NULL OR is_active = $3::boolean)
-  AND ($4::timestamptz IS NULL OR created_at >= $4::timestamptz)
-  AND ($5::timestamptz IS NULL OR created_at <= $5::timestamptz)
+  AND ($4::boolean IS NULL OR is_active = $4::boolean)
+  AND ($5::timestamptz IS NULL OR created_at >= $5::timestamptz)
+  AND ($6::timestamptz IS NULL OR created_at <= $6::timestamptz)
 ORDER BY
-  CASE WHEN $6::text = 'click_count_asc' THEN click_count END ASC,
-  CASE WHEN $6::text = 'click_count_desc' THEN click_count END DESC,
-  CASE WHEN $6::text = 'title_asc' THEN title END ASC,
-  CASE WHEN $6::text = 'title_desc' THEN title END DESC,
-  CASE WHEN $6::text = 'short_code_asc' THEN short_code END ASC,
-  CASE WHEN $6::text = 'short_code_desc' THEN short_code END DESC,
-  CASE WHEN $6::text = 'created_at_asc' THEN created_at END ASC,
-  CASE WHEN $6::text = 'created_at_desc' OR $6::text IS NULL OR $6::text = '' THEN created_at END DESC
-LIMIT $8 OFFSET $7
+  CASE WHEN $7::text = 'click_count_asc' THEN click_count END ASC,
+  CASE WHEN $7::text = 'click_count_desc' THEN click_count END DESC,
+  CASE WHEN $7::text = 'title_asc' THEN title END ASC,
+  CASE WHEN $7::text = 'title_desc' THEN title END DESC,
+  CASE WHEN $7::text = 'short_code_asc' THEN short_code END ASC,
+  CASE WHEN $7::text = 'short_code_desc' THEN short_code END DESC,
+  CASE WHEN $7::text = 'created_at_asc' THEN created_at END ASC,
+  CASE WHEN $7::text = 'created_at_desc' OR $7::text IS NULL OR $7::text = '' THEN created_at END DESC
+LIMIT $9 OFFSET $8
 `
 
 type ListUserShortURLsParams struct {
 	UserID    pgtype.UUID        `json:"user_id"`
+	TenantID  pgtype.UUID        `json:"tenant_id"`
 	Search    pgtype.Text        `json:"search"`
 	IsActive  pgtype.Bool        `json:"is_active"`
 	StartDate pgtype.Timestamptz `json:"start_date"`
@@ -237,6 +248,7 @@ type ListUserShortURLsParams struct {
 func (q *Queries) ListUserShortURLs(ctx context.Context, arg ListUserShortURLsParams) ([]ShortUrl, error) {
 	rows, err := q.db.Query(ctx, listUserShortURLs,
 		arg.UserID,
+		arg.TenantID,
 		arg.Search,
 		arg.IsActive,
 		arg.StartDate,
@@ -255,6 +267,7 @@ func (q *Queries) ListUserShortURLs(ctx context.Context, arg ListUserShortURLsPa
 		if err := rows.Scan(
 			&i.ID,
 			&i.UserID,
+			&i.TenantID,
 			&i.ShortCode,
 			&i.OriginalUrl,
 			&i.Title,
@@ -279,7 +292,7 @@ const restoreShortURL = `-- name: RestoreShortURL :one
 UPDATE short_urls
 SET deleted_at = NULL, is_active = TRUE, updated_at = NOW()
 WHERE id = $1 AND (user_id = $2 OR $2 IS NULL) AND deleted_at IS NOT NULL
-RETURNING id, user_id, short_code, original_url, title, is_active, click_count, expires_at, deleted_at, created_at, updated_at
+RETURNING id, user_id, tenant_id, short_code, original_url, title, is_active, click_count, expires_at, deleted_at, created_at, updated_at
 `
 
 type RestoreShortURLParams struct {
@@ -293,6 +306,7 @@ func (q *Queries) RestoreShortURL(ctx context.Context, arg RestoreShortURLParams
 	err := row.Scan(
 		&i.ID,
 		&i.UserID,
+		&i.TenantID,
 		&i.ShortCode,
 		&i.OriginalUrl,
 		&i.Title,
@@ -315,7 +329,7 @@ SET
     expires_at = COALESCE($5, expires_at),
     updated_at = NOW()
 WHERE id = $1 AND (user_id = $6 OR $6 IS NULL) AND deleted_at IS NULL
-RETURNING id, user_id, short_code, original_url, title, is_active, click_count, expires_at, deleted_at, created_at, updated_at
+RETURNING id, user_id, tenant_id, short_code, original_url, title, is_active, click_count, expires_at, deleted_at, created_at, updated_at
 `
 
 type UpdateShortURLParams struct {
@@ -340,6 +354,7 @@ func (q *Queries) UpdateShortURL(ctx context.Context, arg UpdateShortURLParams) 
 	err := row.Scan(
 		&i.ID,
 		&i.UserID,
+		&i.TenantID,
 		&i.ShortCode,
 		&i.OriginalUrl,
 		&i.Title,

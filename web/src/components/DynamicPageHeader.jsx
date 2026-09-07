@@ -47,14 +47,20 @@ export function useDynamicMenuIcon(customPath, fallbackIcon = null, props = { cl
 export function DynamicPageHeader({
   title,
   subtitle,
+  description,
   path: customPath,
   fallbackIcon,
   iconSize = 'size-7',
   className = 'flex flex-col sm:flex-row sm:items-center justify-between gap-4',
   titleClassName = 'text-2xl font-bold tracking-tight text-foreground flex items-center gap-2.5',
+  actions,
+  actionButton,
+  action,
   children,
 }) {
   const iconNode = useDynamicMenuIcon(customPath, fallbackIcon, { className: `${iconSize} text-primary shrink-0` });
+  const subText = subtitle || description;
+  const actionNodes = actions || actionButton || action || children;
 
   return (
     <div className={className}>
@@ -63,9 +69,9 @@ export function DynamicPageHeader({
           {iconNode}
           <span>{title}</span>
         </h1>
-        {subtitle && <p className="text-sm text-muted-foreground mt-1">{subtitle}</p>}
+        {subText && <p className="text-sm text-muted-foreground mt-1">{subText}</p>}
       </div>
-      {children}
+      {actionNodes && <div className="flex items-center gap-2">{actionNodes}</div>}
     </div>
   );
 }

@@ -11,12 +11,13 @@ import (
 
 	db "github.com/semmidev/url-shortener/server/db/sqlc"
 	"github.com/semmidev/url-shortener/server/internal/config"
+	"github.com/semmidev/url-shortener/server/internal/platform/authz"
 	"github.com/semmidev/url-shortener/server/internal/platform/permission"
 	"github.com/semmidev/url-shortener/server/internal/platform/postgres"
 )
 
 func main() {
-	log.Println("🌱 Starting database seeding script...")
+	log.Println("🌱 Starting multi-tenant database seeding script...")
 
 	cfg, err := config.LoadConfig(".")
 	if err != nil {
@@ -42,7 +43,7 @@ func main() {
 		log.Fatalf("❌ Database seeding failed: %v", err)
 	}
 
-	log.Println("✅ Database seeding completed successfully!")
+	log.Println("✅ Multi-tenant database seeding completed successfully!")
 }
 
 func seed(ctx context.Context, store db.Store) error {
@@ -55,142 +56,174 @@ func seed(ctx context.Context, store db.Store) error {
 	}{
 		{
 			ID:          "00000000-0000-0000-0000-000000000001",
-			Name:        "superadmin",
-			DisplayName: "Super Administrator",
-			Description: "Full system access and security administration",
+			Name:        "owner",
+			DisplayName: "Owner",
+			Description: "Pemilik workspace dengan hak akses penuh",
 		},
 		{
 			ID:          "00000000-0000-0000-0000-000000000002",
 			Name:        "admin",
 			DisplayName: "Administrator",
-			Description: "Administrative access for system overview and management",
+			Description: "Pengelola workspace",
 		},
 		{
 			ID:          "00000000-0000-0000-0000-000000000003",
-			Name:        "user",
-			DisplayName: "Regular User",
-			Description: "Standard user with short link creation capabilities",
+			Name:        "member",
+			DisplayName: "Member",
+			Description: "Anggota standar workspace",
 		},
 	}
 
 	log.Println("📦 Seeding system roles...")
 	for _, r := range roles {
-		roleID := parseUUID(r.ID)
-		_, err := store.CreateRole(ctx, db.CreateRoleParams{
+		_, _ = store.CreateRole(ctx, db.CreateRoleParams{
+			TenantID:    pgtype.UUID{Valid: false},
 			Name:        r.Name,
 			DisplayName: r.DisplayName,
 			Description: r.Description,
+			IsSystem:    true,
 		})
-		_ = err
-		_ = roleID
 	}
 
-	// 2. Map Code-Defined Permissions to System Roles (Superadmin, Admin, User)
+	// 2. Map Code-Defined Permissions to System Roles
 	log.Println("🔑 Mapping code-defined permissions to system roles...")
 	if err := permission.SyncPermissions(ctx, store); err != nil {
 		log.Printf("⚠️ Warning during permission sync: %v", err)
 	}
 
-	// 3. Seed Default Accounts (Password: "password")
+	// Initialize Casbin Authorizer
+	authorizer, _ := authz.NewCasbinAuthorizer(store)
+
+	// 3. Seed Default User Accounts
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte("password"), bcrypt.DefaultCost)
 	if err != nil {
 		return fmt.Errorf("failed to hash default password: %w", err)
 	}
 
 	users := []struct {
-		ID       string
 		Email    string
 		FullName string
-		Role     string
 	}{
 		{
-			ID:       "01a03158-2a33-7c0e-96ba-e839d6c95501",
-			Email:    "superadmin@gmail.com",
-			FullName: "Super Administrator",
-			Role:     "superadmin",
-		},
-		{
-			ID:       "01a03158-2a33-7c0e-96ba-e839d6c9521",
-			Email:    "admin@gmail.com",
-			FullName: "System Administrator",
-			Role:     "admin",
-		},
-		{
-			ID:       "01a03158-2a33-7c0e-96ba-e839d6c9531",
 			Email:    "sammidev4@gmail.com",
 			FullName: "John Doe",
-			Role:     "user",
+		},
+		{
+			Email:    "jane@example.com",
+			FullName: "Jane Smith",
 		},
 	}
 
 	log.Println("👤 Seeding default user accounts...")
 	for _, u := range users {
 		passwordHash := string(hashedPassword)
-		_, err := store.CreateUser(ctx, db.CreateUserParams{
+		_, _ = store.CreateUser(ctx, db.CreateUserParams{
 			Email:        u.Email,
 			PasswordHash: stringToPgText(&passwordHash),
 			FullName:     u.FullName,
-			Role:         u.Role,
 		})
+	}
+
+	// 4. Seed Multi-Tenant SaaS Organizations
+	log.Println("🏢 Seeding sample SaaS tenants...")
+	tenantsData := []struct {
+		Name     string
+		Slug     string
+		JoinCode string
+	}{
+		{Name: "Acme Corporation", Slug: "acme", JoinCode: "ACME01"},
+		{Name: "Stark Industries", Slug: "stark", JoinCode: "STRK01"},
+	}
+
+	createdTenants := make(map[string]db.Tenant)
+	for _, t := range tenantsData {
+		tenant, err := store.GetTenantBySlug(ctx, t.Slug)
 		if err != nil {
-			// Update if already exists
-			existing, errGet := store.GetUserByEmail(ctx, u.Email)
-			if errGet == nil {
-				_, _ = store.UpdateUserRole(ctx, db.UpdateUserRoleParams{
-					ID:   existing.ID,
-					Role: u.Role,
-				})
+			tenant, err = store.CreateTenant(ctx, db.CreateTenantParams{
+				Name:     t.Name,
+				Slug:     t.Slug,
+				JoinCode: t.JoinCode,
+			})
+		}
+		if err == nil {
+			createdTenants[t.Slug] = tenant
+		}
+	}
+
+	// 5. Seed Tenant Memberships
+	log.Println("👥 Mapping user memberships to tenants...")
+	johnUser, _ := store.GetUserByEmail(ctx, "sammidev4@gmail.com")
+	janeUser, _ := store.GetUserByEmail(ctx, "jane@example.com")
+
+	if acme, ok := createdTenants["acme"]; ok {
+		if johnUser.Email != "" {
+			_, _ = store.AddTenantMember(ctx, db.AddTenantMemberParams{TenantID: acme.ID, UserID: johnUser.ID, Role: "owner"})
+			if authorizer != nil {
+				_ = authorizer.AddUserRole(ctx, johnUser.ID, "owner", acme.ID.String())
+			}
+		}
+		if janeUser.Email != "" {
+			_, _ = store.AddTenantMember(ctx, db.AddTenantMemberParams{TenantID: acme.ID, UserID: janeUser.ID, Role: "member"})
+			if authorizer != nil {
+				_ = authorizer.AddUserRole(ctx, janeUser.ID, "member", acme.ID.String())
 			}
 		}
 	}
 
-	// 4. Seed Sample Short URLs
-	adminUser, errAdmin := store.GetUserByEmail(ctx, "admin@gmail.com")
-	regularUser, errUser := store.GetUserByEmail(ctx, "sammidev4@gmail.com")
+	if stark, ok := createdTenants["stark"]; ok {
+		if janeUser.Email != "" {
+			_, _ = store.AddTenantMember(ctx, db.AddTenantMemberParams{TenantID: stark.ID, UserID: janeUser.ID, Role: "owner"})
+			if authorizer != nil {
+				_ = authorizer.AddUserRole(ctx, janeUser.ID, "owner", stark.ID.String())
+			}
+		}
+		if johnUser.Email != "" {
+			_, _ = store.AddTenantMember(ctx, db.AddTenantMemberParams{TenantID: stark.ID, UserID: johnUser.ID, Role: "admin"})
+			if authorizer != nil {
+				_ = authorizer.AddUserRole(ctx, johnUser.ID, "admin", stark.ID.String())
+			}
+		}
+	}
 
-	if errAdmin == nil && errUser == nil {
-		log.Println("🔗 Seeding sample short URLs...")
+	// 6. Seed Sample Short URLs per Tenant
+	if acme, ok := createdTenants["acme"]; ok && johnUser.Email != "" {
+		log.Println("🔗 Seeding sample tenant short URLs...")
 		sampleURLs := []struct {
 			UserID      pgtype.UUID
+			TenantID    pgtype.UUID
 			ShortCode   string
 			OriginalURL string
 			Title       string
-			Clicks      int64
 		}{
 			{
-				UserID:      uuidToPgUUID(adminUser.ID),
-				ShortCode:   "github-repo",
+				UserID:      uuidToPgUUID(johnUser.ID),
+				TenantID:    uuidToPgUUID(acme.ID),
+				ShortCode:   "acme-docs",
 				OriginalURL: "https://github.com/semmidev/url-shortener",
-				Title:       "URL Shortener Repository",
-				Clicks:      12,
+				Title:       "Acme Documentation Link",
 			},
 			{
-				UserID:      uuidToPgUUID(regularUser.ID),
-				ShortCode:   "golang-spec",
+				UserID:      uuidToPgUUID(janeUser.ID),
+				TenantID:    uuidToPgUUID(acme.ID),
+				ShortCode:   "acme-portal",
 				OriginalURL: "https://go.dev/doc/",
-				Title:       "Go Programming Language Documentation",
-				Clicks:      8,
-			},
-			{
-				UserID:      uuidToPgUUID(regularUser.ID),
-				ShortCode:   "scalar-ui",
-				OriginalURL: "https://github.com/scalar/scalar",
-				Title:       "Scalar API Reference UI",
-				Clicks:      15,
+				Title:       "Acme Customer Portal",
 			},
 		}
 
 		for _, item := range sampleURLs {
 			_, _ = store.CreateShortURL(ctx, db.CreateShortURLParams{
 				UserID:      item.UserID,
+				TenantID:    item.TenantID,
 				ShortCode:   item.ShortCode,
 				OriginalUrl: item.OriginalURL,
 				Title:       item.Title,
+				IsActive:    true,
 			})
 		}
 	}
 
-	// 5. Seed Default System Configurations
+	// 7. Seed Default System Configurations
 	log.Println("⚙️ Seeding default system configurations...")
 	systemConfigs := []struct {
 		Key         string
@@ -199,18 +232,13 @@ func seed(ctx context.Context, store db.Store) error {
 	}{
 		{
 			Key:         "app_info",
-			Value:       `{"app_name": "URL Shortener Enterprise", "description": "High performance link management platform", "support_email": "support@example.com"}`,
+			Value:       `{"app_name": "URL Shortener Enterprise SaaS", "description": "Multi-tenant link management platform", "support_email": "support@example.com"}`,
 			Description: "General application branding information",
 		},
 		{
 			Key:         "feature_flags",
-			Value:       `{"allow_public_registration": true, "enable_custom_slug": true, "enable_qr_code": true, "maintenance_mode": false}`,
+			Value:       `{"allow_public_registration": true, "enable_multi_tenancy": true, "enable_custom_slug": true, "enable_qr_code": true}`,
 			Description: "Global system feature toggles",
-		},
-		{
-			Key:         "rate_limits",
-			Value:       `{"clicks_per_sec": 100, "shortens_per_min": 30}`,
-			Description: "Default system-wide API rate limiting thresholds",
 		},
 	}
 
@@ -223,12 +251,6 @@ func seed(ctx context.Context, store db.Store) error {
 	}
 
 	return nil
-}
-
-func parseUUID(s string) pgtype.UUID {
-	var uuidVal pgtype.UUID
-	_ = uuidVal.Scan(s)
-	return uuidVal
 }
 
 func uuidToPgUUID(u any) pgtype.UUID {

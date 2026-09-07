@@ -13,7 +13,10 @@ import (
 	db "github.com/semmidev/url-shortener/server/db/sqlc"
 	"github.com/semmidev/url-shortener/server/internal/config"
 	"github.com/semmidev/url-shortener/server/internal/platform/apperr"
+	"github.com/semmidev/url-shortener/server/internal/platform/authz"
 	"github.com/semmidev/url-shortener/server/internal/platform/cache"
+	"github.com/semmidev/url-shortener/server/internal/platform/permission"
+	"github.com/semmidev/url-shortener/server/internal/platform/web"
 	"github.com/semmidev/url-shortener/server/internal/worker"
 )
 
@@ -27,6 +30,7 @@ type Service struct {
 	cache           cache.Cache
 	metrics         MetricsRecorder
 	taskDistributor worker.TaskDistributor
+	authorizer      authz.Authorizer
 }
 
 func NewService(store db.Store, cfg config.Config, c cache.Cache) *Service {
@@ -34,6 +38,12 @@ func NewService(store db.Store, cfg config.Config, c cache.Cache) *Service {
 		store: store,
 		cfg:   cfg,
 		cache: c,
+	}
+}
+
+func (s *Service) SetAuthorizer(a authz.Authorizer) {
+	if s != nil {
+		s.authorizer = a
 	}
 }
 
@@ -83,6 +93,17 @@ func (s *Service) Create(ctx context.Context, req CreateURLRequest) (*URLRespons
 		return nil, err
 	}
 
+	if s.authorizer != nil && req.UserID != nil {
+		var domain string
+		if tID, ok := web.TenantID(ctx); ok {
+			domain = tID.String()
+		}
+		can, _ := s.authorizer.Can(ctx, *req.UserID, domain, permission.UrlsCreate)
+		if !can {
+			return nil, apperr.Forbidden("anda tidak memiliki izin untuk membuat link singkat (urls.create)")
+		}
+	}
+
 	var shortCode string
 	if req.CustomCode != "" {
 		_, err := s.store.GetShortURLByCode(ctx, req.CustomCode)
@@ -110,8 +131,14 @@ func (s *Service) Create(ctx context.Context, req CreateURLRequest) (*URLRespons
 		}
 	}
 
+	var tenantUUID pgtype.UUID
+	if tID, ok := web.TenantID(ctx); ok {
+		tenantUUID = toPgUUID(&tID)
+	}
+
 	u, err := s.store.CreateShortURL(ctx, db.CreateShortURLParams{
 		UserID:      toPgUUID(req.UserID),
+		TenantID:    tenantUUID,
 		ShortCode:   shortCode,
 		OriginalUrl: req.OriginalURL,
 		Title:       req.Title,
@@ -187,7 +214,10 @@ func (s *Service) GetByID(ctx context.Context, req GetURLByIDRequest) (*URLRespo
 
 func (s *Service) List(ctx context.Context, req ListUserShortURLsRequest) (*ListURLResponse, error) {
 	filter := req.Filter
-	userUUID := toPgUUID(&req.UserID)
+	var userUUID pgtype.UUID
+	if !req.ScopeAll {
+		userUUID = toPgUUID(&req.UserID)
+	}
 
 	var searchVal *string
 	if filter.Search != "" {
@@ -204,8 +234,14 @@ func (s *Service) List(ctx context.Context, req ListUserShortURLsRequest) (*List
 		isActiveVal = &b
 	}
 
+	var tenantUUID pgtype.UUID
+	if tID, ok := web.TenantID(ctx); ok {
+		tenantUUID = toPgUUID(&tID)
+	}
+
 	listParams := db.ListUserShortURLsParams{
 		UserID:    userUUID,
+		TenantID:  tenantUUID,
 		Search:    toPgText(searchVal),
 		IsActive:  toPgBool(isActiveVal),
 		StartDate: toPgTimestamptz(filter.StartDate),
@@ -222,6 +258,7 @@ func (s *Service) List(ctx context.Context, req ListUserShortURLsRequest) (*List
 
 	countParams := db.CountUserShortURLsParams{
 		UserID:    userUUID,
+		TenantID:  tenantUUID,
 		Search:    toPgText(searchVal),
 		IsActive:  toPgBool(isActiveVal),
 		StartDate: toPgTimestamptz(filter.StartDate),
@@ -256,6 +293,17 @@ func (s *Service) Update(ctx context.Context, req UpdateURLRequest) (*URLRespons
 		return nil, err
 	}
 
+	if s.authorizer != nil {
+		var domain string
+		if tID, ok := web.TenantID(ctx); ok {
+			domain = tID.String()
+		}
+		can, _ := s.authorizer.Can(ctx, req.UserID, domain, permission.UrlsUpdate)
+		if !can {
+			return nil, apperr.Forbidden("anda tidak memiliki izin untuk mengedit link singkat (urls.update)")
+		}
+	}
+
 	// Verify ownership first
 	existing, err := s.GetByID(ctx, GetURLByIDRequest{ID: req.ID, UserID: req.UserID})
 	if err != nil {
@@ -285,6 +333,17 @@ func (s *Service) Update(ctx context.Context, req UpdateURLRequest) (*URLRespons
 }
 
 func (s *Service) Delete(ctx context.Context, req DeleteURLRequest) (*DeleteURLResponse, error) {
+	if s.authorizer != nil {
+		var domain string
+		if tID, ok := web.TenantID(ctx); ok {
+			domain = tID.String()
+		}
+		can, _ := s.authorizer.Can(ctx, req.UserID, domain, permission.UrlsDelete)
+		if !can {
+			return nil, apperr.Forbidden("anda tidak memiliki izin untuk menghapus link singkat (urls.delete)")
+		}
+	}
+
 	// Verify ownership first
 	existing, err := s.GetByID(ctx, GetURLByIDRequest(req))
 	if err != nil {

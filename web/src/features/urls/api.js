@@ -3,8 +3,11 @@ import client from '@/lib/client';
 /**
  * Fetch short URLs list with optional search, active status filter, pagination, and sorting.
  */
-export async function getShortUrls({ page = 1, limit = 50, search = '', active = 'all', sortBy = 'created_at', sortDirection = 'desc' } = {}) {
+export async function getShortUrls({ page = 1, limit = 50, search = '', active = 'all', sortBy = 'created_at', sortDirection = 'desc', scopeAll = false } = {}) {
   let endpoint = `/urls?page=${page}&limit=${limit}&sort_by=${sortBy}&sort_direction=${sortDirection}`;
+  if (scopeAll) {
+    endpoint += `&all=true`;
+  }
   if (search && search.trim()) {
     endpoint += `&search=${encodeURIComponent(search.trim())}`;
   }

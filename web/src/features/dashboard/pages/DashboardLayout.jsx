@@ -2,6 +2,7 @@ import { Outlet, useLocation } from "react-router-dom"
 import { useTheme } from "next-themes"
 import { Moon, Sun } from "lucide-react"
 import { AppSidebar } from "@/components/app-sidebar"
+import { WorkspaceToggle } from "@/components/WorkspaceToggle"
 import { LanguageToggle } from "@/components/LanguageToggle"
 import { ThemePresetPicker } from "@/components/ThemePresetPicker"
 import { useI18n } from "@/context/I18nContext"
@@ -16,7 +17,6 @@ const PAGE_TITLE_KEYS = {
   "/dashboard":            "nav.dashboard",
   "/dashboard/urls":       "nav.shortUrls",
   "/dashboard/analytics":  "nav.analytics",
-  "/dashboard/admin":      "nav.userManagement",
   "/dashboard/account":    "nav.accountProfile",
 }
 
@@ -29,7 +29,6 @@ export default function DashboardLayout() {
   let pageTitle = PAGE_TITLE_KEYS[pathname] ? t(PAGE_TITLE_KEYS[pathname]) : null
   if (!pageTitle) {
     if (pathname.startsWith("/dashboard/urls/")) pageTitle = t("nav.urlDetails")
-    else if (pathname.startsWith("/dashboard/admin/")) pageTitle = t("nav.admin")
     else pageTitle = t("nav.dashboard")
   }
 
@@ -52,10 +51,13 @@ export default function DashboardLayout() {
             </nav>
           </div>
 
-          {/* Right: i18n language toggle + theme palette + dark mode toggle */}
+          {/* Right: Workspace switcher + i18n language toggle + theme palette + dark mode toggle */}
           <div className="flex items-center gap-1.5">
 
-            {/* i18n Language Toggle (top left of color presets) */}
+            {/* Workspace Switcher & User Role badge */}
+            <WorkspaceToggle />
+
+            {/* i18n Language Toggle */}
             <LanguageToggle />
 
             {/* Theme palette picker */}

@@ -4,6 +4,7 @@ import { ThemeProvider } from 'next-themes';
 import { Toaster } from 'sonner';
 import { I18nProvider } from '@/context/I18nContext';
 import { PermissionProvider } from '@/context/PermissionContext';
+import { TenantProvider } from '@/context/TenantContext';
 import { useAuthStore } from '@/features/auth/store';
 import TopLoadingBar from '@/components/TopLoadingBar';
 import DirectionalTransition from '@/components/DirectionalTransition';
@@ -19,17 +20,15 @@ import URLs from '@/features/urls/pages/URLsPage';
 import URLDetailPage from '@/features/urls/pages/URLDetailPage';
 import Analytics from '@/features/analytics/pages/AnalyticsPage';
 
-import AdminDashboardPage from '@/features/admin/pages/AdminDashboardPage';
-import AdminUsersPage from '@/features/admin/pages/AdminUsersPage';
-import AdminRolesPage from '@/features/admin/pages/AdminRolesPage';
-import AdminLinksPage from '@/features/admin/pages/AdminLinksPage';
-import AdminAuditLogsPage from '@/features/admin/pages/AdminAuditLogsPage';
-import AdminSystemPage from '@/features/admin/pages/AdminSystemPage';
+import WorkspaceMembersPage from '@/features/tenant/pages/WorkspaceMembersPage';
+import WorkspaceRolesPage from '@/features/tenant/pages/WorkspaceRolesPage';
+import WorkspaceSettingsPage from '@/features/tenant/pages/WorkspaceSettingsPage';
+import WorkspaceLinksPage from '@/features/tenant/pages/WorkspaceLinksPage';
 
 import Account from '@/features/account/pages/AccountPage';
 
-function PrivateRoute({ children, adminOnly = false }) {
-  const { isAuthenticated, user, isLoading } = useAuthStore();
+function PrivateRoute({ children }) {
+  const { isAuthenticated, isLoading } = useAuthStore();
 
   if (isLoading) {
     return (
@@ -41,10 +40,6 @@ function PrivateRoute({ children, adminOnly = false }) {
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
-  }
-
-  if (adminOnly && user?.role !== 'admin' && user?.role !== 'superadmin') {
-    return <Navigate to="/dashboard" replace />;
   }
 
   return children;
@@ -81,11 +76,12 @@ export default function App() {
   return (
     <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false} storageKey="theme-mode">
       <I18nProvider>
-        <PermissionProvider user={user}>
-          <Toaster position="top-right" richColors />
-          <Router>
-          <TopLoadingBar />
-          <Routes>
+        <TenantProvider user={user}>
+          <PermissionProvider user={user}>
+            <Toaster position="top-right" richColors />
+            <Router>
+            <TopLoadingBar />
+            <Routes>
             {/* Root Redirect */}
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
 
@@ -126,57 +122,10 @@ export default function App() {
               <Route path="urls" element={<DirectionalTransition><URLs /></DirectionalTransition>} />
               <Route path="urls/:id" element={<DirectionalTransition><URLDetailPage /></DirectionalTransition>} />
               <Route path="analytics" element={<DirectionalTransition><Analytics /></DirectionalTransition>} />
-
-              {/* Superadmin Suite Routes */}
-              <Route
-                path="admin"
-                element={
-                  <PrivateRoute adminOnly>
-                    <DirectionalTransition><AdminDashboardPage /></DirectionalTransition>
-                  </PrivateRoute>
-                }
-              />
-              <Route
-                path="admin/users"
-                element={
-                  <PrivateRoute adminOnly>
-                    <DirectionalTransition><AdminUsersPage /></DirectionalTransition>
-                  </PrivateRoute>
-                }
-              />
-              <Route
-                path="admin/roles"
-                element={
-                  <PrivateRoute adminOnly>
-                    <DirectionalTransition><AdminRolesPage /></DirectionalTransition>
-                  </PrivateRoute>
-                }
-              />
-              <Route
-                path="admin/links"
-                element={
-                  <PrivateRoute adminOnly>
-                    <DirectionalTransition><AdminLinksPage /></DirectionalTransition>
-                  </PrivateRoute>
-                }
-              />
-              <Route
-                path="admin/audit-logs"
-                element={
-                  <PrivateRoute adminOnly>
-                    <DirectionalTransition><AdminAuditLogsPage /></DirectionalTransition>
-                  </PrivateRoute>
-                }
-              />
-              <Route
-                path="admin/system"
-                element={
-                  <PrivateRoute adminOnly>
-                    <DirectionalTransition><AdminSystemPage /></DirectionalTransition>
-                  </PrivateRoute>
-                }
-              />
-
+              <Route path="workspace/links" element={<DirectionalTransition><WorkspaceLinksPage /></DirectionalTransition>} />
+              <Route path="workspace/members" element={<DirectionalTransition><WorkspaceMembersPage /></DirectionalTransition>} />
+              <Route path="workspace/roles" element={<DirectionalTransition><WorkspaceRolesPage /></DirectionalTransition>} />
+              <Route path="workspace/settings" element={<DirectionalTransition><WorkspaceSettingsPage /></DirectionalTransition>} />
               <Route path="account" element={<DirectionalTransition><Account /></DirectionalTransition>} />
             </Route>
 
@@ -185,7 +134,8 @@ export default function App() {
           </Routes>
           </Router>
         </PermissionProvider>
-      </I18nProvider>
+      </TenantProvider>
+    </I18nProvider>
     </ThemeProvider>
   );
 }

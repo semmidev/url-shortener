@@ -91,9 +91,12 @@ func (h *Handler) list(w http.ResponseWriter, r *http.Request) {
 
 	filter := web.NewFilterFromRequest(r)
 
+	scopeAll := r.URL.Query().Get("all") == "true" || r.URL.Query().Get("scope") == "workspace"
+
 	resp, err := h.svc.List(r.Context(), ListUserShortURLsRequest{
-		UserID: userID,
-		Filter: filter,
+		UserID:   userID,
+		Filter:   filter,
+		ScopeAll: scopeAll,
 	})
 	if err != nil {
 		web.Error(w, r, err)
