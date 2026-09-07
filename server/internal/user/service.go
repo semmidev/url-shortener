@@ -58,13 +58,14 @@ type Service struct {
 	httpClient    *http.Client
 }
 
-func NewService(store db.Store, tokenMaker *token.JWTMaker, cfg config.Config, appLogger *logger.Logger, c cache.Cache) *Service {
+func NewService(store db.Store, tokenMaker *token.JWTMaker, cfg config.Config, appLogger *logger.Logger, c cache.Cache, authorizer authz.Authorizer) *Service {
 	s := &Service{
 		store:         store,
 		tokenMaker:    tokenMaker,
 		cfg:           cfg,
 		appLogger:     appLogger,
 		cache:         c,
+		authorizer:    authorizer,
 		googleBreaker: breaker.NewCircuitBreaker("GoogleOAuth", 30*time.Second),
 		httpClient:    &http.Client{Timeout: 10 * time.Second},
 	}
@@ -75,12 +76,6 @@ func NewService(store db.Store, tokenMaker *token.JWTMaker, cfg config.Config, a
 func (s *Service) SetMetricsRecorder(m MetricsRecorder) {
 	if s != nil {
 		s.metrics = m
-	}
-}
-
-func (s *Service) SetAuthorizer(a authz.Authorizer) {
-	if s != nil {
-		s.authorizer = a
 	}
 }
 
@@ -530,10 +525,8 @@ func (s *Service) createSessionAndTokensWithQuerier(ctx context.Context, q db.Qu
 	if err == nil && len(tenants) > 0 {
 		domain = tenants[0].ID.String()
 	}
-	if s.authorizer != nil {
-		if perms, err := s.authorizer.GetPermissionsForUser(ctx, user.ID, domain); err == nil {
-			userResp.Permissions = perms
-		}
+	if perms, err := s.authorizer.GetPermissionsForUser(ctx, user.ID, domain); err == nil {
+		userResp.Permissions = perms
 	}
 	if userResp.Permissions == nil {
 		userResp.Permissions = []string{}
@@ -610,10 +603,8 @@ func (s *Service) GetProfile(ctx context.Context, req GetProfileRequest) (*UserR
 		}
 	}
 
-	if s.authorizer != nil {
-		if perms, err := s.authorizer.GetPermissionsForUser(ctx, req.UserID, domain); err == nil {
-			res.Permissions = perms
-		}
+	if perms, err := s.authorizer.GetPermissionsForUser(ctx, req.UserID, domain); err == nil {
+		res.Permissions = perms
 	}
 	if res.Permissions == nil {
 		res.Permissions = []string{}

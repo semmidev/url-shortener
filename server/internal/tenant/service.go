@@ -89,9 +89,7 @@ func (s *Service) CreateTenant(ctx context.Context, userID uuid.UUID, req Create
 	}
 
 	// Assign owner role grouping in Casbin for this tenant domain
-	if s.authorizer != nil {
-		_ = s.authorizer.AddUserRole(ctx, userID, "owner", t.ID.String())
-	}
+	_ = s.authorizer.AddUserRole(ctx, userID, "owner", t.ID.String())
 
 	return TenantResponse{
 		ID:        t.ID,
@@ -124,9 +122,7 @@ func (s *Service) JoinTenant(ctx context.Context, userID uuid.UUID, req JoinTena
 		return TenantResponse{}, apperr.Internal("failed to join tenant", err)
 	}
 
-	if s.authorizer != nil {
-		_ = s.authorizer.AddUserRole(ctx, userID, "member", t.ID.String())
-	}
+	_ = s.authorizer.AddUserRole(ctx, userID, "member", t.ID.String())
 
 	return TenantResponse{
 		ID:        t.ID,
@@ -178,9 +174,7 @@ func (s *Service) AddTenantMember(ctx context.Context, tenantID uuid.UUID, req A
 		return TenantMemberResponse{}, apperr.Internal("failed to add tenant member", err)
 	}
 
-	if s.authorizer != nil {
-		_ = s.authorizer.AddUserRole(ctx, user.ID, req.Role, tenantID.String())
-	}
+	_ = s.authorizer.AddUserRole(ctx, user.ID, req.Role, tenantID.String())
 
 	return TenantMemberResponse{
 		UserID:    user.ID,
@@ -211,10 +205,8 @@ func (s *Service) UpdateTenantMemberRole(ctx context.Context, tenantID uuid.UUID
 		return TenantMemberResponse{}, apperr.NotFound("user not found")
 	}
 
-	if s.authorizer != nil {
-		_ = s.authorizer.AddUserRole(ctx, targetUserID, req.Role, tenantID.String())
-		_ = s.authorizer.SyncPolicies(ctx)
-	}
+	_ = s.authorizer.AddUserRole(ctx, targetUserID, req.Role, tenantID.String())
+	_ = s.authorizer.SyncPolicies(ctx)
 
 	return TenantMemberResponse{
 		UserID:    user.ID,
@@ -290,9 +282,7 @@ func (s *Service) CreateTenantRole(ctx context.Context, tenantID uuid.UUID, req 
 		})
 	}
 
-	if s.authorizer != nil {
-		_ = s.authorizer.SyncPolicies(ctx)
-	}
+	_ = s.authorizer.SyncPolicies(ctx)
 
 	pCodes, _ := s.q.GetRolePermissions(ctx, r.ID)
 	var tID *uuid.UUID
@@ -339,9 +329,7 @@ func (s *Service) UpdateTenantRolePermissions(ctx context.Context, tenantID uuid
 		})
 	}
 
-	if s.authorizer != nil {
-		_ = s.authorizer.SyncPolicies(ctx)
-	}
+	_ = s.authorizer.SyncPolicies(ctx)
 
 	pCodes, _ := s.q.GetRolePermissions(ctx, role.ID)
 	var tID *uuid.UUID
@@ -381,9 +369,7 @@ func (s *Service) DeleteTenantRole(ctx context.Context, tenantID uuid.UUID, role
 		return apperr.Internal("gagal menghapus peran custom", err)
 	}
 
-	if s.authorizer != nil {
-		_ = s.authorizer.SyncPolicies(ctx)
-	}
+	_ = s.authorizer.SyncPolicies(ctx)
 
 	return nil
 }
@@ -438,8 +424,6 @@ func (s *Service) DeleteTenant(ctx context.Context, tenantID uuid.UUID) error {
 	if err := s.q.DeleteTenantAdmin(ctx, tenantID); err != nil {
 		return apperr.Internal("gagal menghapus workspace", err)
 	}
-	if s.authorizer != nil {
-		_ = s.authorizer.SyncPolicies(ctx)
-	}
+	_ = s.authorizer.SyncPolicies(ctx)
 	return nil
 }

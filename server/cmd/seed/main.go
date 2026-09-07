@@ -158,30 +158,22 @@ func seed(ctx context.Context, store db.Store) error {
 	if acme, ok := createdTenants["acme"]; ok {
 		if johnUser.Email != "" {
 			_, _ = store.AddTenantMember(ctx, db.AddTenantMemberParams{TenantID: acme.ID, UserID: johnUser.ID, Role: "owner"})
-			if authorizer != nil {
-				_ = authorizer.AddUserRole(ctx, johnUser.ID, "owner", acme.ID.String())
-			}
+			_ = authorizer.AddUserRole(ctx, johnUser.ID, "owner", acme.ID.String())
 		}
 		if janeUser.Email != "" {
 			_, _ = store.AddTenantMember(ctx, db.AddTenantMemberParams{TenantID: acme.ID, UserID: janeUser.ID, Role: "member"})
-			if authorizer != nil {
-				_ = authorizer.AddUserRole(ctx, janeUser.ID, "member", acme.ID.String())
-			}
+			_ = authorizer.AddUserRole(ctx, janeUser.ID, "member", acme.ID.String())
 		}
 	}
 
 	if stark, ok := createdTenants["stark"]; ok {
 		if janeUser.Email != "" {
 			_, _ = store.AddTenantMember(ctx, db.AddTenantMemberParams{TenantID: stark.ID, UserID: janeUser.ID, Role: "owner"})
-			if authorizer != nil {
-				_ = authorizer.AddUserRole(ctx, janeUser.ID, "owner", stark.ID.String())
-			}
+			_ = authorizer.AddUserRole(ctx, janeUser.ID, "owner", stark.ID.String())
 		}
 		if johnUser.Email != "" {
 			_, _ = store.AddTenantMember(ctx, db.AddTenantMemberParams{TenantID: stark.ID, UserID: johnUser.ID, Role: "admin"})
-			if authorizer != nil {
-				_ = authorizer.AddUserRole(ctx, johnUser.ID, "admin", stark.ID.String())
-			}
+			_ = authorizer.AddUserRole(ctx, johnUser.ID, "admin", stark.ID.String())
 		}
 	}
 

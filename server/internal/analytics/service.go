@@ -18,13 +18,10 @@ type Service struct {
 	authorizer authz.Authorizer
 }
 
-func NewService(store db.Store) *Service {
-	return &Service{store: store}
-}
-
-func (s *Service) SetAuthorizer(a authz.Authorizer) {
-	if s != nil {
-		s.authorizer = a
+func NewService(store db.Store, authorizer authz.Authorizer) *Service {
+	return &Service{
+		store:      store,
+		authorizer: authorizer,
 	}
 }
 
@@ -61,16 +58,14 @@ func (s *Service) RecordClick(ctx context.Context, req RecordClickRequest) (*Rec
 }
 
 func (s *Service) GetAnalyticsSummary(ctx context.Context, req GetAnalyticsSummaryRequest) (*AnalyticsSummaryResponse, error) {
-	if s.authorizer != nil {
-		if userID, ok := web.UserID(ctx); ok {
-			var domain string
-			if tID, ok := web.TenantID(ctx); ok {
-				domain = tID.String()
-			}
-			can, _ := s.authorizer.Can(ctx, userID, domain, permission.AnalyticsRead)
-			if !can {
-				return nil, apperr.Forbidden("anda tidak memiliki izin untuk melihat analitik (analytics.read)")
-			}
+	if userID, ok := web.UserID(ctx); ok {
+		var domain string
+		if tID, ok := web.TenantID(ctx); ok {
+			domain = tID.String()
+		}
+		can, _ := s.authorizer.Can(ctx, userID, domain, permission.AnalyticsRead)
+		if !can {
+			return nil, apperr.Forbidden("anda tidak memiliki izin untuk melihat analitik (analytics.read)")
 		}
 	}
 
@@ -124,15 +119,13 @@ func (s *Service) GetAnalyticsSummary(ctx context.Context, req GetAnalyticsSumma
 }
 
 func (s *Service) GetUserDashboard(ctx context.Context, req UserDashboardRequest) (*UserDashboardResponse, error) {
-	if s.authorizer != nil {
-		var domain string
-		if tID, ok := web.TenantID(ctx); ok {
-			domain = tID.String()
-		}
-		can, _ := s.authorizer.Can(ctx, req.UserID, domain, permission.AnalyticsRead)
-		if !can {
-			return nil, apperr.Forbidden("anda tidak memiliki izin untuk melihat analitik (analytics.read)")
-		}
+	var domain string
+	if tID, ok := web.TenantID(ctx); ok {
+		domain = tID.String()
+	}
+	can, _ := s.authorizer.Can(ctx, req.UserID, domain, permission.AnalyticsRead)
+	if !can {
+		return nil, apperr.Forbidden("anda tidak memiliki izin untuk melihat analitik (analytics.read)")
 	}
 
 	pgUserID := pgtype.UUID{Bytes: req.UserID, Valid: true}

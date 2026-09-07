@@ -33,17 +33,12 @@ type Service struct {
 	authorizer      authz.Authorizer
 }
 
-func NewService(store db.Store, cfg config.Config, c cache.Cache) *Service {
+func NewService(store db.Store, cfg config.Config, c cache.Cache, authorizer authz.Authorizer) *Service {
 	return &Service{
-		store: store,
-		cfg:   cfg,
-		cache: c,
-	}
-}
-
-func (s *Service) SetAuthorizer(a authz.Authorizer) {
-	if s != nil {
-		s.authorizer = a
+		store:      store,
+		cfg:        cfg,
+		cache:      c,
+		authorizer: authorizer,
 	}
 }
 
@@ -93,7 +88,7 @@ func (s *Service) Create(ctx context.Context, req CreateURLRequest) (*URLRespons
 		return nil, err
 	}
 
-	if s.authorizer != nil && req.UserID != nil {
+	if req.UserID != nil {
 		var domain string
 		if tID, ok := web.TenantID(ctx); ok {
 			domain = tID.String()
@@ -293,15 +288,13 @@ func (s *Service) Update(ctx context.Context, req UpdateURLRequest) (*URLRespons
 		return nil, err
 	}
 
-	if s.authorizer != nil {
-		var domain string
-		if tID, ok := web.TenantID(ctx); ok {
-			domain = tID.String()
-		}
-		can, _ := s.authorizer.Can(ctx, req.UserID, domain, permission.UrlsUpdate)
-		if !can {
-			return nil, apperr.Forbidden("anda tidak memiliki izin untuk mengedit link singkat (urls.update)")
-		}
+	var domain string
+	if tID, ok := web.TenantID(ctx); ok {
+		domain = tID.String()
+	}
+	can, _ := s.authorizer.Can(ctx, req.UserID, domain, permission.UrlsUpdate)
+	if !can {
+		return nil, apperr.Forbidden("anda tidak memiliki izin untuk mengedit link singkat (urls.update)")
 	}
 
 	// Verify ownership first
@@ -333,15 +326,13 @@ func (s *Service) Update(ctx context.Context, req UpdateURLRequest) (*URLRespons
 }
 
 func (s *Service) Delete(ctx context.Context, req DeleteURLRequest) (*DeleteURLResponse, error) {
-	if s.authorizer != nil {
-		var domain string
-		if tID, ok := web.TenantID(ctx); ok {
-			domain = tID.String()
-		}
-		can, _ := s.authorizer.Can(ctx, req.UserID, domain, permission.UrlsDelete)
-		if !can {
-			return nil, apperr.Forbidden("anda tidak memiliki izin untuk menghapus link singkat (urls.delete)")
-		}
+	var domainDelete string
+	if tID, ok := web.TenantID(ctx); ok {
+		domainDelete = tID.String()
+	}
+	canDelete, _ := s.authorizer.Can(ctx, req.UserID, domainDelete, permission.UrlsDelete)
+	if !canDelete {
+		return nil, apperr.Forbidden("anda tidak memiliki izin untuk menghapus link singkat (urls.delete)")
 	}
 
 	// Verify ownership first

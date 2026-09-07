@@ -197,17 +197,14 @@ func BuildRouter(cfg config.Config, pool *pgxpool.Pool, appLogger *logger.Logger
 	}
 
 	// Initialize Services
-	userSvc := user.NewService(store, tokenMaker, cfg, appLogger, redisCache)
+	userSvc := user.NewService(store, tokenMaker, cfg, appLogger, redisCache, authorizer)
 	userSvc.SetMetricsRecorder(appMetrics)
-	userSvc.SetAuthorizer(authorizer)
 
-	urlSvc := url.NewService(store, cfg, redisCache)
+	urlSvc := url.NewService(store, cfg, redisCache, authorizer)
 	urlSvc.SetMetricsRecorder(appMetrics)
-	urlSvc.SetAuthorizer(authorizer)
 	urlSvc.StartExpirationCleanupWorker(context.Background(), 1*time.Minute)
 
-	analyticsSvc := analytics.NewService(store)
-	analyticsSvc.SetAuthorizer(authorizer)
+	analyticsSvc := analytics.NewService(store, authorizer)
 	auditLogger := audit.NewLogger(store)
 
 	if taskDistributor != nil {
