@@ -11,13 +11,47 @@ import (
 	"github.com/nats-io/nats.go"
 )
 
+const (
+	DefaultSpecVersion  = "1.0"
+	DefaultEventVersion = "1.0"
+	DefaultSource       = "url-shortener-api"
+)
+
+// Event represents a CNCF CloudEvents v1.0 compliant event envelope for enterprise Event-Driven Architecture.
 type Event struct {
-	ID            string          `json:"id"`
-	AggregateType string          `json:"aggregate_type"`
-	AggregateID   string          `json:"aggregate_id"`
-	EventType     string          `json:"event_type"`
-	Payload       json.RawMessage `json:"payload"`
-	CreatedAt     time.Time       `json:"created_at"`
+	// Standard CloudEvents Identifiers
+	ID           string `json:"id"`                      // Unique Event ID (e.g. UUIDv7)
+	Source       string `json:"source"`                  // Originating service name (e.g. "url-shortener-api")
+	SpecVersion  string `json:"specversion"`             // CloudEvents specification version (e.g. "1.0")
+	EventType    string `json:"event_type"`              // Event name (e.g. "urls.created", "user.registered")
+	EventVersion string `json:"event_version,omitempty"` // Version of the payload schema (e.g. "1.0")
+
+	// Domain & Multi-Tenancy Context
+	AggregateType string `json:"aggregate_type,omitempty"` // Entity aggregate type (e.g. "url", "user", "tenant")
+	AggregateID   string `json:"aggregate_id,omitempty"`   // Entity aggregate ID
+	TenantID      string `json:"tenant_id,omitempty"`      // Multi-tenant organization/workspace ID
+
+	// Observability & Tracing Context
+	TraceID string `json:"trace_id,omitempty"` // OpenTelemetry Trace ID for end-to-end distributed tracing
+
+	// Payload & Optional Metadata
+	Payload  json.RawMessage `json:"payload"`            // Event data payload
+	Metadata map[string]any  `json:"metadata,omitempty"` // Extensible contextual headers
+
+	// Timestamp
+	CreatedAt time.Time `json:"created_at"` // Event creation timestamp (UTC)
+}
+
+// NewEvent creates a CloudEvents-compliant Event envelope with sensible default standards.
+func NewEvent(eventType string, payload json.RawMessage) Event {
+	return Event{
+		Source:       DefaultSource,
+		SpecVersion:  DefaultSpecVersion,
+		EventType:    eventType,
+		EventVersion: DefaultEventVersion,
+		Payload:      payload,
+		CreatedAt:    time.Now().UTC(),
+	}
 }
 
 type EventHandler func(ctx context.Context, event Event) error
@@ -60,6 +94,13 @@ func NewNatsPublisher(natsURL string) (*NatsPublisher, error) {
 }
 
 func (n *NatsPublisher) Publish(ctx context.Context, topic string, event Event) error {
+	if event.SpecVersion == "" {
+		event.SpecVersion = DefaultSpecVersion
+	}
+	if event.Source == "" {
+		event.Source = DefaultSource
+	}
+
 	data, err := json.Marshal(event)
 	if err != nil {
 		return fmt.Errorf("failed to marshal event: %w", err)
@@ -110,6 +151,13 @@ func NewInMemoryPublisher() *InMemoryPublisher {
 }
 
 func (m *InMemoryPublisher) Publish(ctx context.Context, topic string, event Event) error {
+	if event.SpecVersion == "" {
+		event.SpecVersion = DefaultSpecVersion
+	}
+	if event.Source == "" {
+		event.Source = DefaultSource
+	}
+
 	m.mu.RLock()
 	handlers := m.subscribers[topic]
 	m.mu.RUnlock()

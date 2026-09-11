@@ -96,9 +96,12 @@ func (w *OutboxWorker) processPendingEvents(ctx context.Context) {
 	processedStream := rill.Map(eventsStream, 5, func(e db.OutboxEvent) (uuid.UUID, error) {
 		evt := eventbus.Event{
 			ID:            e.ID.String(),
+			Source:        eventbus.DefaultSource,
+			SpecVersion:   eventbus.DefaultSpecVersion,
+			EventType:     e.EventType,
+			EventVersion:  eventbus.DefaultEventVersion,
 			AggregateType: e.AggregateType,
 			AggregateID:   e.AggregateID,
-			EventType:     e.EventType,
 			Payload:       json.RawMessage(e.Payload),
 			CreatedAt:     e.CreatedAt,
 		}
