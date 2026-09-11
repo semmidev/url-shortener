@@ -10,7 +10,7 @@ RUN bun install --frozen-lockfile || bun install
 COPY web/ .
 RUN bun run build
 
-# ─── Stage 1: Build ───────────────────────────────────────────────────────────
+# ─── Stage 1: Build Binaries Go ───────────────────────────────────────────────
 FROM golang:1.27-alpine AS builder
 ARG VERSION=1.0.0
 ARG BUILD_TIME=unknown
@@ -28,7 +28,7 @@ RUN --mount=type=cache,target=/go/pkg/mod go mod download
 COPY . .
 COPY --from=frontend-builder /app/web/dist ./server/internal/web/dist
 
-# Build fully static binaries with version metadata injection
+# Build fully static API binary with version metadata injection
 RUN --mount=type=cache,target=/go/pkg/mod \
     --mount=type=cache,target=/root/.cache/go-build \
     CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
@@ -39,6 +39,7 @@ RUN --mount=type=cache,target=/go/pkg/mod \
     -trimpath \
     -o /bin/api ./server/cmd/api
 
+# Build fully static Worker binary with version metadata injection
 RUN --mount=type=cache,target=/go/pkg/mod \
     --mount=type=cache,target=/root/.cache/go-build \
     CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
@@ -53,8 +54,8 @@ RUN --mount=type=cache,target=/go/pkg/mod \
 RUN addgroup -g 10001 -S appgroup && \
     adduser -u 10001 -S appuser -G appgroup
 
-# ─── Stage 2: Minimal Production Runtime (scratch) ───────────────────────────
-FROM scratch
+# ─── Stage 2: Minimal Production API Runtime ─────────────────────────────────
+FROM scratch AS api
 
 # Copy TLS Certificates and Timezone data
 COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
@@ -66,12 +67,31 @@ COPY --from=builder /etc/group /etc/group
 
 WORKDIR /app
 
-# Copy compiled API and worker binaries
+# Copy compiled API binary
 COPY --from=builder /bin/api /app/api
-COPY --from=builder /bin/worker /app/worker
 
 EXPOSE 8080
 
 USER appuser:appgroup
 
 ENTRYPOINT ["/app/api"]
+
+# ─── Stage 3: Minimal Production Worker Runtime ──────────────────────────────
+FROM scratch AS worker
+
+# Copy TLS Certificates and Timezone data
+COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
+COPY --from=builder /usr/share/zoneinfo /usr/share/zoneinfo
+
+# Copy user/group entries for non-root execution
+COPY --from=builder /etc/passwd /etc/passwd
+COPY --from=builder /etc/group /etc/group
+
+WORKDIR /app
+
+# Copy compiled Worker binary
+COPY --from=builder /bin/worker /app/worker
+
+USER appuser:appgroup
+
+ENTRYPOINT ["/app/worker"]

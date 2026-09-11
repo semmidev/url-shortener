@@ -5,6 +5,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      target: api
       args:
         VERSION: ${VERSION:-1.0.0}
         BUILD_TIME: ${BUILD_TIME:-unknown}
@@ -38,7 +39,8 @@ services:
   worker:
     build:
       context: .
-      dockerfile: Dockerfile.worker
+      dockerfile: Dockerfile
+      target: worker
       args:
         VERSION: ${VERSION:-1.0.0}
         BUILD_TIME: ${BUILD_TIME:-unknown}
