@@ -2,14 +2,7 @@ name: url-shortener
 
 services:
   api:
-    build:
-      context: .
-      dockerfile: Dockerfile
-      target: api
-      args:
-        VERSION: ${VERSION:-1.0.0}
-        BUILD_TIME: ${BUILD_TIME:-unknown}
-        GIT_COMMIT: ${GIT_COMMIT:-unknown}
+    image: ${DOCKER_IMAGE:-sammidev/url-shortener:latest}
     container_name: url-shortener-api
     depends_on:
       pgbouncer:
@@ -37,14 +30,8 @@ services:
       - url_shortener_network
 
   worker:
-    build:
-      context: .
-      dockerfile: Dockerfile
-      target: worker
-      args:
-        VERSION: ${VERSION:-1.0.0}
-        BUILD_TIME: ${BUILD_TIME:-unknown}
-        GIT_COMMIT: ${GIT_COMMIT:-unknown}
+    image: ${DOCKER_IMAGE:-sammidev/url-shortener:latest}
+    entrypoint: ["/app/worker"]
     container_name: url-shortener-worker
     depends_on:
       pgbouncer:

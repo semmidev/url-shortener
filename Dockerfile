@@ -54,8 +54,8 @@ RUN --mount=type=cache,target=/go/pkg/mod \
 RUN addgroup -g 10001 -S appgroup && \
     adduser -u 10001 -S appuser -G appgroup
 
-# ─── Stage 2: Minimal Production API Runtime ─────────────────────────────────
-FROM scratch AS api
+# ─── Stage 2: Minimal Production Runtime (scratch) ───────────────────────────
+FROM scratch
 
 # Copy TLS Certificates and Timezone data
 COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
@@ -67,31 +67,12 @@ COPY --from=builder /etc/group /etc/group
 
 WORKDIR /app
 
-# Copy compiled API binary
+# Copy compiled API and Worker binaries
 COPY --from=builder /bin/api /app/api
+COPY --from=builder /bin/worker /app/worker
 
 EXPOSE 8080
 
 USER appuser:appgroup
 
 ENTRYPOINT ["/app/api"]
-
-# ─── Stage 3: Minimal Production Worker Runtime ──────────────────────────────
-FROM scratch AS worker
-
-# Copy TLS Certificates and Timezone data
-COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
-COPY --from=builder /usr/share/zoneinfo /usr/share/zoneinfo
-
-# Copy user/group entries for non-root execution
-COPY --from=builder /etc/passwd /etc/passwd
-COPY --from=builder /etc/group /etc/group
-
-WORKDIR /app
-
-# Copy compiled Worker binary
-COPY --from=builder /bin/worker /app/worker
-
-USER appuser:appgroup
-
-ENTRYPOINT ["/app/worker"]
