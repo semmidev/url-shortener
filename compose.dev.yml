@@ -23,6 +23,7 @@ services:
       DB_PGBOUNCER_ENABLED: "true"
       REDIS_ADDRESS: redis:6379
       MIGRATION_URL: file://server/db/migration
+      MANAGEMENT_ADDRESS: 0.0.0.0:9090
       OTEL_ENABLED: "true"
       OTEL_EXPORTER_OTLP_ENDPOINT: alloy:4317
       OTEL_SERVICE_NAME: url-shortener-api

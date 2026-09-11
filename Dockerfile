@@ -67,9 +67,10 @@ COPY --from=builder /etc/group /etc/group
 
 WORKDIR /app
 
-# Copy compiled API and Worker binaries
+# Copy compiled API and Worker binaries, and database migration files
 COPY --from=builder /bin/api /app/api
 COPY --from=builder /bin/worker /app/worker
+COPY --from=builder /app/server/db/migration /app/server/db/migration
 
 EXPOSE 8080
 

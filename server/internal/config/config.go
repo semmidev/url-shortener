@@ -112,7 +112,7 @@ func LoadConfig(path string) (config Config, err error) {
 	viper.SetDefault("SERVER_SHUTDOWN_TIMEOUT", "10s")
 
 	viper.SetDefault("MANAGEMENT_ENABLED", true)
-	viper.SetDefault("MANAGEMENT_ADDRESS", "127.0.0.1:9090")
+	viper.SetDefault("MANAGEMENT_ADDRESS", "0.0.0.0:9090")
 
 	viper.SetDefault("RATE_LIMIT_ENABLED", true)
 	viper.SetDefault("RATE_LIMIT_AUTH_REQUESTS", 10)
