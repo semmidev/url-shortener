@@ -5,6 +5,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+    image: url-shortener-dev:latest
     container_name: url-shortener-api-dev
     depends_on:
       pgbouncer:
@@ -37,9 +38,7 @@ services:
       - url_shortener_dev_network
 
   worker:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: url-shortener-dev:latest
     entrypoint: ["/app/worker"]
     container_name: url-shortener-worker-dev
     depends_on:
