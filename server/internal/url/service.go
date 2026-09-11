@@ -33,24 +33,19 @@ type Service struct {
 	authorizer      authz.Authorizer
 }
 
-func NewService(store db.Store, cfg config.Config, c cache.Cache, authorizer authz.Authorizer) *Service {
+func NewService(store db.Store, cfg config.Config, c cache.Cache, authorizer authz.Authorizer, taskDistributor worker.TaskDistributor) *Service {
 	return &Service{
-		store:      store,
-		cfg:        cfg,
-		cache:      c,
-		authorizer: authorizer,
+		store:           store,
+		cfg:             cfg,
+		cache:           c,
+		authorizer:      authorizer,
+		taskDistributor: taskDistributor,
 	}
 }
 
 func (s *Service) SetMetricsRecorder(m MetricsRecorder) {
 	if s != nil {
 		s.metrics = m
-	}
-}
-
-func (s *Service) SetTaskDistributor(distributor worker.TaskDistributor) {
-	if s != nil {
-		s.taskDistributor = distributor
 	}
 }
 

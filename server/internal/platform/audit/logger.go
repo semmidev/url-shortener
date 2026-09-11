@@ -19,20 +19,15 @@ type Logger struct {
 	auditQueue      chan db.CreateAuditLogParams
 }
 
-func NewLogger(queries db.Querier) *Logger {
+func NewLogger(queries db.Querier, distributor worker.TaskDistributor) *Logger {
 	l := &Logger{
-		queries:    queries,
-		auditQueue: make(chan db.CreateAuditLogParams, 10000),
+		queries:         queries,
+		taskDistributor: distributor,
+		auditQueue:      make(chan db.CreateAuditLogParams, 10000),
 	}
 	// Start Rill worker pipeline for fallback async audit log processing
 	go l.startFallbackWorker()
 	return l
-}
-
-func (l *Logger) SetTaskDistributor(distributor worker.TaskDistributor) {
-	if l != nil {
-		l.taskDistributor = distributor
-	}
 }
 
 func (l *Logger) startFallbackWorker() {
@@ -86,7 +81,7 @@ func (l *Logger) Log(ctx context.Context, r *http.Request, params AuditParams) {
 	}
 
 	if l.taskDistributor != nil {
-		_ = l.taskDistributor.DistributeTaskRecordAuditLog(ctx, &worker.PayloadRecordAuditLog{
+		err := l.taskDistributor.DistributeTaskRecordAuditLog(ctx, &worker.PayloadRecordAuditLog{
 			ActorID:    actorUUID,
 			ActorEmail: actorEmail,
 			Action:     params.Action,
@@ -96,7 +91,9 @@ func (l *Logger) Log(ctx context.Context, r *http.Request, params AuditParams) {
 			IPAddress:  ipAddr,
 			UserAgent:  userAgent,
 		})
-		return
+		if err == nil {
+			return
+		}
 	}
 
 	// Bounded non-blocking fallback enqueue (prevents spawning unbounded goroutines under high load)

@@ -43,12 +43,13 @@ type RedirectHandler struct {
 	clickQueue      chan clickTask
 }
 
-func NewRedirectHandler(svc *Service, analyticsRec AnalyticsRecorder, spaHandler http.Handler) *RedirectHandler {
+func NewRedirectHandler(svc *Service, analyticsRec AnalyticsRecorder, spaHandler http.Handler, taskDistributor worker.TaskDistributor) *RedirectHandler {
 	h := &RedirectHandler{
-		svc:          svc,
-		analyticsRec: analyticsRec,
-		spaHandler:   spaHandler,
-		clickQueue:   make(chan clickTask, 10000),
+		svc:             svc,
+		analyticsRec:    analyticsRec,
+		spaHandler:      spaHandler,
+		taskDistributor: taskDistributor,
+		clickQueue:      make(chan clickTask, 10000),
 	}
 	// Start Rill pipeline worker pool for fallback async click processing (concurrency = 5)
 	go h.startFallbackWorker()
@@ -70,12 +71,6 @@ func (h *RedirectHandler) startFallbackWorker() {
 func (h *RedirectHandler) SetMetricsRecorder(m RedirectMetricsRecorder) {
 	if h != nil {
 		h.metrics = m
-	}
-}
-
-func (h *RedirectHandler) SetTaskDistributor(distributor worker.TaskDistributor) {
-	if h != nil {
-		h.taskDistributor = distributor
 	}
 }
 

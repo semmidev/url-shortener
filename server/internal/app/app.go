@@ -175,15 +175,12 @@ func BuildRouter(cfg config.Config, pool *pgxpool.Pool, appLogger *logger.Logger
 		eventPub = natsPub
 	}
 
-	// Initialize Asynq Task Distributor
-	var taskDistributor worker.TaskDistributor
-	if cfg.RedisAddress != "" {
-		taskDistributor = worker.NewRedisTaskDistributor(asynq.RedisClientOpt{
-			Addr:     cfg.RedisAddress,
-			Password: cfg.RedisPassword,
-			DB:       cfg.RedisDB,
-		}, appLogger)
-	}
+	// Initialize Asynq Task Distributor (Required)
+	taskDistributor := worker.NewRedisTaskDistributor(asynq.RedisClientOpt{
+		Addr:     cfg.RedisAddress,
+		Password: cfg.RedisPassword,
+		DB:       cfg.RedisDB,
+	}, appLogger)
 
 	// Initialize Casbin Decision Engine Authorizer
 	authorizer, err := authz.NewCasbinAuthorizer(store)
@@ -200,17 +197,12 @@ func BuildRouter(cfg config.Config, pool *pgxpool.Pool, appLogger *logger.Logger
 	userSvc := user.NewService(store, tokenMaker, cfg, appLogger, redisCache, authorizer)
 	userSvc.SetMetricsRecorder(appMetrics)
 
-	urlSvc := url.NewService(store, cfg, redisCache, authorizer)
+	urlSvc := url.NewService(store, cfg, redisCache, authorizer, taskDistributor)
 	urlSvc.SetMetricsRecorder(appMetrics)
 	urlSvc.StartExpirationCleanupWorker(context.Background(), 1*time.Minute)
 
 	analyticsSvc := analytics.NewService(store, authorizer)
-	auditLogger := audit.NewLogger(store)
-
-	if taskDistributor != nil {
-		urlSvc.SetTaskDistributor(taskDistributor)
-		auditLogger.SetTaskDistributor(taskDistributor)
-	}
+	_ = audit.NewLogger(store, taskDistributor)
 
 	// Initialize Embedded SPA Handler
 	spaHandler, err := spaweb.NewSPAHandler()
@@ -226,11 +218,8 @@ func BuildRouter(cfg config.Config, pool *pgxpool.Pool, appLogger *logger.Logger
 	urlH := url.NewHandler(urlSvc)
 	analyticsH := analytics.NewHandler(analyticsSvc)
 
-	redirectH := url.NewRedirectHandler(urlSvc, analyticsH, spaHandler)
+	redirectH := url.NewRedirectHandler(urlSvc, analyticsH, spaHandler, taskDistributor)
 	redirectH.SetMetricsRecorder(appMetrics)
-	if taskDistributor != nil {
-		redirectH.SetTaskDistributor(taskDistributor)
-	}
 
 	// Start Outbox Worker for async background event streaming
 	outboxWorker := outbox.NewOutboxWorker(store, eventPub, analyticsH)
