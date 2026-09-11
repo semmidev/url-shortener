@@ -27,11 +27,10 @@ func NewService(q db.Querier, authorizer authz.Authorizer) *Service {
 }
 
 func GenerateJoinCode() string {
-	const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
-	b := make([]byte, 6)
+	b := make([]byte, JoinCodeLength)
 	_, _ = rand.Read(b)
 	for i := range b {
-		b[i] = chars[int(b[i])%len(chars)]
+		b[i] = JoinCodeAlphabet[int(b[i])%len(JoinCodeAlphabet)]
 	}
 	return string(b)
 }
