@@ -7,11 +7,10 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
-	"golang.org/x/crypto/bcrypt"
-
 	db "github.com/semmidev/url-shortener/server/db/sqlc"
 	"github.com/semmidev/url-shortener/server/internal/config"
 	"github.com/semmidev/url-shortener/server/internal/platform/authz"
+	"github.com/semmidev/url-shortener/server/internal/platform/crypto"
 	"github.com/semmidev/url-shortener/server/internal/platform/permission"
 	"github.com/semmidev/url-shortener/server/internal/platform/postgres"
 )
@@ -95,7 +94,7 @@ func seed(ctx context.Context, store db.Store) error {
 	authorizer, _ := authz.NewCasbinAuthorizer(store)
 
 	// 3. Seed Default User Accounts
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte("password"), bcrypt.DefaultCost)
+	hashedPassword, err := crypto.HashPassword("password")
 	if err != nil {
 		return fmt.Errorf("failed to hash default password: %w", err)
 	}
@@ -116,7 +115,7 @@ func seed(ctx context.Context, store db.Store) error {
 
 	log.Println("👤 Seeding default user accounts...")
 	for _, u := range users {
-		passwordHash := string(hashedPassword)
+		passwordHash := hashedPassword
 		_, _ = store.CreateUser(ctx, db.CreateUserParams{
 			Email:        u.Email,
 			PasswordHash: stringToPgText(&passwordHash),
