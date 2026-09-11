@@ -71,6 +71,11 @@ type Config struct {
 	CacheTTLShortURL   time.Duration `mapstructure:"CACHE_TTL_SHORT_URL"`
 	CacheControlMaxAge int           `mapstructure:"CACHE_CONTROL_MAX_AGE"`
 
+	// OpenTelemetry Settings
+	OtelEnabled          bool   `mapstructure:"OTEL_ENABLED"`
+	OtelExporterEndpoint string `mapstructure:"OTEL_EXPORTER_OTLP_ENDPOINT"`
+	OtelServiceName      string `mapstructure:"OTEL_SERVICE_NAME"`
+
 	// NATS Event Bus Settings
 	NatsURL string `mapstructure:"NATS_URL"`
 }
@@ -144,6 +149,10 @@ func LoadConfig(path string) (config Config, err error) {
 	viper.SetDefault("CACHE_CONTROL_MAX_AGE", 300)
 
 	viper.SetDefault("NATS_URL", "nats://127.0.0.1:4222")
+
+	viper.SetDefault("OTEL_ENABLED", true)
+	viper.SetDefault("OTEL_EXPORTER_OTLP_ENDPOINT", "127.0.0.1:4317")
+	viper.SetDefault("OTEL_SERVICE_NAME", "url-shortener-api")
 
 	viper.AutomaticEnv()
 

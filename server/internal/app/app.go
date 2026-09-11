@@ -30,6 +30,7 @@ import (
 	"github.com/semmidev/url-shortener/server/internal/platform/outbox"
 	"github.com/semmidev/url-shortener/server/internal/platform/permission"
 	"github.com/semmidev/url-shortener/server/internal/platform/postgres"
+	"github.com/semmidev/url-shortener/server/internal/platform/telemetry"
 	"github.com/semmidev/url-shortener/server/internal/platform/token"
 	"github.com/semmidev/url-shortener/server/internal/platform/web"
 	"github.com/semmidev/url-shortener/server/internal/tenant"
@@ -49,6 +50,23 @@ func Run(cfg config.Config) error {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
+
+	// Initialize OpenTelemetry Tracing
+	if cfg.OtelEnabled {
+		shutdownTracer, err := telemetry.InitTracer(context.Background(), cfg.OtelExporterEndpoint, cfg.OtelServiceName)
+		if err != nil {
+			appLogger.Warn(ctx, "opentelemetry tracer initialization warning", "error", err)
+		} else {
+			appLogger.Info(ctx, "opentelemetry tracer initialized successfully", "endpoint", cfg.OtelExporterEndpoint, "service", cfg.OtelServiceName)
+			defer func() {
+				shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 5*time.Second)
+				defer shutdownCancel()
+				if err := shutdownTracer(shutdownCtx); err != nil {
+					appLogger.Error(shutdownCtx, "opentelemetry tracer shutdown failed", "error", err)
+				}
+			}()
+		}
+	}
 
 	// Database Migrations
 	if cfg.MigrationURL != "" {
@@ -236,6 +254,9 @@ func BuildRouter(cfg config.Config, pool *pgxpool.Pool, appLogger *logger.Logger
 	r.Use(customMw.SecureHeaders)
 	r.Use(chimw.Recoverer)
 	r.Use(customMw.RequestTimeout(10 * time.Second))
+	if cfg.OtelEnabled {
+		r.Use(customMw.Tracing(cfg.OtelServiceName))
+	}
 	r.Use(customMw.Metrics(appMetrics))
 	r.Use(customMw.WideEventLogging(appLogger))
 
