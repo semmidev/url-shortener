@@ -9,6 +9,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      alloy:
+        condition: service_started
     env_file:
       - path: .env
         required: true
@@ -18,6 +20,9 @@ services:
       DB_PGBOUNCER_ENABLED: "true"
       REDIS_ADDRESS: redis:6379
       MIGRATION_URL: file://server/db/migration
+      OTEL_ENABLED: "true"
+      OTEL_EXPORTER_OTLP_ENDPOINT: alloy:4317
+      OTEL_SERVICE_NAME: url-shortener-api
     restart: unless-stopped
     ports:
       - "127.0.0.1:8080:8080"
@@ -34,10 +39,14 @@ services:
     entrypoint: ["/app/worker"]
     container_name: url-shortener-worker
     depends_on:
+      api:
+        condition: service_started
       pgbouncer:
         condition: service_healthy
       redis:
         condition: service_healthy
+      alloy:
+        condition: service_started
     env_file:
       - path: .env
         required: true
@@ -49,6 +58,9 @@ services:
       WORKER_DB_MAX_CONNS: ${WORKER_DB_MAX_CONNS:-10}
       WORKER_DB_MIN_CONNS: ${WORKER_DB_MIN_CONNS:-2}
       WORKER_CONCURRENCY: ${WORKER_CONCURRENCY:-10}
+      OTEL_ENABLED: "true"
+      OTEL_EXPORTER_OTLP_ENDPOINT: alloy:4317
+      OTEL_SERVICE_NAME: url-shortener-worker
     restart: unless-stopped
     logging:
       driver: json-file
@@ -186,6 +198,78 @@ services:
       options:
         max-size: 10m
         max-file: "3"
+    networks:
+      - url_shortener_network
+
+  alloy:
+    image: grafana/alloy:latest
+    container_name: url-shortener-alloy
+    command:
+      - run
+      - --server.http.listen-addr=0.0.0.0:12345
+      - --storage.path=/var/lib/alloy/data
+      - /etc/alloy/config.alloy
+    volumes:
+      - ./deploy/observability/alloy/config.alloy:/etc/alloy/config.alloy:ro
+    ports:
+      - "127.0.0.1:4317:4317" # OTLP gRPC receiver
+      - "127.0.0.1:4318:4318" # OTLP HTTP receiver
+      - "127.0.0.1:12345:12345" # Alloy UI & metrics
+    restart: unless-stopped
+    networks:
+      - url_shortener_network
+
+  tempo:
+    image: grafana/tempo:latest
+    container_name: url-shortener-tempo
+    command: [ "-config.file=/etc/tempo/tempo.yml" ]
+    volumes:
+      - ./deploy/observability/tempo/tempo.yml:/etc/tempo/tempo.yml:ro
+    ports:
+      - "127.0.0.1:3200:3200" # Tempo HTTP
+    restart: unless-stopped
+    networks:
+      - url_shortener_network
+
+  loki:
+    image: grafana/loki:latest
+    container_name: url-shortener-loki
+    command: [ "-config.file=/etc/loki/loki.yml" ]
+    volumes:
+      - ./deploy/observability/loki/loki.yml:/etc/loki/loki.yml:ro
+    ports:
+      - "127.0.0.1:3100:3100" # Loki HTTP
+    restart: unless-stopped
+    networks:
+      - url_shortener_network
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: url-shortener-prometheus
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --web.enable-remote-write-receiver
+    volumes:
+      - ./deploy/observability/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    ports:
+      - "127.0.0.1:9090:9090" # Prometheus Web UI
+    restart: unless-stopped
+    networks:
+      - url_shortener_network
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: url-shortener-grafana
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - ./deploy/observability/grafana/provisioning:/etc/grafana/provisioning:ro
+    ports:
+      - "127.0.0.1:3000:3000" # Grafana UI
+    restart: unless-stopped
     networks:
       - url_shortener_network
 

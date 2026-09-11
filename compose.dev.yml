@@ -1,29 +1,106 @@
 name: url-shortener-dev
 
 services:
-  postgres:
-    image: postgres:18-alpine
-    container_name: url-shortener-postgres-dev
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: url-shortener-api-dev
+    depends_on:
+      pgbouncer:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      alloy:
+        condition: service_started
+    env_file:
+      - path: .env
+        required: true
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
-      POSTGRES_DB: ${POSTGRES_DB:-urlshortener}
-    ports:
-      - '5432:5432'
-    volumes:
-      - db_dev_data:/var/lib/postgresql
+      APP_ENV: development
+      DB_SOURCE: postgres://${DB_USER:-postgres}:${DB_PASSWORD:-postgres}@pgbouncer:6432/${DB_NAME:-urlshortener}?sslmode=disable
+      DB_PGBOUNCER_ENABLED: "true"
+      REDIS_ADDRESS: redis:6379
+      MIGRATION_URL: file://server/db/migration
+      OTEL_ENABLED: "true"
+      OTEL_EXPORTER_OTLP_ENDPOINT: alloy:4317
+      OTEL_SERVICE_NAME: url-shortener-api
     restart: unless-stopped
-    healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-urlshortener}']
-      interval: 5s
-      timeout: 5s
-      retries: 10
-      start_period: 5s
+    ports:
+      - "127.0.0.1:8080:8080"
     logging:
       driver: json-file
       options:
         max-size: 10m
-        max-file: '3'
+        max-file: "5"
+    networks:
+      - url_shortener_dev_network
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    entrypoint: ["/app/worker"]
+    container_name: url-shortener-worker-dev
+    depends_on:
+      api:
+        condition: service_started
+      pgbouncer:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      alloy:
+        condition: service_started
+    env_file:
+      - path: .env
+        required: true
+    environment:
+      APP_ENV: development
+      DB_SOURCE: postgres://${DB_USER:-postgres}:${DB_PASSWORD:-postgres}@pgbouncer:6432/${DB_NAME:-urlshortener}?sslmode=disable
+      DB_PGBOUNCER_ENABLED: "true"
+      REDIS_ADDRESS: redis:6379
+      WORKER_DB_MAX_CONNS: ${WORKER_DB_MAX_CONNS:-10}
+      WORKER_DB_MIN_CONNS: ${WORKER_DB_MIN_CONNS:-2}
+      WORKER_CONCURRENCY: ${WORKER_CONCURRENCY:-10}
+      OTEL_ENABLED: "true"
+      OTEL_EXPORTER_OTLP_ENDPOINT: alloy:4317
+      OTEL_SERVICE_NAME: url-shortener-worker
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "5"
+    networks:
+      - url_shortener_dev_network
+
+  postgres:
+    image: postgres:18-alpine
+    container_name: url-shortener-postgres-dev
+    env_file:
+      - path: .env
+        required: true
+    environment:
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
+      POSTGRES_DB: ${DB_NAME:-urlshortener}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - postgres_dev_data:/var/lib/postgresql/data/pgdata
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${DB_USER:-postgres} -d $${DB_NAME:-urlshortener}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
     networks:
       - url_shortener_dev_network
 
@@ -33,19 +110,22 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+    env_file:
+      - path: .env
+        required: true
     environment:
-      DB_USER: ${POSTGRES_USER:-postgres}
-      DB_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      DB_USER: ${DB_USER:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD:-postgres}
       DB_HOST: postgres
-      DB_NAME: ${POSTGRES_DB:-urlshortener}
+      DB_NAME: ${DB_NAME:-urlshortener}
     volumes:
       - ./server/db/pgbouncer/pgbouncer.ini:/etc/pgbouncer/pgbouncer.ini:ro
       - ./server/db/pgbouncer/userlist.txt:/etc/pgbouncer/userlist.txt:ro
     ports:
-      - '6432:6432'
+      - "127.0.0.1:6432:6432"
     restart: unless-stopped
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -h 127.0.0.1 -p 6432 -U $${POSTGRES_USER:-postgres}']
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -p 6432 -U $${DB_USER:-postgres}"]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -54,7 +134,38 @@ services:
       driver: json-file
       options:
         max-size: 10m
-        max-file: '3'
+        max-file: "3"
+    networks:
+      - url_shortener_dev_network
+
+  db-backup:
+    image: ghcr.io/solectrus/postgres-s3-backup:18
+    container_name: url-shortener-db-backup-dev
+    depends_on:
+      postgres:
+        condition: service_healthy
+    env_file:
+      - path: .env
+        required: true
+    environment:
+      SCHEDULE: ${BACKUP_SCHEDULE:-@daily}
+      BACKUP_KEEP_DAYS: ${BACKUP_KEEP_DAYS:-7}
+      POSTGRES_HOST: postgres
+      POSTGRES_DATABASE: ${DB_NAME:-urlshortener}
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
+      S3_REGION: ${S3_REGION:-us-east-1}
+      S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID}
+      S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY}
+      S3_BUCKET: ${BACKUP_S3_BUCKET:-url-shortener-backups}
+      S3_PREFIX: ${BACKUP_S3_PREFIX:-backups}
+      S3_ENDPOINT: ${S3_ENDPOINT:-}
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
     networks:
       - url_shortener_dev_network
 
@@ -62,13 +173,19 @@ services:
     image: redis:7-alpine
     container_name: url-shortener-redis-dev
     ports:
-      - '6379:6379'
+      - "127.0.0.1:6379:6379"
     restart: unless-stopped
     healthcheck:
-      test: ['CMD', 'redis-cli', 'ping']
+      test: ["CMD", "redis-cli", "ping"]
       interval: 5s
       timeout: 5s
       retries: 10
+      start_period: 5s
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
     networks:
       - url_shortener_dev_network
 
@@ -77,14 +194,91 @@ services:
     container_name: url-shortener-nats-dev
     command: "-js"
     ports:
-      - '4222:4222'
-      - '8222:8222'
+      - "127.0.0.1:4222:4222"
+      - "127.0.0.1:8222:8222"
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
+    networks:
+      - url_shortener_dev_network
+
+  alloy:
+    image: grafana/alloy:latest
+    container_name: url-shortener-alloy-dev
+    command:
+      - run
+      - --server.http.listen-addr=0.0.0.0:12345
+      - --storage.path=/var/lib/alloy/data
+      - /etc/alloy/config.alloy
+    volumes:
+      - ./deploy/observability/alloy/config.alloy:/etc/alloy/config.alloy:ro
+    ports:
+      - "127.0.0.1:4317:4317" # OTLP gRPC receiver
+      - "127.0.0.1:4318:4318" # OTLP HTTP receiver
+      - "127.0.0.1:12345:12345" # Alloy UI & metrics
+    restart: unless-stopped
+    networks:
+      - url_shortener_dev_network
+
+  tempo:
+    image: grafana/tempo:latest
+    container_name: url-shortener-tempo-dev
+    command: [ "-config.file=/etc/tempo/tempo.yml" ]
+    volumes:
+      - ./deploy/observability/tempo/tempo.yml:/etc/tempo/tempo.yml:ro
+    ports:
+      - "127.0.0.1:3200:3200" # Tempo HTTP
+    restart: unless-stopped
+    networks:
+      - url_shortener_dev_network
+
+  loki:
+    image: grafana/loki:latest
+    container_name: url-shortener-loki-dev
+    command: [ "-config.file=/etc/loki/loki.yml" ]
+    volumes:
+      - ./deploy/observability/loki/loki.yml:/etc/loki/loki.yml:ro
+    ports:
+      - "127.0.0.1:3100:3100" # Loki HTTP
+    restart: unless-stopped
+    networks:
+      - url_shortener_dev_network
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: url-shortener-prometheus-dev
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --web.enable-remote-write-receiver
+    volumes:
+      - ./deploy/observability/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    ports:
+      - "127.0.0.1:9090:9090" # Prometheus Web UI
+    restart: unless-stopped
+    networks:
+      - url_shortener_dev_network
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: url-shortener-grafana-dev
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - ./deploy/observability/grafana/provisioning:/etc/grafana/provisioning:ro
+    ports:
+      - "127.0.0.1:3000:3000" # Grafana UI
     restart: unless-stopped
     networks:
       - url_shortener_dev_network
 
 volumes:
-  db_dev_data:
+  postgres_dev_data:
 
 networks:
   url_shortener_dev_network:
