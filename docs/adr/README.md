@@ -62,6 +62,7 @@ This directory contains the Architecture Decision Records (ADRs) for the URL Sho
 | [security-0002](security-0002-security-audit-logging.md) | Security Audit Logging | Accepted | 2026-08-19 |
 | [security-0003](security-0003-oauth-account-linking-and-password-governance.md) | OAuth Account Linking & Password Governance | Accepted | 2026-08-21 |
 | [security-0004](security-0004-internal-management-server-isolation.md) | Dedicated Internal Management Server Isolation for Observability & Profiling | Accepted | 2026-08-22 |
+| [security-0005](security-0005-argon2id-password-hashing-migration.md) | Argon2id Password Hashing Migration | Accepted | 2026-09-11 |
 
 ### 🧪 Testing (`testing-*`)
 

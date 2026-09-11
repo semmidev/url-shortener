@@ -101,6 +101,16 @@ tp := otel.GetTracerProvider()
 
 ---
 
+### ✅ Password Hashing Algorithm (Argon2id)
+**Status**: Implemented using `golang.org/x/crypto/argon2` in `server/internal/platform/crypto/password.go`.
+
+- Migrated from legacy bcrypt to **Argon2id** (`argon2.IDKey`) per OWASP and RFC 9106 security recommendations.
+- Tuned parameters: `memory = 19456 KiB` (19 MiB), `iterations = 2`, `parallelism = 1`, `salt = 16 bytes`, `hash = 32 bytes`.
+- Standard PHC string formatting (`$argon2id$v=19$m=19456,t=2,p=1$<b64-salt>$<b64-hash>`).
+- Hash comparison uses `crypto/subtle.ConstantTimeCompare` to prevent side-channel timing attacks.
+
+---
+
 ### ✅ Tamper-Evident Audit Logging
 **Status**: Implemented in `server/internal/platform/logger/audit.go`.
 
