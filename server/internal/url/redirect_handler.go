@@ -164,14 +164,16 @@ func (h *RedirectHandler) Redirect(w http.ResponseWriter, r *http.Request) {
 
 	// Asynchronously record click metrics and increment counter via TaskDistributor or bounded worker queue
 	clientIP := web.GetClientIP(r)
+	var errTask error
 	if h.taskDistributor != nil {
-		_ = h.taskDistributor.DistributeTaskRecordClickAnalytics(r.Context(), &worker.PayloadRecordClickAnalytics{
+		errTask = h.taskDistributor.DistributeTaskRecordClickAnalytics(r.Context(), &worker.PayloadRecordClickAnalytics{
 			URLID:     res.ID,
 			IP:        clientIP,
 			UserAgent: r.UserAgent(),
 			Referrer:  r.Referer(),
 		})
-	} else {
+	}
+	if h.taskDistributor == nil || errTask != nil {
 		select {
 		case h.clickQueue <- clickTask{
 			urlID:     res.ID,
@@ -180,7 +182,7 @@ func (h *RedirectHandler) Redirect(w http.ResponseWriter, r *http.Request) {
 			referrer:  r.Referer(),
 		}:
 		default:
-			logger.Enrich(r.Context(), "click_queue_full", true)
+			// Queue full, drop click event to prevent blocking HTTP handler under extreme load
 		}
 	}
 

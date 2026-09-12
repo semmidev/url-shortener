@@ -3,6 +3,8 @@ package middleware
 import (
 	"fmt"
 	"net/http"
+	"path/filepath"
+	"strings"
 
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
@@ -10,12 +12,53 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
-// Tracing returns a middleware that starts an OpenTelemetry span for each incoming HTTP request.
+// shouldTrace determines whether an HTTP request path should generate OpenTelemetry trace spans.
+// Only API routes and short URL redirection requests are traced.
+// Utility endpoints (health checks, docs, swagger, version) and static web assets (.js, .css, etc.)
+// are excluded to avoid cluttering tracing storage (Tempo/OTel collector).
+func shouldTrace(path string) bool {
+	// Exclude health check endpoints
+	if path == "/health" || strings.HasPrefix(path, "/health/") {
+		return false
+	}
+	// Exclude version & build info endpoint
+	if path == "/version" {
+		return false
+	}
+	// Exclude Scalar API reference documentation
+	if path == "/docs" || strings.HasPrefix(path, "/docs/") {
+		return false
+	}
+	// Exclude Swagger UI documentation & spec JSON
+	if path == "/swagger" || strings.HasPrefix(path, "/swagger/") {
+		return false
+	}
+	// Exclude favicon
+	if path == "/favicon.ico" {
+		return false
+	}
+	// Exclude static assets by file extension
+	ext := strings.ToLower(filepath.Ext(path))
+	switch ext {
+	case ".js", ".css", ".png", ".jpg", ".jpeg", ".gif", ".ico", ".svg", ".woff", ".woff2", ".ttf", ".map", ".html":
+		return false
+	}
+
+	return true
+}
+
+// Tracing returns a middleware that starts an OpenTelemetry span for API and URL redirect HTTP requests.
 func Tracing(serviceName string) func(http.Handler) http.Handler {
 	tracer := otel.Tracer(serviceName)
 
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			// Skip tracing for non-API, health check, documentation, and static asset routes
+			if !shouldTrace(r.URL.Path) {
+				next.ServeHTTP(w, r)
+				return
+			}
+
 			// Extract incoming W3C TraceContext headers if present
 			ctx := otel.GetTextMapPropagator().Extract(r.Context(), propagation.HeaderCarrier(r.Header))
 

@@ -44,15 +44,15 @@ build: build-frontend
 
 # Run unit tests only (automatically skips integration build tag)
 test:
-	go test -race ./... -v
+	go test -race ./server/... -v
 
 # Run E2E integration tests using Testcontainers-Go (-tags=integration)
 test-integration:
-	go test -race -tags=integration ./... -v
+	go test -race -tags=integration ./server/... -v
 
 # Run all unit and integration tests
 test-all:
-	go test -race -tags=integration ./... -v
+	go test -race -tags=integration ./server/... -v
 
 # Run Go performance benchmark tests
 benchmark:

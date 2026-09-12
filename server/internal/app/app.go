@@ -196,12 +196,15 @@ func BuildRouter(cfg config.Config, pool *pgxpool.Pool, appLogger *logger.Logger
 		eventPub = natsPub
 	}
 
-	// Initialize Asynq Task Distributor (Required)
-	taskDistributor := worker.NewRedisTaskDistributor(asynq.RedisClientOpt{
-		Addr:     cfg.RedisAddress,
-		Password: cfg.RedisPassword,
-		DB:       cfg.RedisDB,
-	}, appLogger)
+	// Initialize Asynq Task Distributor (Only if Redis is configured)
+	var taskDistributor worker.TaskDistributor
+	if cfg.RedisAddress != "" {
+		taskDistributor = worker.NewRedisTaskDistributor(asynq.RedisClientOpt{
+			Addr:     cfg.RedisAddress,
+			Password: cfg.RedisPassword,
+			DB:       cfg.RedisDB,
+		}, appLogger)
+	}
 
 	// Initialize Casbin Decision Engine Authorizer
 	authorizer, err := authz.NewCasbinAuthorizer(store)
