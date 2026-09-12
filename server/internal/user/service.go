@@ -25,8 +25,10 @@ import (
 	"github.com/semmidev/url-shortener/server/internal/platform/crypto"
 	"github.com/semmidev/url-shortener/server/internal/platform/logger"
 	"github.com/semmidev/url-shortener/server/internal/platform/retry"
+	"github.com/semmidev/url-shortener/server/internal/platform/telemetry"
 	"github.com/semmidev/url-shortener/server/internal/platform/token"
 	"github.com/semmidev/url-shortener/server/internal/platform/web"
+	"go.opentelemetry.io/otel/attribute"
 )
 
 // emailAttemptEntry tracks failed login attempts for a specific email.
@@ -175,13 +177,16 @@ func toUserResponse(u db.User) UserResponse {
 	}
 }
 
-func (s *Service) Register(ctx context.Context, req RegisterRequest) (*LoginResponse, error) {
+func (s *Service) Register(ctx context.Context, req RegisterRequest) (res *LoginResponse, err error) {
+	ctx, endSpan := telemetry.StartSpan(ctx, "user.Service.Register", attribute.String("user.email", req.Email))
+	defer func() { endSpan(err) }()
+
 	if err := req.Validate(); err != nil {
 		return nil, err
 	}
 
 	// Check if user already exists
-	_, err := s.store.GetUserByEmail(ctx, req.Email)
+	_, err = s.store.GetUserByEmail(ctx, req.Email)
 	if err == nil {
 		return nil, apperr.Conflict("email is already registered")
 	} else if !errors.Is(err, pgx.ErrNoRows) {
@@ -229,7 +234,9 @@ func (s *Service) Register(ctx context.Context, req RegisterRequest) (*LoginResp
 	return loginResp, nil
 }
 
-func (s *Service) Login(ctx context.Context, req LoginRequest) (*LoginResponse, error) {
+func (s *Service) Login(ctx context.Context, req LoginRequest) (res *LoginResponse, err error) {
+	ctx, endSpan := telemetry.StartSpan(ctx, "user.Service.Login", attribute.String("user.email", req.Email))
+	defer func() { endSpan(err) }()
 	if err := req.Validate(); err != nil {
 		return nil, err
 	}

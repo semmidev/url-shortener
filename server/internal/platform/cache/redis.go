@@ -9,6 +9,8 @@ import (
 	"time"
 
 	"github.com/redis/go-redis/v9"
+	"github.com/semmidev/url-shortener/server/internal/platform/telemetry"
+	"go.opentelemetry.io/otel/attribute"
 )
 
 // Cache defines the caching operations contract.
@@ -65,7 +67,9 @@ func NewRedisCache(addr, password string, db int) (*RedisCache, error) {
 // ErrCacheMiss indicates that the requested key was not found in cache.
 var ErrCacheMiss = errors.New("cache: key not found")
 
-func (r *RedisCache) Get(ctx context.Context, key string, dest interface{}) error {
+func (r *RedisCache) Get(ctx context.Context, key string, dest interface{}) (err error) {
+	ctx, endSpan := telemetry.StartSpan(ctx, "cache.redis.Get", attribute.String("db.system", "redis"), attribute.String("cache.key", key))
+	defer func() { endSpan(err) }()
 	if r == nil || r.client == nil {
 		if r != nil && r.metrics != nil {
 			r.metrics.RecordCacheMiss("redis")
@@ -114,7 +118,10 @@ func (r *RedisCache) SetTyped[T any](ctx context.Context, key string, val T, ttl
 	return r.Set(ctx, key, val, ttl)
 }
 
-func (r *RedisCache) Set(ctx context.Context, key string, value interface{}, ttl time.Duration) error {
+func (r *RedisCache) Set(ctx context.Context, key string, value interface{}, ttl time.Duration) (err error) {
+	ctx, endSpan := telemetry.StartSpan(ctx, "cache.redis.Set", attribute.String("db.system", "redis"), attribute.String("cache.key", key))
+	defer func() { endSpan(err) }()
+
 	if r == nil || r.client == nil {
 		return nil
 	}
@@ -132,7 +139,10 @@ func (r *RedisCache) Set(ctx context.Context, key string, value interface{}, ttl
 	return nil
 }
 
-func (r *RedisCache) Delete(ctx context.Context, keys ...string) error {
+func (r *RedisCache) Delete(ctx context.Context, keys ...string) (err error) {
+	ctx, endSpan := telemetry.StartSpan(ctx, "cache.redis.Delete", attribute.String("db.system", "redis"))
+	defer func() { endSpan(err) }()
+
 	if r == nil || r.client == nil || len(keys) == 0 {
 		return nil
 	}

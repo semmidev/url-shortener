@@ -39,15 +39,38 @@ A high-performance, enterprise-grade Multi-Tenant SaaS URL Shortener REST API wr
 ---
 
 ## Table of Contents
-- [Quick Start & Setup Guide](#quick-start--setup-guide)
-- [System Architecture & Data Flow](#system-architecture--data-flow)
-- [Enterprise Security & CI/CD Pipelines](#enterprise-security--cicd-pipelines)
-- [Makefile Commands](#makefile-commands)
-- [Architectural & Code Style Decisions (ADRs)](#architectural--code-style-decisions-adrs)
-- [Release & Deployment Workflow](#release--deployment-workflow)
-- [Implementing a New Feature (Workflow Guide)](#implementing-a-new-feature-workflow-guide)
-- [Testing Guide](#testing-guide)
-- [Environment Variables Reference](#environment-variables-reference)
+- [URL Shortener API](#url-shortener-api)
+    - [Previews](#previews)
+      - [Dashboard Overview](#dashboard-overview)
+      - [Short URLs Management](#short-urls-management)
+      - [Interactive Scalar API Reference](#interactive-scalar-api-reference)
+      - [Swagger Interactive API Docs](#swagger-interactive-api-docs)
+  - [Table of Contents](#table-of-contents)
+  - [Quick Start \& Setup Guide](#quick-start--setup-guide)
+    - [1. Prerequisites](#1-prerequisites)
+    - [2. Run Application Locally](#2-run-application-locally)
+    - [3. Access Interactive API References](#3-access-interactive-api-references)
+  - [System Architecture \& Data Flow](#system-architecture--data-flow)
+    - [Multi-Tenant SaaS Architecture Diagram](#multi-tenant-saas-architecture-diagram)
+    - [Multi-Tenant Request \& Authorization Flow (`POST /api/v1/urls`)](#multi-tenant-request--authorization-flow-post-apiv1urls)
+    - [Observability Architecture \& Telemetry Pipeline](#observability-architecture--telemetry-pipeline)
+    - [Telemetry Data Flow \& Trace-Log Correlation](#telemetry-data-flow--trace-log-correlation)
+    - [Observability Mechanisms \& Components Breakdown](#observability-mechanisms--components-breakdown)
+      - [Technical Highlights \& Design Principles:](#technical-highlights--design-principles)
+  - [Enterprise Security \& CI/CD Pipelines](#enterprise-security--cicd-pipelines)
+    - [Key Security Safeguards](#key-security-safeguards)
+  - [Makefile Commands](#makefile-commands)
+  - [Architectural \& Code Style Decisions (ADRs)](#architectural--code-style-decisions-adrs)
+  - [Release \& Deployment Workflow](#release--deployment-workflow)
+    - [How to Trigger a New Release (Docker Hub Image \& GitHub Release)](#how-to-trigger-a-new-release-docker-hub-image--github-release)
+  - [Implementing a New Feature (Workflow Guide)](#implementing-a-new-feature-workflow-guide)
+    - [Step 1: Database Migration](#step-1-database-migration)
+    - [Step 2: SQL Query Definition \& SQLC Generation](#step-2-sql-query-definition--sqlc-generation)
+    - [Step 3: Domain Module \& Service Implementation](#step-3-domain-module--service-implementation)
+    - [Step 4: Wire Dependencies \& Generate Swagger Docs](#step-4-wire-dependencies--generate-swagger-docs)
+    - [Step 5: Verification \& Testing](#step-5-verification--testing)
+  - [Testing Guide](#testing-guide)
+  - [Environment Variables Reference](#environment-variables-reference)
 
 ---
 
@@ -71,16 +94,13 @@ cp .env.example .env
 # 3. Copy pgbouncer userlist template to userlist
 cp ./server/db/pgbouncer/userlist.txt.example ./server/db/pgbouncer/userlist.txt
 
-# 4. Start local PostgreSQL & Redis containers (via compose.dev.yml)
+# 4. Start local development environment & observability stack via compose.dev.yml
 make up-dev
 
-# 5. Run backend API server (runs database migrations automatically on startup)
-make run
+# 5. Stream logs for API, Worker, and Observability services
+make logs-dev
 
-# 6. (In a separate terminal) Run background outbox & Asynq worker queue processor
-make run-worker
-
-# 7. Stop local development infrastructure
+# 6. Stop local development environment
 make down-dev
 ```
 
@@ -209,6 +229,114 @@ sequenceDiagram
     URLH-->>User: 201 Created (JSON Response)
 ```
 
+### Observability Architecture & Telemetry Pipeline
+
+Observability Stack di-built-in secara native berbasis **OpenTelemetry (OTEL)**, **Grafana Alloy**, **Grafana Tempo** (Distributed Tracing), **Grafana Loki** (Log Aggregation), **Prometheus** (Metrics Collection), dan **Grafana** (Visualization & Monitoring).
+
+```mermaid
+graph TD
+    subgraph Applications["Application Runtime (Go Binary & Asynq Worker)"]
+        API["url-shortener-api-dev<br/>(HTTP Server)"]
+        Worker["url-shortener-worker-dev<br/>(Background Queue)"]
+    end
+
+    subgraph TelemetryInstrumentation["Telemetry Instrumentation Layer"]
+        OTELSDK["OpenTelemetry Go SDK<br/>(Traces Exporter)"]
+        PromExporter["Prometheus Metrics Endpoint<br/>(/metrics)"]
+        LokiLogger["Non-Blocking Async Loki Logger<br/>(slog)"]
+    end
+
+    API --> OTELSDK
+    API --> PromExporter
+    API --> LokiLogger
+
+    Worker --> OTELSDK
+    Worker --> LokiLogger
+
+    subgraph TelemetryCollectors["Collector & Aggregation Layer"]
+        Alloy["Grafana Alloy<br/>(OTLP Collector & Metrics Scraper)"]
+        LokiCollector["Grafana Loki<br/>(HTTP Ingestion)"]
+    end
+
+    OTELSDK -->|"OTLP / gRPC :4317"| Alloy
+    PromExporter -.->|"HTTP Scrape :8080/metrics"| Alloy
+    LokiLogger -->|"HTTP JSON Batch POST :3100"| LokiCollector
+
+    subgraph StorageBackends["Telemetry Storage Backends"]
+        Tempo[("Grafana Tempo<br/>(Distributed Tracing)")]
+        Prometheus[("Prometheus TSDB<br/>(Metrics)")]
+        Loki[("Grafana Loki<br/>(Log Store)")]
+    end
+
+    Alloy -->|"OTLP / gRPC :4317"| Tempo
+    Alloy -->|"Prometheus Remote Write"| Prometheus
+    LokiCollector --> Loki
+
+    subgraph Visualization["Visualization & Alerting Layer"]
+        Grafana["Grafana Unified Dashboard<br/>(Port 3000)"]
+    end
+
+    Grafana -->|"Query Traces"| Tempo
+    Grafana -->|"Query Metrics"| Prometheus
+    Grafana -->|"Query Logs"| Loki
+
+    Tempo -.->|"Trace to Log via trace_id"| Loki
+```
+
+### Telemetry Data Flow & Trace-Log Correlation
+
+Mekanisme alur data dan korelasi telemetry berjalan secara otomatis dari HTTP Request hingga visualisasi di Grafana:
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Client as HTTP Client / User
+    participant Router as Chi Router / OpenTelemetry MW
+    participant Service as Business Service Layer (URL / User / Tenant)
+    participant LokiHW as Non-Blocking Loki Logger (slog)
+    participant OTEL as OpenTelemetry Exporter
+    participant Alloy as Grafana Alloy Collector
+    participant Tempo as Grafana Tempo
+    participant Loki as Grafana Loki
+    participant Grafana as Grafana Dashboard
+
+    Client->>Router: HTTP Request (Misal: GET /api/v1/urls)
+    Router->>Router: Inject / Extract W3C TraceContext (trace_id, span_id)
+    Router->>Service: Forward request with Trace Context
+
+    Service->>Service: StartSpan(ctx, "URLService.GetURLByCode")
+    Service->>LokiHW: Log event (slog.InfoContext(ctx, "fetching url details", "short_code", code))
+
+    LokiHW->>LokiHW: Extract trace_id & span_id from ctx
+    LokiHW-->>Loki: Push JSON Log Batch (Async Channel, zero latency overhead)
+
+    Service-->>Router: Return Business Result & HTTP Response
+    Router->>OTEL: End HTTP Span & Service Spans
+
+    OTEL-->>Alloy: Export OTLP Traces (gRPC batch)
+    Alloy-->>Tempo: Ingest Trace Spans into Tempo Storage
+
+    Grafana->>Tempo: User searches Trace ID in Grafana Tempo
+    Tempo-->>Grafana: Render Flamegraph & Span Duration
+    Grafana->>Loki: Auto-query Loki Logs using trace_id filter
+    Loki-->>Grafana: Render correlated logs for the exact trace!
+```
+
+### Observability Mechanisms & Components Breakdown
+
+| Komponen | Telemetry Signal | Mekanisme Exporter & Collector | Storage & Backend | Port / Endpoint | Key Attributes & Correlation |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **OpenTelemetry Go SDK** | **Traces** | OTLP gRPC Exporter dengan dynamic sampler (`OTEL_SAMPLING_RATIO`). Auto-instrumentation pada Middleware HTTP, Service Layer (`telemetry.StartSpan`), Redis, & Worker. | **Grafana Tempo** via Grafana Alloy | `4317` (gRPC OTLP) | `trace_id`, `span_id`, `tenant_id`, `user_id`, `http.status_code`, `error` |
+| **slog + Custom Loki Handler** | **Structured Logs** | Asynchronous ring-buffered `LokiHandler` (`server/internal/platform/logger/loki.go`). Batching non-blocking HTTP POST request ke Loki. | **Grafana Loki** | `3100` (`/loki/api/v1/push`) | `app`, `env`, `level`, `trace_id`, `span_id`, `tenant_id`, `user_id` |
+| **Prometheus Exporter** | **Metrics** | `/metrics` HTTP endpoint exposing Go runtime, HTTP request latency histograms, DB connection pool, & Asynq queue stats. | **Prometheus TSDB** via Alloy Scraper | `8080/metrics` & `9090` | `http_requests_total`, `http_request_duration_seconds`, `go_goroutines` |
+| **Grafana Provisioning** | **Dashboards** | Pre-configured Data Sources dengan fixed UID (`prometheus`, `tempo`, `loki`) & auto-imported JSON Dashboards. | **Grafana UI** | `3000` | Unified trace-to-log navigation & dashboard panels |
+
+#### Technical Highlights & Design Principles:
+1. **Zero-Latency Impact Logging**: Log dikirim secara terpisah melalui buffered channel (default buffer `2048` entries) di goroutine latar belakang (`LokiHandler`). Kegagalan koneksi ke Loki tidak akan pernah mengganggu atau memperlambat HTTP response ke client.
+2. **End-to-End Tracing (Full-Stack Observability)**: Tracing tidak hanya berada di level HTTP Middleware, melainkan merambah ke Service Layer (`TenantService`, `UserService`, `URLService`, `AnalyticsService`), Redis Caching layer, hingga background worker (`Asynq`).
+3. **Trace-Log Correlation**: Setiap log entry otomatis menangkap `trace_id` dan `span_id` dari `context.Context`. Di Grafana, pengguna dapat men-klik ID trace di Grafana Tempo untuk langsung melompat ke log terkait di Grafana Loki, dan sebaliknya.
+
+
 ---
 
 ## Enterprise Security & CI/CD Pipelines
@@ -236,16 +364,13 @@ This repository implements a multi-layered security & quality audit pipeline:
 ## Makefile Commands
 
 ```bash
-make run               # Run backend API server locally
-make dev               # Run backend API server locally with Air live hot-reload
-make run-worker        # Run background outbox & Asynq task worker processor
+make up-dev            # Start local development environment & containers via compose.dev.yml (--build)
+make down-dev          # Stop local development environment via compose.dev.yml
+make logs-dev          # Stream local development environment logs
 make seed              # Seed database with sample users, short URLs, and analytics events
 make setup-hooks       # Install pre-commit git hooks
 make build             # Build production static binary in bin/api
 make lint              # Run golangci-lint code analysis (0 issues requirement)
-make up-dev            # Start local development infrastructure (PostgreSQL & Redis) via compose.dev.yml
-make down-dev          # Stop local development infrastructure via compose.dev.yml
-make logs-dev          # Stream local development infrastructure logs
 make docker-up         # Start full stack production containers via compose.yml
 make docker-down       # Stop full stack production containers via compose.yml
 make test              # Run unit tests only (go test ./...)

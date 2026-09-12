@@ -10,7 +10,9 @@ import (
 	"github.com/semmidev/url-shortener/server/internal/platform/apperr"
 	"github.com/semmidev/url-shortener/server/internal/platform/authz"
 	"github.com/semmidev/url-shortener/server/internal/platform/permission"
+	"github.com/semmidev/url-shortener/server/internal/platform/telemetry"
 	"github.com/semmidev/url-shortener/server/internal/platform/web"
+	"go.opentelemetry.io/otel/attribute"
 )
 
 type Service struct {
@@ -41,9 +43,12 @@ func parseDeviceType(ua string) string {
 	}
 }
 
-func (s *Service) RecordClick(ctx context.Context, req RecordClickRequest) (*RecordClickResponse, error) {
+func (s *Service) RecordClick(ctx context.Context, req RecordClickRequest) (res *RecordClickResponse, err error) {
+	ctx, endSpan := telemetry.StartSpan(ctx, "analytics.Service.RecordClick", attribute.String("url.id", req.URLID.String()))
+	defer func() { endSpan(err) }()
+
 	deviceType := parseDeviceType(req.UserAgent)
-	_, err := s.store.RecordClick(ctx, db.RecordClickParams{
+	_, err = s.store.RecordClick(ctx, db.RecordClickParams{
 		UrlID:      req.URLID,
 		IpAddress:  req.IPAddress,
 		UserAgent:  req.UserAgent,
@@ -57,7 +62,9 @@ func (s *Service) RecordClick(ctx context.Context, req RecordClickRequest) (*Rec
 	return &RecordClickResponse{Success: true}, nil
 }
 
-func (s *Service) GetAnalyticsSummary(ctx context.Context, req GetAnalyticsSummaryRequest) (*AnalyticsSummaryResponse, error) {
+func (s *Service) GetAnalyticsSummary(ctx context.Context, req GetAnalyticsSummaryRequest) (res *AnalyticsSummaryResponse, err error) {
+	ctx, endSpan := telemetry.StartSpan(ctx, "analytics.Service.GetAnalyticsSummary", attribute.String("url.id", req.URLID.String()))
+	defer func() { endSpan(err) }()
 	if userID, ok := web.UserID(ctx); ok {
 		var domain string
 		if tID, ok := web.TenantID(ctx); ok {

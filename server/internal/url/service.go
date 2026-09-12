@@ -16,8 +16,10 @@ import (
 	"github.com/semmidev/url-shortener/server/internal/platform/authz"
 	"github.com/semmidev/url-shortener/server/internal/platform/cache"
 	"github.com/semmidev/url-shortener/server/internal/platform/permission"
+	"github.com/semmidev/url-shortener/server/internal/platform/telemetry"
 	"github.com/semmidev/url-shortener/server/internal/platform/web"
 	"github.com/semmidev/url-shortener/server/internal/worker"
+	"go.opentelemetry.io/otel/attribute"
 )
 
 type MetricsRecorder interface {
@@ -79,7 +81,11 @@ func (s *Service) toResponse(u db.ShortUrl) URLResponse {
 }
 
 func (s *Service) Create(ctx context.Context, req CreateURLRequest) (*URLResponse, error) {
-	if err := req.Validate(); err != nil {
+	var err error
+	ctx, endSpan := telemetry.StartSpan(ctx, "url.Service.Create", attribute.String("url.original_url", req.OriginalURL))
+	defer func() { endSpan(err) }()
+
+	if err = req.Validate(); err != nil {
 		return nil, err
 	}
 
@@ -90,34 +96,39 @@ func (s *Service) Create(ctx context.Context, req CreateURLRequest) (*URLRespons
 		}
 		can, _ := s.authorizer.Can(ctx, *req.UserID, domain, permission.UrlsCreate)
 		if !can {
-			return nil, apperr.Forbidden("anda tidak memiliki izin untuk membuat link singkat (urls.create)")
+			err = apperr.Forbidden("anda tidak memiliki izin untuk membuat link singkat (urls.create)")
+			return nil, err
 		}
 	}
 
 	var shortCode string
 	if req.CustomCode != "" {
-		_, err := s.store.GetShortURLByCode(ctx, req.CustomCode)
-		if err == nil {
-			return nil, apperr.Conflict(fmt.Sprintf("custom short code '%s' is already in use", req.CustomCode))
-		} else if !errors.Is(err, pgx.ErrNoRows) {
-			return nil, apperr.MapDBError(err, "", "")
+		_, getErr := s.store.GetShortURLByCode(ctx, req.CustomCode)
+		if getErr == nil {
+			err = apperr.Conflict(fmt.Sprintf("custom short code '%s' is already in use", req.CustomCode))
+			return nil, err
+		} else if !errors.Is(getErr, pgx.ErrNoRows) {
+			err = apperr.MapDBError(getErr, "", "")
+			return nil, err
 		}
 		shortCode = req.CustomCode
 	} else {
 		// Generate random Base62 short code
 		for i := 0; i < MaxGenerateAttempts; i++ {
-			code, err := GenerateRandomCode(DefaultCodeLength)
-			if err != nil {
-				return nil, apperr.Internal("failed to generate short code", err)
+			code, genErr := GenerateRandomCode(DefaultCodeLength)
+			if genErr != nil {
+				err = apperr.Internal("failed to generate short code", genErr)
+				return nil, err
 			}
-			_, err = s.store.GetShortURLByCode(ctx, code)
-			if errors.Is(err, pgx.ErrNoRows) {
+			_, genErr = s.store.GetShortURLByCode(ctx, code)
+			if errors.Is(genErr, pgx.ErrNoRows) {
 				shortCode = code
 				break
 			}
 		}
 		if shortCode == "" {
-			return nil, apperr.Internal(fmt.Sprintf("failed to generate unique short code after %d attempts", MaxGenerateAttempts), nil)
+			err = apperr.Internal(fmt.Sprintf("failed to generate unique short code after %d attempts", MaxGenerateAttempts), nil)
+			return nil, err
 		}
 	}
 
@@ -126,7 +137,7 @@ func (s *Service) Create(ctx context.Context, req CreateURLRequest) (*URLRespons
 		tenantUUID = toPgUUID(&tID)
 	}
 
-	u, err := s.store.CreateShortURL(ctx, db.CreateShortURLParams{
+	u, createErr := s.store.CreateShortURL(ctx, db.CreateShortURLParams{
 		UserID:      toPgUUID(req.UserID),
 		TenantID:    tenantUUID,
 		ShortCode:   shortCode,
@@ -135,8 +146,9 @@ func (s *Service) Create(ctx context.Context, req CreateURLRequest) (*URLRespons
 		IsActive:    true,
 		ExpiresAt:   toPgTimestamptz(req.ExpiresAt),
 	})
-	if err != nil {
-		return nil, apperr.MapDBError(err, "failed to save short URL", "short code is already taken")
+	if createErr != nil {
+		err = apperr.MapDBError(createErr, "failed to save short URL", "short code is already taken")
+		return nil, err
 	}
 
 	res := s.toResponse(u)
@@ -147,32 +159,41 @@ func (s *Service) Create(ctx context.Context, req CreateURLRequest) (*URLRespons
 }
 
 func (s *Service) GetByCode(ctx context.Context, req GetURLByCodeRequest) (*URLResponse, error) {
+	var err error
+	ctx, endSpan := telemetry.StartSpan(ctx, "url.Service.GetByCode", attribute.String("url.short_code", req.Code))
+	defer func() { endSpan(err) }()
+
 	cacheKey := fmt.Sprintf("url:code:%s", req.Code)
 
 	if s.cache != nil {
 		var cachedResp URLResponse
-		if err := s.cache.Get(ctx, cacheKey, &cachedResp); err == nil {
+		if cacheErr := s.cache.Get(ctx, cacheKey, &cachedResp); cacheErr == nil {
 			if !cachedResp.IsActive {
-				return nil, apperr.NotFound("short URL is inactive")
+				err = apperr.NotFound("short URL is inactive")
+				return nil, err
 			}
 			if cachedResp.ExpiresAt != nil && time.Now().After(*cachedResp.ExpiresAt) {
-				return nil, apperr.NotFound("short URL has expired")
+				err = apperr.NotFound("short URL has expired")
+				return nil, err
 			}
 			return &cachedResp, nil
 		}
 	}
 
-	u, err := s.store.GetShortURLByCode(ctx, req.Code)
-	if err != nil {
-		return nil, apperr.MapDBError(err, "short URL not found", "")
+	u, dbErr := s.store.GetShortURLByCode(ctx, req.Code)
+	if dbErr != nil {
+		err = apperr.MapDBError(dbErr, "short URL not found", "")
+		return nil, err
 	}
 
 	if !u.IsActive {
-		return nil, apperr.NotFound("short URL is inactive")
+		err = apperr.NotFound("short URL is inactive")
+		return nil, err
 	}
 
 	if u.ExpiresAt.Valid && time.Now().After(u.ExpiresAt.Time) {
-		return nil, apperr.NotFound("short URL has expired")
+		err = apperr.NotFound("short URL has expired")
+		return nil, err
 	}
 
 	res := s.toResponse(u)
@@ -189,13 +210,19 @@ func (s *Service) GetByCode(ctx context.Context, req GetURLByCodeRequest) (*URLR
 }
 
 func (s *Service) GetByID(ctx context.Context, req GetURLByIDRequest) (*URLResponse, error) {
-	u, err := s.store.GetShortURLByID(ctx, req.ID)
-	if err != nil {
-		return nil, apperr.MapDBError(err, "short URL not found", "")
+	var err error
+	ctx, endSpan := telemetry.StartSpan(ctx, "url.Service.GetByID", attribute.String("url.id", req.ID.String()))
+	defer func() { endSpan(err) }()
+
+	u, dbErr := s.store.GetShortURLByID(ctx, req.ID)
+	if dbErr != nil {
+		err = apperr.MapDBError(dbErr, "short URL not found", "")
+		return nil, err
 	}
 
 	if u.UserID.Valid && uuid.UUID(u.UserID.Bytes) != req.UserID {
-		return nil, apperr.Forbidden("you do not have permission to access this short URL")
+		err = apperr.Forbidden("you do not have permission to access this short URL")
+		return nil, err
 	}
 
 	res := s.toResponse(u)
@@ -203,6 +230,10 @@ func (s *Service) GetByID(ctx context.Context, req GetURLByIDRequest) (*URLRespo
 }
 
 func (s *Service) List(ctx context.Context, req ListUserShortURLsRequest) (*ListURLResponse, error) {
+	var err error
+	ctx, endSpan := telemetry.StartSpan(ctx, "url.Service.List")
+	defer func() { endSpan(err) }()
+
 	filter := req.Filter
 	var userUUID pgtype.UUID
 	if !req.ScopeAll {
@@ -241,9 +272,10 @@ func (s *Service) List(ctx context.Context, req ListUserShortURLsRequest) (*List
 		OffsetVal: filter.GetOffset(),
 	}
 
-	urls, err := s.store.ListUserShortURLs(ctx, listParams)
-	if err != nil {
-		return nil, apperr.MapDBError(err, "failed to list short URLs", "")
+	urls, dbErr := s.store.ListUserShortURLs(ctx, listParams)
+	if dbErr != nil {
+		err = apperr.MapDBError(dbErr, "failed to list short URLs", "")
+		return nil, err
 	}
 
 	countParams := db.CountUserShortURLsParams{
@@ -255,18 +287,19 @@ func (s *Service) List(ctx context.Context, req ListUserShortURLsRequest) (*List
 		EndDate:   toPgTimestamptz(filter.EndDate),
 	}
 
-	total, err := s.store.CountUserShortURLs(ctx, countParams)
-	if err != nil {
-		return nil, apperr.MapDBError(err, "failed to count short URLs", "")
+	total, countErr := s.store.CountUserShortURLs(ctx, countParams)
+	if countErr != nil {
+		err = apperr.MapDBError(countErr, "failed to count short URLs", "")
+		return nil, err
 	}
 
-	res := make([]URLResponse, len(urls))
+	items := make([]URLResponse, len(urls))
 	for i, u := range urls {
-		res[i] = s.toResponse(u)
+		items[i] = s.toResponse(u)
 	}
 
 	return &ListURLResponse{
-		Items: res,
+		Items: items,
 		Meta: MetaResponse{
 			Page:          filter.Page,
 			Limit:         filter.Limit,
@@ -279,7 +312,11 @@ func (s *Service) List(ctx context.Context, req ListUserShortURLsRequest) (*List
 }
 
 func (s *Service) Update(ctx context.Context, req UpdateURLRequest) (*URLResponse, error) {
-	if err := req.Validate(); err != nil {
+	var err error
+	ctx, endSpan := telemetry.StartSpan(ctx, "url.Service.Update", attribute.String("url.id", req.ID.String()))
+	defer func() { endSpan(err) }()
+
+	if err = req.Validate(); err != nil {
 		return nil, err
 	}
 
@@ -289,18 +326,20 @@ func (s *Service) Update(ctx context.Context, req UpdateURLRequest) (*URLRespons
 	}
 	can, _ := s.authorizer.Can(ctx, req.UserID, domain, permission.UrlsUpdate)
 	if !can {
-		return nil, apperr.Forbidden("anda tidak memiliki izin untuk mengedit link singkat (urls.update)")
+		err = apperr.Forbidden("anda tidak memiliki izin untuk mengedit link singkat (urls.update)")
+		return nil, err
 	}
 
 	// Verify ownership first
-	existing, err := s.GetByID(ctx, GetURLByIDRequest{ID: req.ID, UserID: req.UserID})
-	if err != nil {
+	existing, getErr := s.GetByID(ctx, GetURLByIDRequest{ID: req.ID, UserID: req.UserID})
+	if getErr != nil {
+		err = getErr
 		return nil, err
 	}
 
 	userUUID := toPgUUID(&req.UserID)
 
-	u, err := s.store.UpdateShortURL(ctx, db.UpdateShortURLParams{
+	u, updateErr := s.store.UpdateShortURL(ctx, db.UpdateShortURLParams{
 		ID:          req.ID,
 		Title:       toPgText(req.Title),
 		OriginalUrl: toPgText(req.OriginalURL),
@@ -308,8 +347,9 @@ func (s *Service) Update(ctx context.Context, req UpdateURLRequest) (*URLRespons
 		ExpiresAt:   toPgTimestamptz(req.ExpiresAt),
 		UserID:      userUUID,
 	})
-	if err != nil {
-		return nil, apperr.MapDBError(err, "failed to update short URL", "")
+	if updateErr != nil {
+		err = apperr.MapDBError(updateErr, "failed to update short URL", "")
+		return nil, err
 	}
 
 	if s.cache != nil {
@@ -321,32 +361,39 @@ func (s *Service) Update(ctx context.Context, req UpdateURLRequest) (*URLRespons
 }
 
 func (s *Service) Delete(ctx context.Context, req DeleteURLRequest) (*DeleteURLResponse, error) {
+	var err error
+	ctx, endSpan := telemetry.StartSpan(ctx, "url.Service.Delete", attribute.String("url.id", req.ID.String()))
+	defer func() { endSpan(err) }()
+
 	var domainDelete string
 	if tID, ok := web.TenantID(ctx); ok {
 		domainDelete = tID.String()
 	}
 	canDelete, _ := s.authorizer.Can(ctx, req.UserID, domainDelete, permission.UrlsDelete)
 	if !canDelete {
-		return nil, apperr.Forbidden("anda tidak memiliki izin untuk menghapus link singkat (urls.delete)")
+		err = apperr.Forbidden("anda tidak memiliki izin untuk menghapus link singkat (urls.delete)")
+		return nil, err
 	}
 
 	// Verify ownership first
-	existing, err := s.GetByID(ctx, GetURLByIDRequest(req))
-	if err != nil {
+	existing, getErr := s.GetByID(ctx, GetURLByIDRequest(req))
+	if getErr != nil {
+		err = getErr
 		return nil, err
 	}
 
 	userUUID := toPgUUID(&req.UserID)
 
 	// Perform soft deletion within an atomic database transaction
-	err = s.store.ExecTx(ctx, func(q *db.Queries) error {
+	txErr := s.store.ExecTx(ctx, func(q *db.Queries) error {
 		return q.DeleteShortURL(ctx, db.DeleteShortURLParams{
 			ID:     req.ID,
 			UserID: userUUID,
 		})
 	})
-	if err != nil {
-		return nil, apperr.MapDBError(err, "failed to delete short URL", "")
+	if txErr != nil {
+		err = apperr.MapDBError(txErr, "failed to delete short URL", "")
+		return nil, err
 	}
 
 	if s.cache != nil {
@@ -359,19 +406,24 @@ func (s *Service) Delete(ctx context.Context, req DeleteURLRequest) (*DeleteURLR
 }
 
 func (s *Service) Restore(ctx context.Context, req RestoreURLRequest) (*URLResponse, error) {
+	var err error
+	ctx, endSpan := telemetry.StartSpan(ctx, "url.Service.Restore", attribute.String("url.id", req.ID.String()))
+	defer func() { endSpan(err) }()
+
 	userUUID := toPgUUID(&req.UserID)
 
 	var u db.ShortUrl
-	err := s.store.ExecTx(ctx, func(q *db.Queries) error {
-		var txErr error
-		u, txErr = q.RestoreShortURL(ctx, db.RestoreShortURLParams{
+	txErr := s.store.ExecTx(ctx, func(q *db.Queries) error {
+		var qErr error
+		u, qErr = q.RestoreShortURL(ctx, db.RestoreShortURLParams{
 			ID:     req.ID,
 			UserID: userUUID,
 		})
-		return txErr
+		return qErr
 	})
-	if err != nil {
-		return nil, apperr.MapDBError(err, "deleted short URL not found or already restored", "")
+	if txErr != nil {
+		err = apperr.MapDBError(txErr, "deleted short URL not found or already restored", "")
+		return nil, err
 	}
 
 	if s.cache != nil {

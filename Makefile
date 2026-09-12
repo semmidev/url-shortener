@@ -10,24 +10,11 @@ MIGRATE_CMD ?= $(shell command -v migrate 2>/dev/null || echo "go run github.com
 
 BUN_CMD ?= $(shell command -v bun 2>/dev/null || echo "$(HOME)/.bun/bin/bun")
 
-.PHONY: run run-worker dev build build-frontend test test-integration test-all lint seed setup-hooks swagger sqlc new_migration migrateup migrateup1 migratedown migratedown1 createdb dropdb docker-up docker-down up-dev down-dev logs-dev clean
-
-# Run backend API locally (builds frontend first and embeds static dist)
-run: build-frontend
-	go run $(LDFLAGS) ./server/cmd/api
-
-# Run background outbox & async worker locally
-run-worker:
-	go run $(LDFLAGS) ./server/cmd/worker
-
-# Run backend API locally with Air live hot-reload
-dev:
-	air -c .air.toml
+.PHONY: build build-frontend test test-integration test-all lint seed setup-hooks swagger sqlc new_migration migrateup migrateup1 migratedown migratedown1 createdb dropdb docker-up docker-down up-dev down-dev logs-dev clean
 
 # Seed database with initial default data
 seed:
 	go run $(LDFLAGS) ./server/cmd/seed
-
 
 # Setup pre-commit git hooks
 setup-hooks:
@@ -123,9 +110,9 @@ createdb:
 dropdb:
 	$(DOCKER_CMD) exec -it url-shortener-db dropdb --username=postgres urlshortener
 
-# Start local development infrastructure (PostgreSQL) using compose.dev.yml
+# Start local development environment using compose.dev.yml
 up-dev:
-	$(DOCKER_CMD) compose -f compose.dev.yml up -d
+	$(DOCKER_CMD) compose -f compose.dev.yml up -d --build
 
 # Stop local development infrastructure using compose.dev.yml
 down-dev:

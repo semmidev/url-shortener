@@ -205,7 +205,7 @@ function PermissionMatrixSelector({ selectedPermissions, onChange }) {
       </div>
 
       {/* Grouped Permission Lists */}
-      <div className="space-y-4 max-h-[440px] overflow-y-auto pr-1">
+      <div className="space-y-4 h-[380px] sm:h-[420px] overflow-y-auto pr-1.5">
         {Object.keys(groupedPermissions).length === 0 ? (
           <div className="text-center py-10 border border-dashed border-border rounded-xl">
             <Filter className="size-8 text-muted-foreground/40 mx-auto mb-2" />
@@ -486,7 +486,7 @@ export default function WorkspaceRolesPage() {
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 10 }}
               transition={{ duration: 0.2 }}
-              className="bg-card border border-border rounded-2xl max-w-3xl w-full shadow-2xl overflow-hidden flex flex-col my-auto"
+              className="bg-card border border-border rounded-2xl max-w-3xl w-full h-[680px] max-h-[90vh] shadow-2xl overflow-hidden flex flex-col my-auto"
             >
               <div className="p-6 border-b border-border/70 bg-muted/20 flex items-start justify-between gap-4">
                 <div className="flex items-center gap-3">
@@ -508,7 +508,7 @@ export default function WorkspaceRolesPage() {
               </div>
 
               <form onSubmit={handleCreateRole} className="flex flex-col flex-1 min-h-0">
-                <div className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
+                <div className="p-6 space-y-4 flex-1 min-h-0 overflow-y-auto">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-1.5">
                       <label className="text-xs font-semibold text-foreground">Nama Tampilan (Display Name)</label>
@@ -584,7 +584,7 @@ export default function WorkspaceRolesPage() {
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 10 }}
               transition={{ duration: 0.2 }}
-              className="bg-card border border-border rounded-2xl max-w-3xl w-full shadow-2xl overflow-hidden flex flex-col my-auto"
+              className="bg-card border border-border rounded-2xl max-w-3xl w-full h-[680px] max-h-[90vh] shadow-2xl overflow-hidden flex flex-col my-auto"
             >
               {/* Modal Header */}
               <div className="p-6 border-b border-border/70 bg-muted/20 flex items-start justify-between gap-4">
@@ -614,7 +614,7 @@ export default function WorkspaceRolesPage() {
               </div>
 
               {/* Modal Body */}
-              <div className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
+              <div className="p-6 space-y-4 flex-1 min-h-0 overflow-y-auto">
                 <PermissionMatrixSelector
                   selectedPermissions={editPermissions}
                   onChange={setEditPermissions}

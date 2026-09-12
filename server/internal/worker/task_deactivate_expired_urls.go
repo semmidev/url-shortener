@@ -8,6 +8,7 @@ import (
 
 	"github.com/destel/rill"
 	"github.com/hibiken/asynq"
+	"github.com/semmidev/url-shortener/server/internal/platform/telemetry"
 )
 
 const TaskDeactivateExpiredURLs = "task:deactivate_expired_urls"
@@ -20,7 +21,10 @@ func (distributor *RedisTaskDistributor) DistributeTaskDeactivateExpiredURLs(
 	ctx context.Context,
 	payload *PayloadDeactivateExpiredURLs,
 	opts ...asynq.Option,
-) error {
+) (err error) {
+	ctx, endSpan := telemetry.StartSpan(ctx, "worker.DistributeTaskDeactivateExpiredURLs")
+	defer func() { endSpan(err) }()
+
 	jsonPayload, err := json.Marshal(payload)
 	if err != nil {
 		return fmt.Errorf("failed to marshal task payload: %w", err)
@@ -43,7 +47,9 @@ func (distributor *RedisTaskDistributor) DistributeTaskDeactivateExpiredURLs(
 	return nil
 }
 
-func (processor *RedisTaskProcessor) ProcessTaskDeactivateExpiredURLs(ctx context.Context, task *asynq.Task) error {
+func (processor *RedisTaskProcessor) ProcessTaskDeactivateExpiredURLs(ctx context.Context, task *asynq.Task) (err error) {
+	ctx, endSpan := telemetry.StartSpan(ctx, "worker.ProcessTaskDeactivateExpiredURLs")
+	defer func() { endSpan(err) }()
 	var payload PayloadDeactivateExpiredURLs
 	if err := json.Unmarshal(task.Payload(), &payload); err != nil {
 		return fmt.Errorf("failed to unmarshal payload: %w", asynq.SkipRetry)

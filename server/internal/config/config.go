@@ -71,10 +71,11 @@ type Config struct {
 	CacheTTLShortURL   time.Duration `mapstructure:"CACHE_TTL_SHORT_URL"`
 	CacheControlMaxAge int           `mapstructure:"CACHE_CONTROL_MAX_AGE"`
 
-	// OpenTelemetry Settings
+	// OpenTelemetry & Observability Settings
 	OtelEnabled          bool   `mapstructure:"OTEL_ENABLED"`
 	OtelExporterEndpoint string `mapstructure:"OTEL_EXPORTER_OTLP_ENDPOINT"`
 	OtelServiceName      string `mapstructure:"OTEL_SERVICE_NAME"`
+	LokiURL              string `mapstructure:"LOKI_URL"`
 
 	// NATS Event Bus Settings
 	NatsURL string `mapstructure:"NATS_URL"`
@@ -153,6 +154,7 @@ func LoadConfig(path string) (config Config, err error) {
 	viper.SetDefault("OTEL_ENABLED", true)
 	viper.SetDefault("OTEL_EXPORTER_OTLP_ENDPOINT", "127.0.0.1:4317")
 	viper.SetDefault("OTEL_SERVICE_NAME", "url-shortener-api")
+	viper.SetDefault("LOKI_URL", "http://127.0.0.1:3100/loki/api/v1/push")
 
 	viper.AutomaticEnv()
 

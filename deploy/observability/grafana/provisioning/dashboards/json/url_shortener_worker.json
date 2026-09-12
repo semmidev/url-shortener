@@ -30,218 +30,8 @@
         "y": 0
       },
       "id": 100,
-      "title": "🚀 Application Overview & Key Metrics",
+      "title": "⚙️ Background Worker Overview & System Health",
       "type": "row"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "yellow",
-                "value": 50
-              },
-              {
-                "color": "red",
-                "value": 200
-              }
-            ]
-          },
-          "unit": "reqps"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 4,
-        "w": 6,
-        "x": 0,
-        "y": 1
-      },
-      "id": 1,
-      "options": {
-        "colorMode": "value",
-        "graphMode": "area",
-        "justifyMode": "auto",
-        "orientation": "auto",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "textMode": "auto"
-      },
-      "pluginVersion": "10.0.0",
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "editorMode": "code",
-          "expr": "sum(rate(http_requests_total[1m]))",
-          "legendFormat": "Throughput",
-          "range": true,
-          "refId": "A"
-        }
-      ],
-      "title": "HTTP Throughput",
-      "type": "stat"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "yellow",
-                "value": 1
-              },
-              {
-                "color": "red",
-                "value": 5
-              }
-            ]
-          },
-          "unit": "percent"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 4,
-        "w": 6,
-        "x": 6,
-        "y": 1
-      },
-      "id": 2,
-      "options": {
-        "colorMode": "value",
-        "graphMode": "area",
-        "justifyMode": "auto",
-        "orientation": "auto",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "textMode": "auto"
-      },
-      "pluginVersion": "10.0.0",
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "editorMode": "code",
-          "expr": "(sum(rate(http_requests_total{status=~\"[45]..\"}[1m])) or vector(0)) / (sum(rate(http_requests_total[1m])) or vector(1)) * 100",
-          "legendFormat": "Error Rate",
-          "range": true,
-          "refId": "A"
-        }
-      ],
-      "title": "HTTP Error Rate",
-      "type": "stat"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "yellow",
-                "value": 100
-              },
-              {
-                "color": "red",
-                "value": 500
-              }
-            ]
-          },
-          "unit": "ms"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 4,
-        "w": 6,
-        "x": 12,
-        "y": 1
-      },
-      "id": 3,
-      "options": {
-        "colorMode": "value",
-        "graphMode": "area",
-        "justifyMode": "auto",
-        "orientation": "auto",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "textMode": "auto"
-      },
-      "pluginVersion": "10.0.0",
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "editorMode": "code",
-          "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[1m])) by (le)) * 1000",
-          "legendFormat": "P95 Latency",
-          "range": true,
-          "refId": "A"
-        }
-      ],
-      "title": "P95 Latency",
-      "type": "stat"
     },
     {
       "datasource": {
@@ -277,11 +67,11 @@
       },
       "gridPos": {
         "h": 4,
-        "w": 6,
-        "x": 18,
+        "w": 8,
+        "x": 0,
         "y": 1
       },
-      "id": 4,
+      "id": 1,
       "options": {
         "colorMode": "value",
         "graphMode": "area",
@@ -305,12 +95,144 @@
           },
           "editorMode": "code",
           "expr": "go_goroutines",
-          "legendFormat": "Goroutines",
+          "legendFormat": "Worker Goroutines",
           "range": true,
           "refId": "A"
         }
       ],
-      "title": "Active Goroutines",
+      "title": "Worker Active Goroutines",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 104857600
+              },
+              {
+                "color": "red",
+                "value": 524288000
+              }
+            ]
+          },
+          "unit": "bytes"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 8,
+        "x": 8,
+        "y": 1
+      },
+      "id": 2,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "pluginVersion": "10.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "process_resident_memory_bytes or go_memstats_alloc_bytes",
+          "legendFormat": "Memory Usage",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Worker Resident Memory",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "purple",
+                "value": null
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 8,
+        "x": 16,
+        "y": 1
+      },
+      "id": 3,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "pluginVersion": "10.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "go_threads",
+          "legendFormat": "OS Threads",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Worker OS Threads",
       "type": "stat"
     },
     {
@@ -322,136 +244,7 @@
         "y": 5
       },
       "id": 101,
-      "title": "📈 HTTP Request & Response Metrics",
-      "type": "row"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "custom": {
-            "drawStyle": "line",
-            "lineInterpolation": "smooth",
-            "lineWidth": 2
-          },
-          "unit": "reqps"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 0,
-        "y": 6
-      },
-      "id": 5,
-      "options": {
-        "legend": {
-          "calcs": [
-            "mean",
-            "max"
-          ],
-          "displayMode": "table",
-          "placement": "bottom"
-        },
-        "tooltip": {
-          "mode": "single",
-          "sort": "none"
-        }
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "editorMode": "code",
-          "expr": "sum(rate(http_requests_total[1m])) by (method, status)",
-          "legendFormat": "{{method}} {{status}}",
-          "range": true,
-          "refId": "A"
-        }
-      ],
-      "title": "HTTP Requests Traffic by Method & Status",
-      "type": "timeseries"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "custom": {
-            "drawStyle": "line",
-            "lineInterpolation": "smooth",
-            "lineWidth": 2
-          },
-          "unit": "ms"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 12,
-        "y": 6
-      },
-      "id": 6,
-      "options": {
-        "legend": {
-          "calcs": [
-            "mean",
-            "max"
-          ],
-          "displayMode": "table",
-          "placement": "bottom"
-        },
-        "tooltip": {
-          "mode": "single",
-          "sort": "none"
-        }
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "editorMode": "code",
-          "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[1m])) by (le)) * 1000",
-          "legendFormat": "P95 Latency",
-          "range": true,
-          "refId": "A"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "editorMode": "code",
-          "expr": "histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket[1m])) by (le)) * 1000",
-          "legendFormat": "P99 Latency",
-          "range": true,
-          "refId": "B"
-        }
-      ],
-      "title": "HTTP Request Latency Distribution (P95 / P99)",
-      "type": "timeseries"
-    },
-    {
-      "collapsed": false,
-      "gridPos": {
-        "h": 1,
-        "w": 24,
-        "x": 0,
-        "y": 14
-      },
-      "id": 102,
-      "title": "💾 Database Pool & Redis Cache Metrics",
+      "title": "💾 Database Pool & Worker Resource Allocation",
       "type": "row"
     },
     {
@@ -474,9 +267,9 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 15
+        "y": 6
       },
-      "id": 7,
+      "id": 4,
       "options": {
         "legend": {
           "calcs": [
@@ -493,8 +286,8 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "go_db_connections_open",
-          "legendFormat": "Open Connections",
+          "expr": "db_pool_total_conns",
+          "legendFormat": "Total Connections",
           "range": true,
           "refId": "A"
         },
@@ -504,8 +297,8 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "go_db_connections_in_use",
-          "legendFormat": "In-Use Connections",
+          "expr": "db_pool_acquired_conns",
+          "legendFormat": "Acquired (In-Use) Connections",
           "range": true,
           "refId": "B"
         },
@@ -515,13 +308,24 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "go_db_connections_idle",
+          "expr": "db_pool_idle_conns",
           "legendFormat": "Idle Connections",
           "range": true,
           "refId": "C"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "db_pool_max_conns",
+          "legendFormat": "Max Connections",
+          "range": true,
+          "refId": "D"
         }
       ],
-      "title": "PostgreSQL Connection Pool Status",
+      "title": "Worker PostgreSQL Connection Pool Status",
       "type": "timeseries"
     },
     {
@@ -544,9 +348,9 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 15
+        "y": 6
       },
-      "id": 8,
+      "id": 5,
       "options": {
         "legend": {
           "calcs": [
@@ -564,7 +368,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "rate(redis_cache_hits_total[1m])",
+          "expr": "sum(rate(cache_hits_total[1m])) or vector(0)",
           "legendFormat": "Cache Hits",
           "range": true,
           "refId": "A"
@@ -575,13 +379,13 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "rate(redis_cache_misses_total[1m])",
+          "expr": "sum(rate(cache_misses_total[1m])) or vector(0)",
           "legendFormat": "Cache Misses",
           "range": true,
           "refId": "B"
         }
       ],
-      "title": "Redis Cache Hits vs Misses",
+      "title": "Worker Cache Operations",
       "type": "timeseries"
     },
     {
@@ -590,10 +394,10 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 23
+        "y": 14
       },
-      "id": 103,
-      "title": "📋 Application Logs (Loki Live Stream)",
+      "id": 102,
+      "title": "📋 Worker Logs Stream (Loki)",
       "type": "row"
     },
     {
@@ -605,9 +409,9 @@
         "h": 10,
         "w": 24,
         "x": 0,
-        "y": 24
+        "y": 15
       },
-      "id": 9,
+      "id": 6,
       "options": {
         "dedupStrategy": "none",
         "enableLogDetails": true,
@@ -622,12 +426,12 @@
             "uid": "loki"
           },
           "editorMode": "code",
-          "expr": "{job=~\".+\"}",
+          "expr": "{service=\"url-shortener-worker\"} |= \"\"",
           "queryType": "range",
           "refId": "A"
         }
       ],
-      "title": "Live Structured Logs Stream",
+      "title": "Background Worker Logs Stream",
       "type": "logs"
     }
   ],
@@ -638,7 +442,7 @@
     "url-shortener",
     "opentelemetry",
     "grafana",
-    "alloy"
+    "worker"
   ],
   "time": {
     "from": "now-15m",
@@ -654,7 +458,7 @@
     ]
   },
   "timezone": "browser",
-  "title": "URL Shortener - System & Observability Overview",
-  "uid": "url-shortener-overview",
+  "title": "URL Shortener - Worker Queue Dashboard",
+  "uid": "url-shortener-worker",
   "version": 1
 }

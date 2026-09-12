@@ -12,6 +12,8 @@ import (
 	db "github.com/semmidev/url-shortener/server/db/sqlc"
 	"github.com/semmidev/url-shortener/server/internal/platform/apperr"
 	"github.com/semmidev/url-shortener/server/internal/platform/authz"
+	"github.com/semmidev/url-shortener/server/internal/platform/telemetry"
+	"go.opentelemetry.io/otel/attribute"
 )
 
 type Service struct {
@@ -35,15 +37,18 @@ func GenerateJoinCode() string {
 	return string(b)
 }
 
-func (s *Service) ListUserTenants(ctx context.Context, userID uuid.UUID) ([]TenantResponse, error) {
+func (s *Service) ListUserTenants(ctx context.Context, userID uuid.UUID) (res []TenantResponse, err error) {
+	ctx, endSpan := telemetry.StartSpan(ctx, "tenant.Service.ListUserTenants", attribute.String("user.id", userID.String()))
+	defer func() { endSpan(err) }()
+
 	tenants, err := s.q.ListUserTenants(ctx, userID)
 	if err != nil {
 		return nil, apperr.Internal("failed to list user tenants", err)
 	}
 
-	res := make([]TenantResponse, len(tenants))
+	r := make([]TenantResponse, len(tenants))
 	for i, t := range tenants {
-		res[i] = TenantResponse{
+		r[i] = TenantResponse{
 			ID:        t.ID,
 			Name:      t.Name,
 			Slug:      t.Slug,
@@ -53,10 +58,12 @@ func (s *Service) ListUserTenants(ctx context.Context, userID uuid.UUID) ([]Tena
 			UpdatedAt: t.UpdatedAt,
 		}
 	}
-	return res, nil
+	return r, nil
 }
 
-func (s *Service) CreateTenant(ctx context.Context, userID uuid.UUID, req CreateTenantRequest) (TenantResponse, error) {
+func (s *Service) CreateTenant(ctx context.Context, userID uuid.UUID, req CreateTenantRequest) (res TenantResponse, err error) {
+	ctx, endSpan := telemetry.StartSpan(ctx, "tenant.Service.CreateTenant", attribute.String("user.id", userID.String()), attribute.String("tenant.name", req.Name))
+	defer func() { endSpan(err) }()
 	if err := req.Validate(); err != nil {
 		return TenantResponse{}, err
 	}

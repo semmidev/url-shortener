@@ -24,10 +24,13 @@ func main() {
 	}
 
 	appLogger := logger.NewWithConfig(logger.Config{
-		Level:     cfg.LogLevel,
-		Format:    cfg.LogFormat,
-		AddSource: cfg.LogAddSource,
-		Out:       os.Stderr,
+		Level:       cfg.LogLevel,
+		Format:      cfg.LogFormat,
+		AddSource:   cfg.LogAddSource,
+		Out:         os.Stderr,
+		LokiURL:     cfg.LokiURL,
+		ServiceName: "url-shortener-worker",
+		Environment: cfg.Environment,
 	})
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)

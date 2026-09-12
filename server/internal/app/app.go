@@ -42,10 +42,13 @@ import (
 
 func Run(cfg config.Config) error {
 	appLogger := logger.NewWithConfig(logger.Config{
-		Level:     cfg.LogLevel,
-		Format:    cfg.LogFormat,
-		AddSource: cfg.LogAddSource,
-		Out:       os.Stderr,
+		Level:       cfg.LogLevel,
+		Format:      cfg.LogFormat,
+		AddSource:   cfg.LogAddSource,
+		Out:         os.Stderr,
+		LokiURL:     cfg.LokiURL,
+		ServiceName: cfg.OtelServiceName,
+		Environment: cfg.Environment,
 	})
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -53,7 +56,7 @@ func Run(cfg config.Config) error {
 
 	// Initialize OpenTelemetry Tracing
 	if cfg.OtelEnabled {
-		shutdownTracer, err := telemetry.InitTracer(context.Background(), cfg.OtelExporterEndpoint, cfg.OtelServiceName)
+		shutdownTracer, err := telemetry.InitTracer(context.Background(), cfg.OtelServiceName, cfg.OtelExporterEndpoint)
 		if err != nil {
 			appLogger.Warn(ctx, "opentelemetry tracer initialization warning", "error", err)
 		} else {

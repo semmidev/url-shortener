@@ -10,10 +10,13 @@ import (
 
 // Config encapsulates configuration for initializing a Logger.
 type Config struct {
-	Level     string    // Options: "debug", "info", "warn", "error" (default: "debug" in dev, "info" in prod)
-	Format    string    // Options: "text" (key=value format), "json" (structured JSON) (default: "text" in dev, "json" in prod)
-	AddSource bool      // Options: true (include caller file:line number), false
-	Out       io.Writer // target writer, defaults to os.Stderr
+	Level       string    // Options: "debug", "info", "warn", "error" (default: "debug" in dev, "info" in prod)
+	Format      string    // Options: "text" (key=value format), "json" (structured JSON) (default: "text" in dev, "json" in prod)
+	AddSource   bool      // Options: true (include caller file:line number), false
+	Out         io.Writer // target writer, defaults to os.Stderr
+	LokiURL     string    // Optional Loki HTTP push URL
+	ServiceName string    // Service name label for Loki
+	Environment string    // Environment label for Loki
 }
 
 // Logger is a context-aware, structured logger wrapping standard library log/slog.
@@ -57,7 +60,19 @@ func NewWithConfig(cfg Config) *Logger {
 		baseHandler = slog.NewTextHandler(out, opts)
 	}
 
-	handler := NewContextHandler(baseHandler)
+	var handler slog.Handler = NewContextHandler(baseHandler)
+	if cfg.LokiURL != "" {
+		svc := cfg.ServiceName
+		if svc == "" {
+			svc = "url-shortener"
+		}
+		env := cfg.Environment
+		if env == "" {
+			env = "development"
+		}
+		handler = NewLokiHandler(handler, cfg.LokiURL, svc, env)
+	}
+
 	return &Logger{
 		sl: slog.New(handler),
 	}
