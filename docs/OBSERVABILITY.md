@@ -693,7 +693,7 @@ Dalam repository **URL Shortener** ini, OpenTelemetry (Traces, Metrics, Logs) da
    - Handler `log/slog` otomatis mencabut `trace_id` dan `span_id` dari context OpenTelemetry.
    - Menghasilkan Wide Event Structured Log yang dapat di-correlate secara presisi di Grafana (Tempo $\leftrightarrow$ Loki).
 
-4. **Grafana Alloy Collector** ([config.alloy](file:///Users/sammidev/Developments/PETS/url-shortener/deploy/observability/alloy/config.alloy))
+4. **Grafana Alloy Collector** ([config.alloy](file:///Users/sammidev/Developments/PETS/url-shortener/scripts/observability/alloy/config.alloy))
    - Menerima OTLP via gRPC (`:4317`) dan HTTP (`:4318`).
    - Memproses telemetry menggunakan `otelcol.processor.batch`.
    - Menulis Traces ke **Tempo**, Metrics ke **Prometheus**, dan Logs ke **Loki**.

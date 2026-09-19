@@ -186,7 +186,7 @@ services:
       - --storage.path=/var/lib/alloy/data
       - /etc/alloy/config.alloy
     volumes:
-      - ./deploy/observability/alloy/config.alloy:/etc/alloy/config.alloy:ro
+      - ./scripts/observability/alloy/config.alloy:/etc/alloy/config.alloy:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
     ports:
       - "127.0.0.1:4317:4317" # OTLP gRPC receiver
@@ -201,7 +201,7 @@ services:
     container_name: url-shortener-tempo-dev
     command: [ "-config.file=/etc/tempo/tempo.yml" ]
     volumes:
-      - ./deploy/observability/tempo/tempo.yml:/etc/tempo/tempo.yml:ro
+      - ./scripts/observability/tempo/tempo.yml:/etc/tempo/tempo.yml:ro
     ports:
       - "127.0.0.1:3200:3200" # Tempo HTTP
     restart: unless-stopped
@@ -213,7 +213,7 @@ services:
     container_name: url-shortener-loki-dev
     command: [ "-config.file=/etc/loki/loki.yml" ]
     volumes:
-      - ./deploy/observability/loki/loki.yml:/etc/loki/loki.yml:ro
+      - ./scripts/observability/loki/loki.yml:/etc/loki/loki.yml:ro
     ports:
       - "127.0.0.1:3100:3100" # Loki HTTP
     restart: unless-stopped
@@ -228,7 +228,7 @@ services:
       - --storage.tsdb.path=/prometheus
       - --web.enable-remote-write-receiver
     volumes:
-      - ./deploy/observability/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./scripts/observability/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
     ports:
       - "127.0.0.1:9090:9090" # Prometheus Web UI
     restart: unless-stopped
@@ -243,7 +243,7 @@ services:
       - GF_SECURITY_ADMIN_PASSWORD=admin
       - GF_USERS_ALLOW_SIGN_UP=false
     volumes:
-      - ./deploy/observability/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./scripts/observability/grafana/provisioning:/etc/grafana/provisioning:ro
     ports:
       - "127.0.0.1:3000:3000" # Grafana UI
     restart: unless-stopped

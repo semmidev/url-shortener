@@ -31,9 +31,7 @@ A high-performance, enterprise-grade Multi-Tenant SaaS URL Shortener REST API wr
     - [3. Access Interactive API References](#3-access-interactive-api-references)
   - [System Architecture \& Data Flow](#system-architecture--data-flow)
     - [Multi-Tenant SaaS Architecture Diagram](#multi-tenant-saas-architecture-diagram)
-    - [Multi-Tenant Request \& Authorization Flow (`POST /api/v1/urls`)](#multi-tenant-request--authorization-flow-post-apiv1urls)
     - [Observability Architecture \& Telemetry Pipeline](#observability-architecture--telemetry-pipeline)
-    - [Telemetry Data Flow \& Trace-Log Correlation](#telemetry-data-flow--trace-log-correlation)
     - [Observability Mechanisms \& Components Breakdown](#observability-mechanisms--components-breakdown)
       - [Technical Highlights \& Design Principles:](#technical-highlights--design-principles)
   - [Enterprise Security \& CI/CD Pipelines](#enterprise-security--cicd-pipelines)
@@ -96,116 +94,48 @@ Once the server is running (`http://localhost:8080`):
 
 ```mermaid
 graph TD
-    Client["Client / Web SPA / Mobile"] --> |HTTP Request| Router["Chi Router (HTTP Server)"]
+    Client["Client / Web SPA / Mobile"] -->|HTTP Requests| Router["Chi Router"]
 
-    subgraph MiddlewareStack["Middleware Stack (customMw)"]
-        CORS["CORS Middleware"]
-        SecureHeaders["Secure Headers & Strict CSP"]
-        ClientIP["Client IP Resolver"]
-        Timeout["Request Timeout (10s)"]
-        LoggerMW["Wide Event Logging (slog)"]
-        RateLimiter["Redis Rate Limiter"]
-        AuthMW["JWT Auth Middleware"]
-        TenantMW["Tenant Context Middleware (X-Tenant-ID)"]
+    subgraph MiddlewareStack["Middleware Stack"]
+        MW["CORS • Secure Headers • Rate Limiter • JWT Auth • Tenant Context • Wide Slog"]
     end
 
-    Router --> MiddlewareStack
+    Router --> MW
+    MW --> Handlers["HTTP Handlers Layer<br/>(Tenant • User • URL • Redirect • Analytics • SPA)"]
 
-    subgraph Handlers["HTTP Handlers Layer"]
-        TenantH["TenantHandler"]
-        UserH["UserHandler"]
-        URLH["URLHandler"]
-        RedirectH["RedirectHandler"]
-        AnalyticsH["AnalyticsHandler"]
-        SPAH["Embedded SPA Handler"]
-    end
-
-    MiddlewareStack --> Handlers
-
-    subgraph Services["Core Business Logic Layer"]
-        TenantSvc["TenantService (Multi-Tenant SaaS)"]
+    subgraph BusinessLogic["Core Business Logic Services"]
+        TenantSvc["TenantService (SaaS Multi-Tenant)"]
         UserSvc["UserService"]
         URLSvc["URLService (SSRF Safe)"]
         AnalyticsSvc["AnalyticsService"]
     end
 
-    TenantH --> TenantSvc
-    UserH --> UserSvc
-    URLH --> URLSvc
-    RedirectH --> URLSvc
-    AnalyticsH --> AnalyticsSvc
+    Handlers --> BusinessLogic
 
-    subgraph PlatformLayer["Platform & Infrastructure Layer"]
-        Casbin["Casbin RBAC Engine (authz.Authorizer)"]
-        RillPipeline["Rill Concurrency Pipeline (destel/rill)"]
-        TaskDistributor["Asynq TaskDistributor (Redis Worker Queue)"]
-        OutboxWorker["Outbox Event Streaming Worker"]
-        CleanupWorker["URL Expiration Cleanup Worker"]
+    subgraph PlatformInfrastructure["Engine & Infrastructure Layer"]
+        Casbin["Casbin RBAC Engine"]
         JWTMaker["JWT Token Maker"]
-        RedisCache["Redis Cache (L1 Cache & Rate Limit)"]
+        RedisCache["Redis L1 Cache"]
+        RillPipeline["destel/rill Concurrency"]
+        TaskDistributor["Asynq Redis Task Queue"]
         SQLCStore["SQLC Store (PostgreSQL DAO)"]
     end
 
-    TenantSvc --> Casbin
-    TenantSvc --> SQLCStore
-    UserSvc --> JWTMaker
-    UserSvc --> RedisCache
-    UserSvc --> SQLCStore
-    URLSvc --> Casbin
-    URLSvc --> RedisCache
-    URLSvc --> SQLCStore
-    AnalyticsSvc --> Casbin
-    AnalyticsSvc --> RillPipeline
-    AnalyticsSvc --> SQLCStore
+    BusinessLogic --> Casbin
+    BusinessLogic --> JWTMaker
+    BusinessLogic --> RedisCache
+    BusinessLogic --> RillPipeline
+    BusinessLogic --> TaskDistributor
+    BusinessLogic --> SQLCStore
 
-    RedirectH -.->|Enqueue Click Task| TaskDistributor
-    CleanupWorker -.->|Clean Expired URLs| URLSvc
-    OutboxWorker -.->|Stream Events| AnalyticsH
-
-    subgraph DataStorage["Data Persistence Layer"]
+    subgraph Persistence["Data Storage Layer"]
         PostgreSQL[("PostgreSQL 18 Database")]
         RedisDB[("Redis Store")]
     end
 
     SQLCStore --> PostgreSQL
     RedisCache --> RedisDB
-```
-
-### Multi-Tenant Request & Authorization Flow (`POST /api/v1/urls`)
-
-```mermaid
-sequenceDiagram
-    autonumber
-    actor User as Client / User Browser
-    participant Chi as Chi Router
-    participant TenantMW as TenantContext Middleware
-    participant AuthMW as Auth Middleware
-    participant URLH as URLHandler
-    participant URLSvc as URLService
-    participant Casbin as Casbin Authorizer
-    participant Redis as Redis Cache
-    participant DB as PostgreSQL (SQLC)
-    participant TaskDist as Asynq TaskDistributor
-
-    User->>Chi: POST /api/v1/urls (Header: Authorization, X-Tenant-ID)
-    Chi->>AuthMW: Validate JWT Access Token
-    AuthMW->>TenantMW: Extract X-Tenant-ID & Attach TenantID to Context
-    TenantMW->>URLH: Dispatch to Handler
-    URLH->>URLSvc: Create(ctx, CreateURLRequest)
-
-    URLSvc->>Casbin: Can(ctx, UserID, TenantID, "urls.create")
-    alt Allowed by Casbin Policy
-        Casbin-->>URLSvc: true
-    else Denied / Insufficient Role
-        Casbin-->>URLSvc: false
-        URLSvc-->>User: 403 Forbidden (Anda tidak memiliki izin)
-    end
-
-    URLSvc->>DB: Check & Insert Short URL (SQLC Tx)
-    DB-->>URLSvc: Return Created Record
-    URLSvc->>Redis: Set("url:code:" + shortCode, URLData, TTL)
-    URLSvc-->>URLH: Return URLResponse
-    URLH-->>User: 201 Created (JSON Response)
+    TaskDistributor -.->|Enqueue Tasks| RedisDB
 ```
 
 ### Observability Architecture & Telemetry Pipeline
@@ -214,91 +144,48 @@ Observability Stack di-built-in secara native berbasis **OpenTelemetry (OTEL)**,
 
 ```mermaid
 graph TD
-    subgraph Applications["Application Runtime (Go Binary & Asynq Worker)"]
-        API["url-shortener-api-dev<br/>(HTTP Server)"]
-        Worker["url-shortener-worker-dev<br/>(Background Queue)"]
+    subgraph Applications["Application Runtime"]
+        API["url-shortener-api (HTTP Server)"]
+        Worker["url-shortener-worker (Background Worker)"]
     end
 
-    subgraph TelemetryInstrumentation["Telemetry Instrumentation Layer"]
-        OTELSDK["OpenTelemetry Go SDK<br/>(Traces Exporter)"]
-        PromExporter["Prometheus Metrics Endpoint<br/>(/metrics)"]
-        LokiLogger["Non-Blocking Async Loki Logger<br/>(slog)"]
+    subgraph Exporters["Telemetry Instrumentation"]
+        OTEL["OpenTelemetry Go SDK (Traces)"]
+        PromExporter["Prometheus Scrape Endpoint (/metrics)"]
+        LokiLogger["Non-Blocking Async Loki Logger (slog)"]
     end
 
-    API --> OTELSDK
+    API --> OTEL
     API --> PromExporter
     API --> LokiLogger
-
-    Worker --> OTELSDK
+    Worker --> OTEL
     Worker --> LokiLogger
 
-    subgraph TelemetryCollectors["Collector & Aggregation Layer"]
-        Alloy["Grafana Alloy<br/>(OTLP Collector & Metrics Scraper)"]
-        LokiCollector["Grafana Loki<br/>(HTTP Ingestion)"]
+    subgraph CollectorLayer["Collectors & Ingestion"]
+        Alloy["Grafana Alloy Collector"]
     end
 
-    OTELSDK -->|"OTLP / gRPC :4317"| Alloy
-    PromExporter -.->|"HTTP Scrape :8080/metrics"| Alloy
-    LokiLogger -->|"HTTP JSON Batch POST :3100"| LokiCollector
+    OTEL -->|"OTLP gRPC (:4317)"| Alloy
+    PromExporter -.->|"HTTP Scrape (:8080/metrics)"| Alloy
 
-    subgraph StorageBackends["Telemetry Storage Backends"]
-        Tempo[("Grafana Tempo<br/>(Distributed Tracing)")]
-        Prometheus[("Prometheus TSDB<br/>(Metrics)")]
-        Loki[("Grafana Loki<br/>(Log Store)")]
+    subgraph StorageBackends["Storage Backends"]
+        Tempo[("Grafana Tempo (Traces)")]
+        Prometheus[("Prometheus TSDB (Metrics)")]
+        Loki[("Grafana Loki (Logs)")]
     end
 
-    Alloy -->|"OTLP / gRPC :4317"| Tempo
-    Alloy -->|"Prometheus Remote Write"| Prometheus
-    LokiCollector --> Loki
+    Alloy -->|"OTLP gRPC"| Tempo
+    Alloy -->|"Remote Write"| Prometheus
+    LokiLogger -->|"HTTP Batch (:3100)"| Loki
 
-    subgraph Visualization["Visualization & Alerting Layer"]
-        Grafana["Grafana Unified Dashboard<br/>(Port 3000)"]
+    subgraph Visualization["Visualization & Monitoring"]
+        Grafana["Grafana Unified Dashboard (:3000)"]
     end
 
-    Grafana -->|"Query Traces"| Tempo
-    Grafana -->|"Query Metrics"| Prometheus
-    Grafana -->|"Query Logs"| Loki
-
-    Tempo -.->|"Trace to Log via trace_id"| Loki
-```
-
-### Telemetry Data Flow & Trace-Log Correlation
-
-Mekanisme alur data dan korelasi telemetry berjalan secara otomatis dari HTTP Request hingga visualisasi di Grafana:
-
-```mermaid
-sequenceDiagram
-    autonumber
-    actor Client as HTTP Client / User
-    participant Router as Chi Router / OpenTelemetry MW
-    participant Service as Business Service Layer (URL / User / Tenant)
-    participant LokiHW as Non-Blocking Loki Logger (slog)
-    participant OTEL as OpenTelemetry Exporter
-    participant Alloy as Grafana Alloy Collector
-    participant Tempo as Grafana Tempo
-    participant Loki as Grafana Loki
-    participant Grafana as Grafana Dashboard
-
-    Client->>Router: HTTP Request (Misal: GET /api/v1/urls)
-    Router->>Router: Inject / Extract W3C TraceContext (trace_id, span_id)
-    Router->>Service: Forward request with Trace Context
-
-    Service->>Service: StartSpan(ctx, "URLService.GetURLByCode")
-    Service->>LokiHW: Log event (slog.InfoContext(ctx, "fetching url details", "short_code", code))
-
-    LokiHW->>LokiHW: Extract trace_id & span_id from ctx
-    LokiHW-->>Loki: Push JSON Log Batch (Async Channel, zero latency overhead)
-
-    Service-->>Router: Return Business Result & HTTP Response
-    Router->>OTEL: End HTTP Span & Service Spans
-
-    OTEL-->>Alloy: Export OTLP Traces (gRPC batch)
-    Alloy-->>Tempo: Ingest Trace Spans into Tempo Storage
-
-    Grafana->>Tempo: User searches Trace ID in Grafana Tempo
-    Tempo-->>Grafana: Render Flamegraph & Span Duration
-    Grafana->>Loki: Auto-query Loki Logs using trace_id filter
-    Loki-->>Grafana: Render correlated logs for the exact trace!
+    Grafana --> Tempo
+    Grafana --> Prometheus
+    Grafana --> Loki
+    Tempo -.->|"Trace-to-Log Correlation via trace_id"| Loki
 ```
 
 ### Observability Mechanisms & Components Breakdown
