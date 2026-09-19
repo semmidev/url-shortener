@@ -23,215 +23,6 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
-        "/api/v1/admin/stats": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Admin"
-                ],
-                "summary": "Get system-wide platform statistics",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/admin.SystemStatsResponse"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/apperr.Error"
-                        }
-                    },
-                    "403": {
-                        "description": "Forbidden",
-                        "schema": {
-                            "$ref": "#/definitions/apperr.Error"
-                        }
-                    }
-                }
-            }
-        },
-        "/api/v1/admin/urls/{id}": {
-            "delete": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Admin"
-                ],
-                "summary": "Force delete any short URL",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Short URL UUID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/apperr.Error"
-                        }
-                    },
-                    "403": {
-                        "description": "Forbidden",
-                        "schema": {
-                            "$ref": "#/definitions/apperr.Error"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/apperr.Error"
-                        }
-                    }
-                }
-            }
-        },
-        "/api/v1/admin/users": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Admin"
-                ],
-                "summary": "List all registered users",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "Page number",
-                        "name": "page",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "description": "Items per page",
-                        "name": "limit",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "Search query",
-                        "name": "search",
-                        "in": "query"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/admin.ListUsersResponse"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/apperr.Error"
-                        }
-                    },
-                    "403": {
-                        "description": "Forbidden",
-                        "schema": {
-                            "$ref": "#/definitions/apperr.Error"
-                        }
-                    }
-                }
-            }
-        },
-        "/api/v1/admin/users/{id}/suspend": {
-            "put": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Admin"
-                ],
-                "summary": "Suspend or unsuspend user account",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "User UUID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "Suspension payload",
-                        "name": "body",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/admin.SuspendUserRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/admin.AdminUserResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/apperr.Error"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/apperr.Error"
-                        }
-                    },
-                    "403": {
-                        "description": "Forbidden",
-                        "schema": {
-                            "$ref": "#/definitions/apperr.Error"
-                        }
-                    }
-                }
-            }
-        },
         "/api/v1/analytics/dashboard": {
             "get": {
                 "security": [
@@ -250,13 +41,13 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/analytics.UserDashboardResponse"
+                            "$ref": "#/definitions/internal_analytics.UserDashboardResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/apperr.Error"
+                            "$ref": "#/definitions/github_com_semmidev_url-shortener_server_internal_platform_apperr.Error"
                         }
                     }
                 }
@@ -303,7 +94,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/user.GoogleExchangeTokenRequest"
+                            "$ref": "#/definitions/internal_user.GoogleExchangeTokenRequest"
                         }
                     }
                 ],
@@ -311,13 +102,13 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/user.LoginResponse"
+                            "$ref": "#/definitions/internal_user.LoginResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/apperr.Error"
+                            "$ref": "#/definitions/github_com_semmidev_url-shortener_server_internal_platform_apperr.Error"
                         }
                     }
                 }
@@ -336,7 +127,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/user.GoogleAuthURLResponse"
+                            "$ref": "#/definitions/internal_user.GoogleAuthURLResponse"
                         }
                     }
                 }
@@ -361,7 +152,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/user.LoginRequest"
+                            "$ref": "#/definitions/internal_user.LoginRequest"
                         }
                     }
                 ],
@@ -369,19 +160,19 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/user.LoginResponse"
+                            "$ref": "#/definitions/internal_user.LoginResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/apperr.Error"
+                            "$ref": "#/definitions/github_com_semmidev_url-shortener_server_internal_platform_apperr.Error"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/apperr.Error"
+                            "$ref": "#/definitions/github_com_semmidev_url-shortener_server_internal_platform_apperr.Error"
                         }
                     }
                 }
@@ -414,7 +205,7 @@ const docTemplate = `{
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/apperr.Error"
+                            "$ref": "#/definitions/github_com_semmidev_url-shortener_server_internal_platform_apperr.Error"
                         }
                     }
                 }
@@ -438,13 +229,13 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/user.UserResponse"
+                            "$ref": "#/definitions/internal_user.UserResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/apperr.Error"
+                            "$ref": "#/definitions/github_com_semmidev_url-shortener_server_internal_platform_apperr.Error"
                         }
                     }
                 }
@@ -469,7 +260,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/user.RefreshTokenRequest"
+                            "$ref": "#/definitions/internal_user.RefreshTokenRequest"
                         }
                     }
                 ],
@@ -477,13 +268,13 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/user.RefreshTokenResponse"
+                            "$ref": "#/definitions/internal_user.RefreshTokenResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/apperr.Error"
+                            "$ref": "#/definitions/github_com_semmidev_url-shortener_server_internal_platform_apperr.Error"
                         }
                     }
                 }
@@ -508,7 +299,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/user.RegisterRequest"
+                            "$ref": "#/definitions/internal_user.RegisterRequest"
                         }
                     }
                 ],
@@ -516,19 +307,19 @@ const docTemplate = `{
                     "201": {
                         "description": "Created",
                         "schema": {
-                            "$ref": "#/definitions/user.LoginResponse"
+                            "$ref": "#/definitions/internal_user.LoginResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/apperr.Error"
+                            "$ref": "#/definitions/github_com_semmidev_url-shortener_server_internal_platform_apperr.Error"
                         }
                     },
                     "409": {
                         "description": "Conflict",
                         "schema": {
-                            "$ref": "#/definitions/apperr.Error"
+                            "$ref": "#/definitions/github_com_semmidev_url-shortener_server_internal_platform_apperr.Error"
                         }
                     }
                 }
@@ -590,13 +381,13 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/url.ListURLResponse"
+                            "$ref": "#/definitions/internal_url.ListURLResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/apperr.Error"
+                            "$ref": "#/definitions/github_com_semmidev_url-shortener_server_internal_platform_apperr.Error"
                         }
                     }
                 }
@@ -624,7 +415,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/url.CreateURLRequest"
+                            "$ref": "#/definitions/internal_url.CreateURLRequest"
                         }
                     }
                 ],
@@ -632,25 +423,25 @@ const docTemplate = `{
                     "201": {
                         "description": "Created",
                         "schema": {
-                            "$ref": "#/definitions/url.URLResponse"
+                            "$ref": "#/definitions/internal_url.URLResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/apperr.Error"
+                            "$ref": "#/definitions/github_com_semmidev_url-shortener_server_internal_platform_apperr.Error"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/apperr.Error"
+                            "$ref": "#/definitions/github_com_semmidev_url-shortener_server_internal_platform_apperr.Error"
                         }
                     },
                     "409": {
                         "description": "Conflict",
                         "schema": {
-                            "$ref": "#/definitions/apperr.Error"
+                            "$ref": "#/definitions/github_com_semmidev_url-shortener_server_internal_platform_apperr.Error"
                         }
                     }
                 }
@@ -683,25 +474,25 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/url.URLResponse"
+                            "$ref": "#/definitions/internal_url.URLResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/apperr.Error"
+                            "$ref": "#/definitions/github_com_semmidev_url-shortener_server_internal_platform_apperr.Error"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/apperr.Error"
+                            "$ref": "#/definitions/github_com_semmidev_url-shortener_server_internal_platform_apperr.Error"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/apperr.Error"
+                            "$ref": "#/definitions/github_com_semmidev_url-shortener_server_internal_platform_apperr.Error"
                         }
                     }
                 }
@@ -736,7 +527,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/url.UpdateURLRequest"
+                            "$ref": "#/definitions/internal_url.UpdateURLRequest"
                         }
                     }
                 ],
@@ -744,31 +535,31 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/url.URLResponse"
+                            "$ref": "#/definitions/internal_url.URLResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/apperr.Error"
+                            "$ref": "#/definitions/github_com_semmidev_url-shortener_server_internal_platform_apperr.Error"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/apperr.Error"
+                            "$ref": "#/definitions/github_com_semmidev_url-shortener_server_internal_platform_apperr.Error"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/apperr.Error"
+                            "$ref": "#/definitions/github_com_semmidev_url-shortener_server_internal_platform_apperr.Error"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/apperr.Error"
+                            "$ref": "#/definitions/github_com_semmidev_url-shortener_server_internal_platform_apperr.Error"
                         }
                     }
                 }
@@ -799,25 +590,25 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/url.DeleteURLResponse"
+                            "$ref": "#/definitions/internal_url.DeleteURLResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/apperr.Error"
+                            "$ref": "#/definitions/github_com_semmidev_url-shortener_server_internal_platform_apperr.Error"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/apperr.Error"
+                            "$ref": "#/definitions/github_com_semmidev_url-shortener_server_internal_platform_apperr.Error"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/apperr.Error"
+                            "$ref": "#/definitions/github_com_semmidev_url-shortener_server_internal_platform_apperr.Error"
                         }
                     }
                 }
@@ -850,19 +641,19 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/analytics.AnalyticsSummaryResponse"
+                            "$ref": "#/definitions/internal_analytics.AnalyticsSummaryResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/apperr.Error"
+                            "$ref": "#/definitions/github_com_semmidev_url-shortener_server_internal_platform_apperr.Error"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/apperr.Error"
+                            "$ref": "#/definitions/github_com_semmidev_url-shortener_server_internal_platform_apperr.Error"
                         }
                     }
                 }
@@ -898,19 +689,19 @@ const docTemplate = `{
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/apperr.Error"
+                            "$ref": "#/definitions/github_com_semmidev_url-shortener_server_internal_platform_apperr.Error"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/apperr.Error"
+                            "$ref": "#/definitions/github_com_semmidev_url-shortener_server_internal_platform_apperr.Error"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/apperr.Error"
+                            "$ref": "#/definitions/github_com_semmidev_url-shortener_server_internal_platform_apperr.Error"
                         }
                     }
                 }
@@ -943,19 +734,19 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/url.URLResponse"
+                            "$ref": "#/definitions/internal_url.URLResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/apperr.Error"
+                            "$ref": "#/definitions/github_com_semmidev_url-shortener_server_internal_platform_apperr.Error"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/apperr.Error"
+                            "$ref": "#/definitions/github_com_semmidev_url-shortener_server_internal_platform_apperr.Error"
                         }
                     }
                 }
@@ -983,7 +774,7 @@ const docTemplate = `{
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/apperr.Error"
+                            "$ref": "#/definitions/github_com_semmidev_url-shortener_server_internal_platform_apperr.Error"
                         }
                     }
                 }
@@ -1008,13 +799,13 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/url.URLPreviewResponse"
+                            "$ref": "#/definitions/internal_url.URLPreviewResponse"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/apperr.Error"
+                            "$ref": "#/definitions/github_com_semmidev_url-shortener_server_internal_platform_apperr.Error"
                         }
                     }
                 }
@@ -1042,7 +833,7 @@ const docTemplate = `{
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/apperr.Error"
+                            "$ref": "#/definitions/github_com_semmidev_url-shortener_server_internal_platform_apperr.Error"
                         }
                     }
                 }
@@ -1050,78 +841,36 @@ const docTemplate = `{
         }
     },
     "definitions": {
-        "admin.AdminUserResponse": {
+        "github_com_semmidev_url-shortener_server_internal_platform_apperr.Error": {
             "type": "object",
             "properties": {
-                "created_at": {
+                "code": {
                     "type": "string"
                 },
-                "email": {
-                    "type": "string"
-                },
-                "full_name": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "is_suspended": {
-                    "type": "boolean"
-                },
-                "role": {
-                    "type": "string"
-                },
-                "updated_at": {
-                    "type": "string"
-                }
-            }
-        },
-        "admin.ListUsersResponse": {
-            "type": "object",
-            "properties": {
-                "items": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/admin.AdminUserResponse"
+                "errors": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
                     }
                 },
-                "meta": {
-                    "$ref": "#/definitions/web.Filter"
+                "message": {
+                    "type": "string"
                 }
             }
         },
-        "admin.SuspendUserRequest": {
+        "internal_analytics.AnalyticsSummaryResponse": {
             "type": "object",
             "properties": {
-                "is_suspended": {
-                    "type": "boolean"
-                }
-            }
-        },
-        "admin.SystemStatsResponse": {
-            "type": "object",
-            "properties": {
-                "total_active_urls": {
-                    "type": "integer"
+                "clicks_over_time": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/internal_analytics.ClickOverTimeStat"
+                    }
                 },
-                "total_clicks": {
-                    "type": "integer"
-                },
-                "total_urls": {
-                    "type": "integer"
-                },
-                "total_users": {
-                    "type": "integer"
-                }
-            }
-        },
-        "analytics.AnalyticsSummaryResponse": {
-            "type": "object",
-            "properties": {
                 "recent_clicks": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/analytics.ClickResponse"
+                        "$ref": "#/definitions/internal_analytics.ClickResponse"
                     }
                 },
                 "total_clicks": {
@@ -1135,7 +884,18 @@ const docTemplate = `{
                 }
             }
         },
-        "analytics.ClickResponse": {
+        "internal_analytics.ClickOverTimeStat": {
+            "type": "object",
+            "properties": {
+                "click_count": {
+                    "type": "integer"
+                },
+                "date": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_analytics.ClickResponse": {
             "type": "object",
             "properties": {
                 "clicked_at": {
@@ -1161,7 +921,7 @@ const docTemplate = `{
                 }
             }
         },
-        "analytics.CountryStat": {
+        "internal_analytics.CountryStat": {
             "type": "object",
             "properties": {
                 "click_count": {
@@ -1172,7 +932,7 @@ const docTemplate = `{
                 }
             }
         },
-        "analytics.DeviceStat": {
+        "internal_analytics.DeviceStat": {
             "type": "object",
             "properties": {
                 "click_count": {
@@ -1183,7 +943,7 @@ const docTemplate = `{
                 }
             }
         },
-        "analytics.ReferrerStat": {
+        "internal_analytics.ReferrerStat": {
             "type": "object",
             "properties": {
                 "click_count": {
@@ -1194,25 +954,31 @@ const docTemplate = `{
                 }
             }
         },
-        "analytics.UserDashboardResponse": {
+        "internal_analytics.UserDashboardResponse": {
             "type": "object",
             "properties": {
+                "clicks_over_time": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/internal_analytics.ClickOverTimeStat"
+                    }
+                },
                 "countries": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/analytics.CountryStat"
+                        "$ref": "#/definitions/internal_analytics.CountryStat"
                     }
                 },
                 "devices": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/analytics.DeviceStat"
+                        "$ref": "#/definitions/internal_analytics.DeviceStat"
                     }
                 },
                 "top_referrers": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/analytics.ReferrerStat"
+                        "$ref": "#/definitions/internal_analytics.ReferrerStat"
                     }
                 },
                 "total_clicks": {
@@ -1223,24 +989,7 @@ const docTemplate = `{
                 }
             }
         },
-        "apperr.Error": {
-            "type": "object",
-            "properties": {
-                "code": {
-                    "type": "string"
-                },
-                "errors": {
-                    "type": "object",
-                    "additionalProperties": {
-                        "type": "string"
-                    }
-                },
-                "message": {
-                    "type": "string"
-                }
-            }
-        },
-        "url.CreateURLRequest": {
+        "internal_url.CreateURLRequest": {
             "type": "object",
             "required": [
                 "original_url"
@@ -1262,7 +1011,7 @@ const docTemplate = `{
                 }
             }
         },
-        "url.DeleteURLResponse": {
+        "internal_url.DeleteURLResponse": {
             "type": "object",
             "properties": {
                 "message": {
@@ -1270,21 +1019,21 @@ const docTemplate = `{
                 }
             }
         },
-        "url.ListURLResponse": {
+        "internal_url.ListURLResponse": {
             "type": "object",
             "properties": {
                 "items": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/url.URLResponse"
+                        "$ref": "#/definitions/internal_url.URLResponse"
                     }
                 },
                 "meta": {
-                    "$ref": "#/definitions/url.MetaResponse"
+                    "$ref": "#/definitions/internal_url.MetaResponse"
                 }
             }
         },
-        "url.MetaResponse": {
+        "internal_url.MetaResponse": {
             "type": "object",
             "properties": {
                 "limit": {
@@ -1307,7 +1056,7 @@ const docTemplate = `{
                 }
             }
         },
-        "url.URLPreviewResponse": {
+        "internal_url.URLPreviewResponse": {
             "type": "object",
             "properties": {
                 "domain": {
@@ -1337,7 +1086,7 @@ const docTemplate = `{
                 }
             }
         },
-        "url.URLResponse": {
+        "internal_url.URLResponse": {
             "type": "object",
             "properties": {
                 "click_count": {
@@ -1375,7 +1124,7 @@ const docTemplate = `{
                 }
             }
         },
-        "url.UpdateURLRequest": {
+        "internal_url.UpdateURLRequest": {
             "type": "object",
             "properties": {
                 "expires_at": {
@@ -1392,7 +1141,7 @@ const docTemplate = `{
                 }
             }
         },
-        "user.GoogleAuthURLResponse": {
+        "internal_user.GoogleAuthURLResponse": {
             "type": "object",
             "properties": {
                 "url": {
@@ -1400,7 +1149,7 @@ const docTemplate = `{
                 }
             }
         },
-        "user.GoogleExchangeTokenRequest": {
+        "internal_user.GoogleExchangeTokenRequest": {
             "type": "object",
             "required": [
                 "code"
@@ -1411,7 +1160,7 @@ const docTemplate = `{
                 }
             }
         },
-        "user.LoginRequest": {
+        "internal_user.LoginRequest": {
             "type": "object",
             "required": [
                 "email",
@@ -1426,7 +1175,7 @@ const docTemplate = `{
                 }
             }
         },
-        "user.LoginResponse": {
+        "internal_user.LoginResponse": {
             "type": "object",
             "properties": {
                 "access_token": {
@@ -1442,11 +1191,11 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "user": {
-                    "$ref": "#/definitions/user.UserResponse"
+                    "$ref": "#/definitions/internal_user.UserResponse"
                 }
             }
         },
-        "user.RefreshTokenRequest": {
+        "internal_user.RefreshTokenRequest": {
             "type": "object",
             "required": [
                 "refresh_token"
@@ -1457,7 +1206,7 @@ const docTemplate = `{
                 }
             }
         },
-        "user.RefreshTokenResponse": {
+        "internal_user.RefreshTokenResponse": {
             "type": "object",
             "properties": {
                 "access_token": {
@@ -1468,7 +1217,7 @@ const docTemplate = `{
                 }
             }
         },
-        "user.RegisterRequest": {
+        "internal_user.RegisterRequest": {
             "type": "object",
             "required": [
                 "email",
@@ -1488,7 +1237,7 @@ const docTemplate = `{
                 }
             }
         },
-        "user.UserResponse": {
+        "internal_user.UserResponse": {
             "type": "object",
             "properties": {
                 "avatar_url": {
@@ -1506,48 +1255,19 @@ const docTemplate = `{
                 "google_id": {
                     "type": "string"
                 },
+                "has_password": {
+                    "type": "boolean"
+                },
                 "id": {
                     "type": "string"
                 },
-                "role": {
-                    "type": "string"
+                "permissions": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
                 },
                 "updated_at": {
-                    "type": "string"
-                }
-            }
-        },
-        "web.Filter": {
-            "type": "object",
-            "properties": {
-                "active": {
-                    "description": "Active filter: 1 -\u003e active only, 0 -\u003e inactive only, -1 -\u003e all",
-                    "type": "integer"
-                },
-                "end_date": {
-                    "type": "string"
-                },
-                "limit": {
-                    "description": "Items per page",
-                    "type": "integer"
-                },
-                "page": {
-                    "description": "Current page number (1-indexed)",
-                    "type": "integer"
-                },
-                "search": {
-                    "description": "Search keyword",
-                    "type": "string"
-                },
-                "sort_by": {
-                    "description": "Column to sort by (created_at, click_count, title, short_code)",
-                    "type": "string"
-                },
-                "sort_direction": {
-                    "description": "Sort direction: asc or desc",
-                    "type": "string"
-                },
-                "start_date": {
                     "type": "string"
                 }
             }

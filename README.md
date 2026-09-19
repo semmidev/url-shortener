@@ -22,29 +22,8 @@ A high-performance, enterprise-grade Multi-Tenant SaaS URL Shortener REST API wr
 
 ---
 
-### Previews
-
-#### Dashboard Overview
-![Dashboard Preview](docs/ss/1-dashboard.png)
-
-#### Short URLs Management
-![Short URLs Preview](docs/ss/2-urls.png)
-
-#### Interactive Scalar API Reference
-![Scalar API Reference Preview](docs/ss/3-docs.png)
-
-#### Swagger Interactive API Docs
-![Swagger API Docs Preview](docs/ss/4-docs.png)
-
----
-
 ## Table of Contents
 - [URL Shortener API](#url-shortener-api)
-    - [Previews](#previews)
-      - [Dashboard Overview](#dashboard-overview)
-      - [Short URLs Management](#short-urls-management)
-      - [Interactive Scalar API Reference](#interactive-scalar-api-reference)
-      - [Swagger Interactive API Docs](#swagger-interactive-api-docs)
   - [Table of Contents](#table-of-contents)
   - [Quick Start \& Setup Guide](#quick-start--setup-guide)
     - [1. Prerequisites](#1-prerequisites)

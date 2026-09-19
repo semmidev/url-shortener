@@ -57,16 +57,12 @@ func main() {
 
 	store := db.NewStore(pool)
 
-	var redisCache cache.Cache
-	if cfg.RedisAddress != "" {
-		rc, err := cache.NewRedisCache(cfg.RedisAddress, cfg.RedisPassword, cfg.RedisDB)
-		if err != nil {
-			appLogger.Warn(context.Background(), "worker redis cache connection skipped/failed", "error", err)
-		} else {
-			appLogger.Info(context.Background(), "worker redis cache connected", "address", cfg.RedisAddress)
-			redisCache = rc
-		}
+	rc, err := cache.NewRedisCache(cfg.RedisAddress, cfg.RedisPassword, cfg.RedisDB)
+	if err != nil {
+		appLogger.Warn(context.Background(), "worker redis cache connection skipped/failed", "error", err)
 	}
+
+	appLogger.Info(context.Background(), "worker redis cache connected", "address", cfg.RedisAddress)
 
 	redisOpt := asynq.RedisClientOpt{
 		Addr:     cfg.RedisAddress,
@@ -74,7 +70,7 @@ func main() {
 		DB:       cfg.RedisDB,
 	}
 
-	taskProcessor := worker.NewRedisTaskProcessor(redisOpt, store, appLogger, redisCache, cfg.WorkerConcurrency)
+	taskProcessor := worker.NewRedisTaskProcessor(redisOpt, store, appLogger, rc, cfg.WorkerConcurrency)
 
 	appLogger.Info(context.Background(), "starting background task processor worker",
 		"redis_address", cfg.RedisAddress,
