@@ -1,3 +1,4 @@
+import { Badge } from "@/components/ui/badge"
 import {
   Avatar,
   AvatarFallback,
@@ -33,7 +34,6 @@ import {
   PlusIcon,
   KeyIcon,
   UserIcon,
-  ChevronsUpDownIcon,
 } from "lucide-react"
 import { startTransition, addTransitionType } from "react"
 import { useNavigate } from "react-router-dom"
@@ -53,6 +53,10 @@ export function NavUser({ user }) {
   const { tenants, activeTenant, selectTenant, openJoinModal, openCreateModal } = useTenant()
   const initials = getInitials(user.name)
 
+  const activeRole = activeTenant?.role || 'member'
+  const isOwner = activeRole === 'owner'
+  const isAdmin = activeRole === 'admin'
+
   return (
     <SidebarMenu>
       <SidebarMenuItem>
@@ -67,9 +71,17 @@ export function NavUser({ user }) {
             </Avatar>
             <div className="grid flex-1 min-w-0 text-left text-sm leading-tight gap-0.5 group-data-[collapsible=icon]:hidden">
               <span className="truncate font-semibold text-foreground">{user.name}</span>
-              <span className="truncate text-xs text-muted-foreground flex items-center gap-1">
+              <span className="truncate text-xs text-muted-foreground flex items-center gap-1.5">
                 <Building2Icon className="size-3 shrink-0 text-primary" aria-hidden="true" />
-                <span className="truncate">{activeTenant?.name || "Personal Workspace"}</span>
+                <span className="truncate font-medium">{activeTenant?.name || "Personal Workspace"}</span>
+                {activeTenant?.role && (
+                  <Badge
+                    variant={isOwner ? 'default' : isAdmin ? 'secondary' : 'outline'}
+                    className="text-[9px] font-extrabold uppercase px-1 py-0 h-3.5 tracking-wider shrink-0 leading-none"
+                  >
+                    {activeRole}
+                  </Badge>
+                )}
               </span>
             </div>
             <EllipsisVerticalIcon className="ml-auto size-4 shrink-0 text-muted-foreground group-data-[collapsible=icon]:hidden" aria-hidden="true" />
@@ -105,27 +117,58 @@ export function NavUser({ user }) {
             <DropdownMenuGroup>
               <DropdownMenuSub>
                 <DropdownMenuSubTrigger className="cursor-pointer">
-                  <Building2Icon className="mr-2 size-4 text-primary" aria-hidden="true" />
-                  <span className="truncate font-medium">
-                    {activeTenant ? activeTenant.name : "Pilih Workspace"}
-                  </span>
+                  <Building2Icon className="mr-2 size-4 text-primary shrink-0" aria-hidden="true" />
+                  <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                    <span className="truncate font-medium">
+                      {activeTenant ? activeTenant.name : "Pilih Workspace"}
+                    </span>
+                    {activeTenant?.role && (
+                      <Badge
+                        variant={isOwner ? 'default' : isAdmin ? 'secondary' : 'outline'}
+                        className="text-[9px] font-bold uppercase px-1.5 py-0 h-4 shrink-0"
+                      >
+                        {activeRole}
+                      </Badge>
+                    )}
+                  </div>
                 </DropdownMenuSubTrigger>
-                <DropdownMenuSubContent className="min-w-52">
-                  <DropdownMenuLabel className="text-xs text-muted-foreground font-semibold px-2 py-1">
-                    Daftar Workspace
+                <DropdownMenuSubContent className="min-w-60">
+                  <DropdownMenuLabel className="text-xs text-muted-foreground font-semibold px-2 py-1 flex items-center justify-between">
+                    <span>Daftar Workspace</span>
+                    <span className="text-[10px] font-mono text-muted-foreground">({tenants.length})</span>
                   </DropdownMenuLabel>
-                  {tenants.map((t) => (
-                    <DropdownMenuItem
-                      key={t.id}
-                      className="cursor-pointer flex items-center justify-between py-1.5"
-                      onClick={() => selectTenant(t)}
-                    >
-                      <span className="truncate font-medium">{t.name}</span>
-                      {t.id === activeTenant?.id && (
-                        <CheckIcon className="size-4 text-primary shrink-0 ml-2" aria-hidden="true" />
-                      )}
-                    </DropdownMenuItem>
-                  ))}
+                  <DropdownMenuSeparator />
+                  {tenants.map((t) => {
+                    const isSelected = t.id === activeTenant?.id
+                    const tRole = t.role || 'member'
+                    const isTOwner = tRole === 'owner'
+                    const isTAdmin = tRole === 'admin'
+                    return (
+                      <DropdownMenuItem
+                        key={t.id}
+                        className={`cursor-pointer flex items-center justify-between py-1.5 ${isSelected ? 'bg-primary/5 font-semibold text-primary' : ''}`}
+                        onClick={() => {
+                          if (!isSelected) selectTenant(t)
+                        }}
+                      >
+                        <div className="flex items-center gap-2 min-w-0">
+                          <Building2Icon className="size-3.5 text-muted-foreground shrink-0" aria-hidden="true" />
+                          <span className="truncate">{t.name}</span>
+                        </div>
+                        <div className="flex items-center gap-1.5 shrink-0 ml-2">
+                          <Badge
+                            variant={isTOwner ? 'default' : isTAdmin ? 'secondary' : 'outline'}
+                            className="text-[9px] font-bold uppercase px-1.5 py-0 h-4"
+                          >
+                            {tRole}
+                          </Badge>
+                          {isSelected && (
+                            <CheckIcon className="size-3.5 text-primary shrink-0" aria-hidden="true" />
+                          )}
+                        </div>
+                      </DropdownMenuItem>
+                    )
+                  })}
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
                     className="cursor-pointer text-primary focus:text-primary"

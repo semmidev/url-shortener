@@ -2,7 +2,6 @@ import { Outlet, useLocation } from "react-router-dom"
 import { useTheme } from "next-themes"
 import { Moon, Sun } from "lucide-react"
 import { AppSidebar } from "@/components/app-sidebar"
-import { WorkspaceToggle } from "@/components/WorkspaceToggle"
 import { LanguageToggle } from "@/components/LanguageToggle"
 import { ThemePresetPicker } from "@/components/ThemePresetPicker"
 import { useI18n } from "@/context/I18nContext"
@@ -51,11 +50,8 @@ export default function DashboardLayout() {
             </nav>
           </div>
 
-          {/* Right: Workspace switcher + i18n language toggle + theme palette + dark mode toggle */}
+          {/* Right: i18n language toggle + theme palette + dark mode toggle */}
           <div className="flex items-center gap-1.5">
-
-            {/* Workspace Switcher & User Role badge */}
-            <WorkspaceToggle />
 
             {/* i18n Language Toggle */}
             <LanguageToggle />
