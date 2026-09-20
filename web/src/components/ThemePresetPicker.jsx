@@ -5,28 +5,34 @@ import { Button } from "@/components/ui/button"
 
 export const THEMES = [
   { id: "claude",   name: "Claude",   color: "#f5f0eb" },
-  { id: "whatsapp", name: "WhatsApp", color: "#e5ddd8" },
+  { id: "whatsapp", name: "WhatsApp", color: "#25d366" },
+  { id: "deb",      name: "Deb",      color: "#2563eb" },
+  { id: "seline",   name: "Seline",   color: "#3ba6f1" },
 ]
+
+const VALID_THEMES = ["claude", "whatsapp", "deb", "seline"]
+function getValidTheme(id) {
+  return VALID_THEMES.includes(id) ? id : "claude"
+}
 
 export function useThemePreset() {
   const [activePreset, setActivePreset] = useState(() => {
     const saved = localStorage.getItem("theme-preset")
-    if (saved === "whatsapp" || saved === "claude") return saved
-    return "claude"
+    return getValidTheme(saved)
   })
 
   useEffect(() => {
     let saved = localStorage.getItem("theme-preset")
-    if (saved !== "whatsapp" && saved !== "claude") {
-      saved = "claude"
-      localStorage.setItem("theme-preset", "claude")
+    const valid = getValidTheme(saved)
+    if (saved !== valid) {
+      localStorage.setItem("theme-preset", valid)
     }
-    document.documentElement.setAttribute("data-theme", saved)
-    setActivePreset(saved)
+    document.documentElement.setAttribute("data-theme", valid)
+    setActivePreset(valid)
 
     function handleStorage(e) {
       if (e.key === "theme-preset" && e.newValue) {
-        const val = (e.newValue === "whatsapp" || e.newValue === "claude") ? e.newValue : "claude"
+        const val = getValidTheme(e.newValue)
         document.documentElement.setAttribute("data-theme", val)
         setActivePreset(val)
       }
@@ -34,7 +40,7 @@ export function useThemePreset() {
 
     function handleCustom(e) {
       if (e.detail) {
-        const val = (e.detail === "whatsapp" || e.detail === "claude") ? e.detail : "claude"
+        const val = getValidTheme(e.detail)
         document.documentElement.setAttribute("data-theme", val)
         setActivePreset(val)
       }
@@ -49,7 +55,7 @@ export function useThemePreset() {
   }, [])
 
   const setPreset = (themeId) => {
-    const valid = (themeId === "whatsapp" || themeId === "claude") ? themeId : "claude"
+    const valid = getValidTheme(themeId)
     document.documentElement.setAttribute("data-theme", valid)
     localStorage.setItem("theme-preset", valid)
     setActivePreset(valid)

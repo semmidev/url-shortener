@@ -1,6 +1,8 @@
 /* Import individual theme files */
 @import './themes/claude.css';
 @import './themes/whatsapp.css';
+@import './themes/deb.css';
+@import './themes/seline.css';
 
 body {
   @apply overscroll-none;
