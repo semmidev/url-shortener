@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import DynamicPageHeader from '@/components/DynamicPageHeader';
-import { DataTable } from '@/components/data-table';
+import { DataTable, DataTableColumnHeader } from '@/components/data-table';
 import { motion, AnimatePresence } from 'motion/react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -13,7 +13,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import {
-  Users, UserPlus, Key, ShieldCheck, UserCheck,
+  Users, UserPlus, Key, ShieldCheck,
   UserX, EllipsisVertical, Copy, Check, ShieldAlert
 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -28,11 +28,19 @@ import {
 import PermissionGuard from '@/components/PermissionGuard';
 
 export default function WorkspaceMembersPage() {
-  const { activeTenant } = useTenant();
+  const { activeTenant, hasPermission } = useTenant();
   const [members, setMembers] = useState([]);
   const [roles, setRoles] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [copiedCode, setCopiedCode] = useState(false);
+
+  // Search & Filter & Sort state
+  const [search, setSearch] = useState('');
+  const [roleFilter, setRoleFilter] = useState('all');
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(10);
+  const [sortBy, setSortBy] = useState('created_at');
+  const [sortDirection, setSortDirection] = useState('desc');
 
   // Modal States
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -69,6 +77,16 @@ export default function WorkspaceMembersPage() {
     setCopiedCode(true);
     toast.success('Kode gabung berhasil disalin');
     setTimeout(() => setCopiedCode(false), 2000);
+  };
+
+  const handleSort = (field) => {
+    if (sortBy === field) {
+      setSortDirection((prev) => (prev === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortBy(field);
+      setSortDirection('desc');
+    }
+    setPage(1);
   };
 
   const handleAddMember = async (e) => {
@@ -120,28 +138,98 @@ export default function WorkspaceMembersPage() {
     }
   };
 
+  const handleBulkRemove = async (selectedRows) => {
+    if (!selectedRows?.length) return;
+    const nonOwners = selectedRows.filter((m) => m.role !== 'owner');
+    if (!nonOwners.length) {
+      toast.error('Role Owner tidak dapat dikeluarkan');
+      return;
+    }
+    if (!window.confirm(`Keluarkan ${nonOwners.length} anggota terpilih dari workspace?`)) return;
+    try {
+      await Promise.all(nonOwners.map((m) => removeTenantMember(activeTenant.id, m.user_id)));
+      toast.success(`${nonOwners.length} anggota berhasil dikeluarkan`);
+      fetchMembersAndRoles();
+    } catch (err) {
+      toast.error('Gagal mengeluarkan anggota terpilih');
+    }
+  };
+
+  // Filter & Sort members
+  const filteredMembers = useMemo(() => {
+    let result = [...members];
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      result = result.filter(
+        (m) =>
+          m.full_name?.toLowerCase().includes(q) ||
+          m.email?.toLowerCase().includes(q) ||
+          m.role?.toLowerCase().includes(q)
+      );
+    }
+    if (roleFilter !== 'all') {
+      result = result.filter((m) => m.role === roleFilter);
+    }
+
+    result.sort((a, b) => {
+      let valA = a[sortBy] ?? '';
+      let valB = b[sortBy] ?? '';
+      if (typeof valA === 'string') valA = valA.toLowerCase();
+      if (typeof valB === 'string') valB = valB.toLowerCase();
+      if (valA < valB) return sortDirection === 'asc' ? -1 : 1;
+      if (valA > valB) return sortDirection === 'asc' ? 1 : -1;
+      return 0;
+    });
+
+    return result;
+  }, [members, search, roleFilter, sortBy, sortDirection]);
+
+  // Paginated members
+  const paginatedMembers = useMemo(() => {
+    const start = (page - 1) * limit;
+    return filteredMembers.slice(start, start + limit);
+  }, [filteredMembers, page, limit]);
+
   const columns = [
     {
+      id: 'full_name',
       accessorKey: 'full_name',
-      header: 'Anggota',
+      header: ({ column }) => (
+        <DataTableColumnHeader
+          column={column}
+          title="Anggota"
+          sortBy={sortBy}
+          sortDirection={sortDirection}
+          onSortChange={handleSort}
+        />
+      ),
       cell: ({ row }) => {
         const u = row.original;
         return (
           <div className="flex items-center gap-3">
-            <div className="size-9 rounded-full bg-primary/10 text-primary font-bold flex items-center justify-center text-sm uppercase">
+            <div className="size-9 rounded-full bg-primary/10 text-primary font-bold flex items-center justify-center text-sm uppercase shrink-0">
               {u.full_name ? u.full_name.charAt(0) : u.email.charAt(0)}
             </div>
             <div className="flex flex-col min-w-0">
               <span className="font-semibold text-foreground text-sm truncate">{u.full_name || 'User'}</span>
-              <span className="text-xs text-muted-foreground truncate">{u.email}</span>
+              <span className="text-xs text-muted-foreground truncate font-mono">{u.email}</span>
             </div>
           </div>
         );
       },
     },
     {
+      id: 'role',
       accessorKey: 'role',
-      header: 'Peran Workspace',
+      header: ({ column }) => (
+        <DataTableColumnHeader
+          column={column}
+          title="Peran Workspace"
+          sortBy={sortBy}
+          sortDirection={sortDirection}
+          onSortChange={handleSort}
+        />
+      ),
       cell: ({ row }) => {
         const role = row.original.role;
         const isOwner = role === 'owner';
@@ -160,10 +248,19 @@ export default function WorkspaceMembersPage() {
       },
     },
     {
+      id: 'created_at',
       accessorKey: 'created_at',
-      header: 'Tanggal Bergabung',
+      header: ({ column }) => (
+        <DataTableColumnHeader
+          column={column}
+          title="Tanggal Bergabung"
+          sortBy={sortBy}
+          sortDirection={sortDirection}
+          onSortChange={handleSort}
+        />
+      ),
       cell: ({ row }) => (
-        <span className="text-xs text-muted-foreground">
+        <span className="text-xs text-muted-foreground font-mono">
           {new Date(row.original.created_at).toLocaleDateString('id-ID', {
             day: 'numeric',
             month: 'short',
@@ -174,64 +271,81 @@ export default function WorkspaceMembersPage() {
     },
     {
       id: 'actions',
-      header: 'Aksi',
+      header: () => <div className="text-right">Aksi</div>,
       cell: ({ row }) => {
         const u = row.original;
         if (u.role === 'owner') return null;
 
         return (
-          <DropdownMenu>
-            <DropdownMenuTrigger render={<Button variant="ghost" size="icon" className="size-8 cursor-pointer" />}>
-              <EllipsisVertical className="size-4" />
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-44">
-              <DropdownMenuLabel className="text-xs">Kelola Anggota</DropdownMenuLabel>
-              <PermissionGuard permission="tenants.members.manage">
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  onClick={() => {
-                    setSelectedMember(u);
-                    setNewRole(u.role);
-                    setModalType('role');
-                  }}
-                  className="cursor-pointer"
-                >
-                  <ShieldCheck className="size-4 mr-2" />
-                  Ubah Peran
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() => {
-                    setSelectedMember(u);
-                    setModalType('remove');
-                  }}
-                  className="cursor-pointer text-destructive focus:text-destructive"
-                >
-                  <UserX className="size-4 mr-2" />
-                  Keluarkan
-                </DropdownMenuItem>
-              </PermissionGuard>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <div className="text-right">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="size-8 text-muted-foreground hover:text-foreground cursor-pointer">
+                  <EllipsisVertical className="size-4" />
+                  <span className="sr-only">Open menu</span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-44">
+                <DropdownMenuLabel className="text-xs">Kelola Anggota</DropdownMenuLabel>
+                <PermissionGuard permission="tenants.members.manage">
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onClick={() => {
+                      setSelectedMember(u);
+                      setNewRole(u.role);
+                      setModalType('role');
+                    }}
+                    className="cursor-pointer text-xs"
+                  >
+                    <ShieldCheck className="size-4 mr-2 text-muted-foreground" />
+                    Ubah Peran
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => {
+                      setSelectedMember(u);
+                      setModalType('remove');
+                    }}
+                    className="cursor-pointer text-xs text-destructive focus:text-destructive"
+                  >
+                    <UserX className="size-4 mr-2" />
+                    Keluarkan
+                  </DropdownMenuItem>
+                </PermissionGuard>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         );
       },
     },
   ];
 
+  const bulkActions = [
+    ...(hasPermission('tenants.members.manage')
+      ? [
+          {
+            label: 'Keluarkan Terpilih',
+            icon: UserX,
+            variant: 'destructive',
+            onClick: handleBulkRemove,
+          },
+        ]
+      : []),
+  ];
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-12">
       <DynamicPageHeader
         title="Anggota Workspace"
         subtitle={`Kelola anggota dan hak akses pada workspace "${activeTenant?.name || 'Aktif'}"`}
         fallbackIcon={Users}
-        actionButton={
-          <PermissionGuard permission="tenants.members.manage">
-            <Button onClick={() => setIsAddModalOpen(true)} className="gap-2 cursor-pointer shadow-xs">
-              <UserPlus className="size-4" />
-              Tambah Anggota
-            </Button>
-          </PermissionGuard>
-        }
-      />
+      >
+        <PermissionGuard permission="tenants.members.manage">
+          <Button onClick={() => setIsAddModalOpen(true)} className="gap-2 cursor-pointer shadow-xs">
+            <UserPlus className="size-4" />
+            <span>Tambah Anggota</span>
+          </Button>
+        </PermissionGuard>
+      </DynamicPageHeader>
 
       {/* Join Code Quick Card */}
       {activeTenant?.join_code && (
@@ -257,13 +371,47 @@ export default function WorkspaceMembersPage() {
         </div>
       )}
 
-      {/* Members Table */}
+      {/* Standardized Members DataTable */}
       <DataTable
         columns={columns}
-        data={members}
+        data={paginatedMembers}
         isLoading={isLoading}
-        searchKey="full_name"
-        searchPlaceholder="Cari anggota berdasarkan nama..."
+        enableSelection={true}
+        page={page}
+        pageSize={limit}
+        totalCount={filteredMembers.length}
+        onPageChange={setPage}
+        onPageSizeChange={(newSize) => {
+          setLimit(newSize);
+          setPage(1);
+        }}
+        search={search}
+        onSearchChange={(val) => {
+          setSearch(val);
+          setPage(1);
+        }}
+        searchPlaceholder="Cari anggota berdasarkan nama, email..."
+        filters={[
+          {
+            id: 'role',
+            label: 'Peran',
+            value: roleFilter,
+            onChange: (val) => {
+              setRoleFilter(val);
+              setPage(1);
+            },
+            options: [
+              { label: 'Semua Peran', value: 'all' },
+              { label: 'Admin', value: 'admin' },
+              { label: 'Member', value: 'member' },
+            ],
+          },
+        ]}
+        sortBy={sortBy}
+        sortDirection={sortDirection}
+        onSortChange={handleSort}
+        onRefresh={fetchMembersAndRoles}
+        bulkActions={bulkActions}
       />
 
       {/* Add Member Modal */}
@@ -394,7 +542,7 @@ export default function WorkspaceMembersPage() {
                   Batal
                 </Button>
                 <Button variant="destructive" onClick={handleRemoveMember} disabled={actionLoading}>
-                  {actionLoading ? 'Mengeeluarkan...' : 'Ya, Keluarkan'}
+                  {actionLoading ? 'Mengeluarkan...' : 'Ya, Keluarkan'}
                 </Button>
               </div>
             </motion.div>

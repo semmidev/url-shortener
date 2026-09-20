@@ -3,11 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import DynamicPageHeader from '@/components/DynamicPageHeader';
 import { DataTable, DataTableColumnHeader } from '@/components/data-table';
 import { toast } from 'sonner';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -18,20 +16,18 @@ import {
 } from '@/components/ui/dropdown-menu';
 import {
   GlobeIcon,
-  SearchIcon,
   CopyIcon,
   CheckIcon,
   QrCodeIcon,
   Trash2Icon,
-  RefreshCwIcon,
   BarChart2Icon,
   PowerIcon,
   EllipsisVerticalIcon,
   ExternalLinkIcon,
-  Link2Icon,
   CheckCircle2Icon,
   MousePointerClickIcon,
   PlusIcon,
+  EyeIcon,
 } from 'lucide-react';
 import QRCodeModal from '@/features/urls/components/QRCodeModal';
 import DeleteConfirmModal from '@/features/urls/components/DeleteConfirmModal';
@@ -58,7 +54,7 @@ function formatDate(dateStr) {
 
 export default function WorkspaceLinksPage() {
   const { t } = useI18n();
-  const { activeTenant } = useTenant();
+  const { activeTenant, hasPermission } = useTenant();
   const navigate = useNavigate();
 
   const [urls, setUrls] = useState([]);
@@ -93,7 +89,7 @@ export default function WorkspaceLinksPage() {
         active: activeFilter,
         sortBy,
         sortDirection,
-        scopeAll: true, // Fetch ALL links in workspace
+        scopeAll: true,
       });
       const items = data?.items || [];
       setUrls(items);
@@ -114,6 +110,16 @@ export default function WorkspaceLinksPage() {
     setCopiedId(id);
     toast.success('Tautan berhasil disalin!');
     setTimeout(() => setCopiedId(null), 2000);
+  };
+
+  const handleSort = (field) => {
+    if (sortBy === field) {
+      setSortDirection((prev) => (prev === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortBy(field);
+      setSortDirection('desc');
+    }
+    setPage(1);
   };
 
   const handleToggleActive = async (urlItem) => {
@@ -143,6 +149,40 @@ export default function WorkspaceLinksPage() {
     }
   };
 
+  const handleBulkDeactivate = async (selectedRows) => {
+    if (!selectedRows?.length) return;
+    try {
+      await Promise.all(selectedRows.map((r) => updateShortUrl(r.id, { is_active: false })));
+      toast.success(`${selectedRows.length} tautan dinonaktifkan`);
+      fetchUrls();
+    } catch (err) {
+      toast.error('Gagal menonaktifkan tautan terpilih');
+    }
+  };
+
+  const handleBulkActivate = async (selectedRows) => {
+    if (!selectedRows?.length) return;
+    try {
+      await Promise.all(selectedRows.map((r) => updateShortUrl(r.id, { is_active: true })));
+      toast.success(`${selectedRows.length} tautan diaktifkan`);
+      fetchUrls();
+    } catch (err) {
+      toast.error('Gagal mengaktifkan tautan terpilih');
+    }
+  };
+
+  const handleBulkDelete = async (selectedRows) => {
+    if (!selectedRows?.length) return;
+    if (!window.confirm(`Hapus ${selectedRows.length} tautan terpilih?`)) return;
+    try {
+      await Promise.all(selectedRows.map((r) => deleteShortUrl(r.id)));
+      toast.success(`${selectedRows.length} tautan berhasil dihapus`);
+      fetchUrls();
+    } catch (err) {
+      toast.error('Gagal menghapus tautan terpilih');
+    }
+  };
+
   const activeCount = urls.filter((u) => u.is_active).length;
   const totalClicks = urls.reduce((acc, u) => acc + (u.click_count || 0), 0);
 
@@ -154,10 +194,9 @@ export default function WorkspaceLinksPage() {
         <DataTableColumnHeader
           column={column}
           title="Tautan Singkat"
-          onSort={(dir) => {
-            setSortBy('short_code');
-            setSortDirection(dir);
-          }}
+          sortBy={sortBy}
+          sortDirection={sortDirection}
+          onSortChange={handleSort}
         />
       ),
       cell: ({ row }) => {
@@ -173,7 +212,7 @@ export default function WorkspaceLinksPage() {
             <Button
               variant="ghost"
               size="icon"
-              className="size-7 shrink-0 text-muted-foreground hover:text-foreground"
+              className="size-7 shrink-0 text-muted-foreground hover:text-foreground cursor-pointer"
               onClick={() => handleCopy(fullShortUrl, item.id)}
               title="Salin Tautan"
             >
@@ -184,30 +223,29 @@ export default function WorkspaceLinksPage() {
       },
     },
     {
-      id: 'title_url',
+      id: 'title',
       accessorKey: 'title',
       header: ({ column }) => (
         <DataTableColumnHeader
           column={column}
           title="Judul & URL Asli"
-          onSort={(dir) => {
-            setSortBy('title');
-            setSortDirection(dir);
-          }}
+          sortBy={sortBy}
+          sortDirection={sortDirection}
+          onSortChange={handleSort}
         />
       ),
       cell: ({ row }) => {
         const item = row.original;
         return (
           <div className="flex flex-col max-w-[320px]">
-            <span className="font-medium text-foreground text-sm truncate" title={item.title}>
+            <span className="font-semibold text-foreground text-sm truncate" title={item.title}>
               {item.title || 'Tanpa Judul'}
             </span>
             <a
               href={item.original_url}
               target="_blank"
               rel="noreferrer"
-              className="text-xs text-muted-foreground hover:text-primary truncate flex items-center gap-1 mt-0.5"
+              className="text-xs text-muted-foreground hover:text-primary truncate flex items-center gap-1 mt-0.5 font-mono"
               title={item.original_url}
             >
               <span className="truncate">{item.original_url}</span>
@@ -225,8 +263,11 @@ export default function WorkspaceLinksPage() {
         const item = row.original;
         return (
           <Badge
-            variant={item.is_active ? 'default' : 'secondary'}
-            className={item.is_active ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20' : 'bg-muted text-muted-foreground'}
+            className={`text-[11px] font-semibold border ${
+              item.is_active
+                ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20 dark:bg-emerald-500/20 dark:text-emerald-400 dark:border-emerald-500/30'
+                : 'bg-rose-500/10 text-rose-600 border-rose-500/20 dark:bg-rose-500/20 dark:text-rose-400 dark:border-rose-500/30'
+            }`}
           >
             {item.is_active ? 'Aktif' : 'Non-Aktif'}
           </Badge>
@@ -240,19 +281,17 @@ export default function WorkspaceLinksPage() {
         <DataTableColumnHeader
           column={column}
           title="Total Klik"
-          onSort={(dir) => {
-            setSortBy('click_count');
-            setSortDirection(dir);
-          }}
+          sortBy={sortBy}
+          sortDirection={sortDirection}
+          onSortChange={handleSort}
         />
       ),
       cell: ({ row }) => {
         const item = row.original;
         return (
-          <div className="flex items-center gap-1.5 font-medium text-sm text-foreground">
-            <BarChart2Icon className="size-4 text-muted-foreground shrink-0" />
-            <span>{(item.click_count || 0).toLocaleString()}</span>
-          </div>
+          <Badge variant="outline" className="font-bold font-mono text-xs tabular-nums">
+            {(item.click_count || 0).toLocaleString()}
+          </Badge>
         );
       },
     },
@@ -263,107 +302,129 @@ export default function WorkspaceLinksPage() {
         <DataTableColumnHeader
           column={column}
           title="Tanggal Dibuat"
-          onSort={(dir) => {
-            setSortBy('created_at');
-            setSortDirection(dir);
-          }}
+          sortBy={sortBy}
+          sortDirection={sortDirection}
+          onSortChange={handleSort}
         />
       ),
       cell: ({ row }) => (
-        <span className="text-xs text-muted-foreground">
+        <span className="text-xs text-muted-foreground font-mono whitespace-nowrap">
           {formatDate(row.original.created_at)}
         </span>
       ),
     },
     {
       id: 'actions',
-      header: 'Aksi',
+      header: () => <div className="text-right">Aksi</div>,
       cell: ({ row }) => {
         const item = row.original;
         const fullShortUrl = `${window.location.origin}/${item.short_code}`;
 
         return (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="size-8">
-                <EllipsisVerticalIcon className="size-4 text-muted-foreground" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-48">
-              <DropdownMenuLabel>Aksi Link</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => handleCopy(fullShortUrl, item.id)}>
-                <CopyIcon className="size-4 mr-2" />
-                Salin Tautan
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => setQrModal({ isOpen: true, url: fullShortUrl, code: item.short_code })}
-              >
-                <QrCodeIcon className="size-4 mr-2" />
-                Lihat QR Code
-              </DropdownMenuItem>
-              <PermissionGuard permission="analytics.read">
-                <DropdownMenuItem onClick={() => navigate(`/dashboard/urls/${item.id}`)}>
-                  <BarChart2Icon className="size-4 mr-2" />
-                  Analitik Detail
-                </DropdownMenuItem>
-              </PermissionGuard>
-              <PermissionGuard permission="urls.update">
+          <div className="text-right">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="size-8 text-muted-foreground hover:text-foreground cursor-pointer">
+                  <EllipsisVerticalIcon className="size-4" />
+                  <span className="sr-only">Open menu</span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuLabel className="text-xs">Aksi Link</DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  onClick={() => handleToggleActive(item)}
-                  disabled={togglingId === item.id}
-                >
-                  <PowerIcon className="size-4 mr-2 text-amber-500" />
-                  {item.is_active ? 'Nonaktifkan Tautan' : 'Aktifkan Tautan'}
+                <DropdownMenuItem onClick={() => handleCopy(fullShortUrl, item.id)} className="cursor-pointer text-xs">
+                  <CopyIcon className="size-4 mr-2 text-muted-foreground" />
+                  Salin Tautan
                 </DropdownMenuItem>
-              </PermissionGuard>
-              <PermissionGuard permission="urls.delete">
-                <DropdownMenuSeparator />
                 <DropdownMenuItem
-                  className="text-destructive focus:text-destructive"
-                  onClick={() => setDeleteModal({ isOpen: true, id: item.id, loading: false })}
+                  onClick={() => setQrModal({ isOpen: true, url: fullShortUrl, code: item.short_code })}
+                  className="cursor-pointer text-xs"
                 >
-                  <Trash2Icon className="size-4 mr-2" />
-                  Hapus Tautan
+                  <QrCodeIcon className="size-4 mr-2 text-muted-foreground" />
+                  Lihat QR Code
                 </DropdownMenuItem>
-              </PermissionGuard>
-            </DropdownMenuContent>
-          </DropdownMenu>
+                <PermissionGuard permission="analytics.read">
+                  <DropdownMenuItem onClick={() => navigate(`/dashboard/urls/${item.id}`)} className="cursor-pointer text-xs">
+                    <BarChart2Icon className="size-4 mr-2 text-muted-foreground" />
+                    Analitik Detail
+                  </DropdownMenuItem>
+                </PermissionGuard>
+                <PermissionGuard permission="urls.update">
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onClick={() => handleToggleActive(item)}
+                    disabled={togglingId === item.id}
+                    className="cursor-pointer text-xs"
+                  >
+                    <PowerIcon className="size-4 mr-2 text-muted-foreground" />
+                    {item.is_active ? 'Nonaktifkan Tautan' : 'Aktifkan Tautan'}
+                  </DropdownMenuItem>
+                </PermissionGuard>
+                <PermissionGuard permission="urls.delete">
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    className="cursor-pointer text-xs text-destructive focus:text-destructive"
+                    onClick={() => setDeleteModal({ isOpen: true, id: item.id, loading: false })}
+                  >
+                    <Trash2Icon className="size-4 mr-2" />
+                    Hapus Tautan
+                  </DropdownMenuItem>
+                </PermissionGuard>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         );
       },
     },
+  ];
+
+  const bulkActions = [
+    ...(hasPermission('urls.update')
+      ? [
+          {
+            label: 'Nonaktifkan Terpilih',
+            icon: PowerIcon,
+            variant: 'outline',
+            onClick: handleBulkDeactivate,
+          },
+          {
+            label: 'Aktifkan Terpilih',
+            icon: PowerIcon,
+            variant: 'outline',
+            onClick: handleBulkActivate,
+          },
+        ]
+      : []),
+    ...(hasPermission('urls.delete')
+      ? [
+          {
+            label: 'Hapus Terpilih',
+            icon: Trash2Icon,
+            variant: 'destructive',
+            onClick: handleBulkDelete,
+          },
+        ]
+      : []),
   ];
 
   return (
     <div className="space-y-6 pb-12">
       <DynamicPageHeader
         title={`Kontrol Link ${activeTenant?.name || 'Workspace'}`}
-        description="Kelola dan pantau seluruh tautan pendek yang dibuat oleh semua anggota di workspace ini"
-        breadcrumbItems={[
-          { label: 'Dashboard', path: '/dashboard' },
-          { label: 'Manajemen Workspace', path: '/dashboard/workspace/members' },
-          { label: 'Kontrol Link Workspace' },
-        ]}
-        actions={
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={fetchUrls} disabled={loading}>
-              <RefreshCwIcon className={`size-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-              Refresh
-            </Button>
-            <PermissionGuard permission="urls.create">
-              <Button size="sm" onClick={() => setIsCreateOpen(true)}>
-                <PlusIcon className="size-4 mr-2" />
-                Buat Link Workspace
-              </Button>
-            </PermissionGuard>
-          </div>
-        }
-      />
+        subtitle="Kelola dan pantau seluruh tautan pendek yang dibuat oleh semua anggota di workspace ini"
+        fallbackIcon={GlobeIcon}
+      >
+        <PermissionGuard permission="urls.create">
+          <Button onClick={() => setIsCreateOpen(true)} className="cursor-pointer">
+            <PlusIcon className="size-4 shrink-0 mr-1.5" />
+            <span>Buat Link Workspace</span>
+          </Button>
+        </PermissionGuard>
+      </DynamicPageHeader>
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <Card className="border-border/60 shadow-sm">
+        <Card className="border-border/60 shadow-xs">
           <CardContent className="p-4 flex items-center justify-between">
             <div>
               <p className="text-xs font-medium text-muted-foreground">Total Link Workspace</p>
@@ -375,7 +436,7 @@ export default function WorkspaceLinksPage() {
           </CardContent>
         </Card>
 
-        <Card className="border-border/60 shadow-sm">
+        <Card className="border-border/60 shadow-xs">
           <CardContent className="p-4 flex items-center justify-between">
             <div>
               <p className="text-xs font-medium text-muted-foreground">Link Aktif</p>
@@ -387,7 +448,7 @@ export default function WorkspaceLinksPage() {
           </CardContent>
         </Card>
 
-        <Card className="border-border/60 shadow-sm">
+        <Card className="border-border/60 shadow-xs">
           <CardContent className="p-4 flex items-center justify-between">
             <div>
               <p className="text-xs font-medium text-muted-foreground">Total Performa Klik</p>
@@ -400,69 +461,48 @@ export default function WorkspaceLinksPage() {
         </Card>
       </div>
 
-      {/* Main Table Card */}
-      <Card className="border-border/60 shadow-xs overflow-hidden">
-        <CardHeader className="px-6 py-4 border-b border-border/40">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div>
-              <CardTitle className="text-base font-semibold">Daftar Link Workspace</CardTitle>
-              <CardDescription>
-                Semua tautan yang dibuat di tenant {activeTenant?.name || ''}
-              </CardDescription>
-            </div>
-
-            {/* Filter & Search Controls */}
-            <div className="flex items-center gap-3">
-              <div className="relative w-full sm:w-64">
-                <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-                <Input
-                  placeholder="Cari tautan, kode, URL..."
-                  value={search}
-                  onChange={(e) => {
-                    setSearch(e.target.value);
-                    setPage(1);
-                  }}
-                  className="pl-9 h-9 text-sm"
-                />
-              </div>
-
-              <Select
-                value={activeFilter}
-                onValueChange={(val) => {
-                  setActiveFilter(val);
-                  setPage(1);
-                }}
-              >
-                <SelectTrigger className="w-36 h-9 text-sm">
-                  <SelectValue placeholder="Status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Semua Status</SelectItem>
-                  <SelectItem value="active">Aktif</SelectItem>
-                  <SelectItem value="inactive">Non-Aktif</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-        </CardHeader>
-
-        <CardContent className="p-0">
-          <DataTable
-            embedded={true}
-            data={urls}
-            columns={columns}
-            loading={loading}
-            pageCount={Math.ceil(total / limit) || 1}
-            pageIndex={page - 1}
-            pageSize={limit}
-            onPageChange={(newPageIndex) => setPage(newPageIndex + 1)}
-            onPageSizeChange={(newLimit) => {
-              setLimit(newLimit);
+      {/* Standardized DataTable */}
+      <DataTable
+        columns={columns}
+        data={urls}
+        isLoading={loading}
+        enableSelection={true}
+        page={page}
+        pageSize={limit}
+        totalCount={total}
+        onPageChange={setPage}
+        onPageSizeChange={(newSize) => {
+          setLimit(newSize);
+          setPage(1);
+        }}
+        search={search}
+        onSearchChange={(val) => {
+          setSearch(val);
+          setPage(1);
+        }}
+        searchPlaceholder="Cari tautan, kode, URL..."
+        filters={[
+          {
+            id: 'status',
+            label: 'Status',
+            value: activeFilter,
+            onChange: (val) => {
+              setActiveFilter(val);
               setPage(1);
-            }}
-          />
-        </CardContent>
-      </Card>
+            },
+            options: [
+              { label: 'Semua Status', value: 'all' },
+              { label: 'Aktif', value: 'active' },
+              { label: 'Non-Aktif', value: 'inactive' },
+            ],
+          },
+        ]}
+        sortBy={sortBy}
+        sortDirection={sortDirection}
+        onSortChange={handleSort}
+        onRefresh={fetchUrls}
+        bulkActions={bulkActions}
+      />
 
       {/* Modals */}
       <QRCodeModal
