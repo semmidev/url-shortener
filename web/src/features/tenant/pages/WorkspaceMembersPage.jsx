@@ -235,7 +235,7 @@ export default function WorkspaceMembersPage() {
 
       {/* Join Code Quick Card */}
       {activeTenant?.join_code && (
-        <div className="bg-card border border-border rounded-xl p-4 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-xs">
+        <div className="bg-card border border-border/60 rounded-xl px-6 py-4 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-xs">
           <div className="flex items-center gap-3">
             <div className="size-10 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
               <Key className="size-5" />

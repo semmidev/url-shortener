@@ -109,6 +109,7 @@ export function DataTable({
   columns: userColumns,
   data = [],
   isLoading = false,
+  embedded = false,
   // Row selection
   enableSelection = false,
   selectedRowIds = [],
@@ -377,15 +378,15 @@ export function DataTable({
       </AnimatePresence>
 
       {/* Main Table Container */}
-      <div className="rounded-2xl bg-card border border-border overflow-hidden shadow-xs relative">
-        <div className="overflow-x-auto">
+      <div className={embedded ? "overflow-x-auto" : "rounded-xl bg-card border border-border/60 overflow-hidden shadow-xs relative"}>
+        <div className={embedded ? "" : "overflow-x-auto"}>
           <Table>
-            <TableHeader className="bg-muted/40 border-b border-border">
+            <TableHeader className="bg-muted/30 border-b border-border/40">
               {table.getHeaderGroups().map((headerGroup) => (
-                <TableRow key={headerGroup.id} className="hover:bg-transparent border-b border-border">
+                <TableRow key={headerGroup.id} className="hover:bg-transparent border-b border-border/40">
                   {headerGroup.headers.map((header) => {
                     return (
-                      <TableHead key={header.id} className="h-11 px-4 text-xs">
+                      <TableHead key={header.id} className="h-11 px-6 text-xs font-semibold text-muted-foreground">
                         {header.isPlaceholder
                           ? null
                           : flexRender(
@@ -398,13 +399,13 @@ export function DataTable({
                 </TableRow>
               ))}
             </TableHeader>
-            <TableBody className="divide-y divide-border">
+            <TableBody className="divide-y divide-border/40">
               {isLoading ? (
                 // Skeleton Rows
                 Array.from({ length: pageSize > 10 ? 10 : pageSize }).map((_, rIdx) => (
                   <TableRow key={rIdx} className="animate-pulse">
                     {table.getVisibleFlatColumns().map((col, cIdx) => (
-                      <TableCell key={cIdx} className="py-4 px-4">
+                      <TableCell key={cIdx} className="py-4 px-6">
                         <div className="h-4 bg-muted/70 rounded-md w-3/4" />
                       </TableCell>
                     ))}
@@ -418,7 +419,7 @@ export function DataTable({
                     className="hover:bg-accent/40 transition-colors"
                   >
                     {row.getVisibleCells().map((cell) => (
-                      <TableCell key={cell.id} className="px-4 py-3.5 align-middle text-xs">
+                      <TableCell key={cell.id} className="px-6 py-3.5 align-middle text-xs">
                         {flexRender(cell.column.columnDef.cell, cell.getContext())}
                       </TableCell>
                     ))}
@@ -448,7 +449,7 @@ export function DataTable({
       </div>
 
       {/* Pagination Footer */}
-      <div className="px-1 py-2 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-muted-foreground">
+      <div className="px-6 py-4 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-muted-foreground border-t border-border/40">
         <div>
           Showing <span className="font-semibold text-foreground">{startItem}</span> to{" "}
           <span className="font-semibold text-foreground">{endItem}</span> of{" "}

@@ -319,8 +319,8 @@ export default function Overview() {
       </PermissionGuard>
 
       {/* Recent URLs Section */}
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
+      <Card className="border-border/60 shadow-xs overflow-hidden">
+        <CardHeader className="flex flex-row items-center justify-between px-6 py-4 border-b border-border/40">
           <div>
             <CardTitle>{t("dashboard.recentUrlsTitle")}</CardTitle>
           </div>
@@ -331,7 +331,7 @@ export default function Overview() {
             </Link>
           </Button>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-0">
           {loading ? (
             <div className="py-8 text-center text-sm text-muted-foreground">{t("common.loading")}</div>
           ) : recentUrls.length === 0 ? (
@@ -340,23 +340,23 @@ export default function Overview() {
             <div className="overflow-x-auto">
               <table className="w-full text-left text-sm">
                 <thead>
-                  <tr className="border-b border-border text-muted-foreground text-xs uppercase tracking-wider">
-                    <th className="py-3 px-3 text-center w-12 font-semibold">#</th>
-                    <th className="py-3 px-3">{renderSortHeader(t("urls.title"), 'title')}</th>
-                    <th className="py-3 px-3 font-semibold">{t("dashboard.originalUrl")}</th>
-                    <th className="py-3 px-3">{renderSortHeader(t("dashboard.created"), 'created_at')}</th>
-                    <th className="py-3 px-3">{renderSortHeader(t("dashboard.clicks"), 'click_count')}</th>
-                    <th className="py-3 px-3 font-semibold">{t("admin.statusHeader")}</th>
-                    <th className="py-3 px-3 text-right font-semibold">{t("common.actions")}</th>
+                  <tr className="border-b border-border/40 text-muted-foreground text-xs uppercase tracking-wider bg-muted/30">
+                    <th className="py-3 pl-6 pr-3 text-center w-12 font-semibold">#</th>
+                    <th className="py-3 px-4">{renderSortHeader(t("urls.title"), 'title')}</th>
+                    <th className="py-3 px-4 font-semibold">{t("dashboard.originalUrl")}</th>
+                    <th className="py-3 px-4">{renderSortHeader(t("dashboard.created"), 'created_at')}</th>
+                    <th className="py-3 px-4">{renderSortHeader(t("dashboard.clicks"), 'click_count')}</th>
+                    <th className="py-3 px-4 font-semibold">{t("admin.statusHeader")}</th>
+                    <th className="py-3 pl-3 pr-6 text-right font-semibold">{t("common.actions")}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border/40">
                   {sortedRecentUrls.map((item, index) => (
                     <tr key={item.id} className="group hover:bg-muted/30 transition-colors">
-                      <td className="py-3 px-3 text-center font-mono text-xs text-muted-foreground font-semibold">
+                      <td className="py-3.5 pl-6 pr-3 text-center font-mono text-xs text-muted-foreground font-semibold">
                         {index + 1}
                       </td>
-                      <td className="py-3 px-3">
+                      <td className="py-3.5 px-4">
                         <Link
                           to={`/dashboard/urls/${item.id}`}
                           className="font-semibold text-foreground hover:text-primary transition-colors cursor-pointer"
@@ -374,18 +374,18 @@ export default function Overview() {
                           </a>
                         </div>
                       </td>
-                      <td className="py-3 px-3 max-w-xs truncate text-muted-foreground text-xs">
+                      <td className="py-3.5 px-4 max-w-xs truncate text-muted-foreground text-xs">
                         {item.original_url}
                       </td>
-                      <td className="py-3 px-3 whitespace-nowrap text-xs text-muted-foreground font-mono">
+                      <td className="py-3.5 px-4 whitespace-nowrap text-xs text-muted-foreground font-mono">
                         {formatDate(item.created_at)}
                       </td>
-                      <td className="py-3 px-3">
+                      <td className="py-3.5 px-4">
                         <Badge variant="outline" className="font-bold font-mono">
                           {item.click_count || 0}
                         </Badge>
                       </td>
-                      <td className="py-3 px-3">
+                      <td className="py-3.5 px-4">
                         <Badge
                           className={`text-[11px] font-semibold border ${
                             item.is_active
@@ -396,7 +396,7 @@ export default function Overview() {
                           {item.is_active ? t("common.active") : t("common.inactive")}
                         </Badge>
                       </td>
-                      <td className="py-3 px-3 text-right">
+                      <td className="py-3.5 pl-3 pr-6 text-right">
                         <div className="flex items-center justify-end gap-1">
                           <Button size="sm" variant="ghost" onClick={() => handleCopy(item.short_url)} title="Copy Short URL" aria-label="Copy short URL" className="cursor-pointer">
                             <CopyIcon className="size-4" />

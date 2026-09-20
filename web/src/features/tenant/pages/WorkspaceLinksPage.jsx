@@ -401,8 +401,8 @@ export default function WorkspaceLinksPage() {
       </div>
 
       {/* Main Table Card */}
-      <Card className="border-border/60 shadow-sm">
-        <CardHeader className="pb-3 border-b border-border/40">
+      <Card className="border-border/60 shadow-xs overflow-hidden">
+        <CardHeader className="px-6 py-4 border-b border-border/40">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
               <CardTitle className="text-base font-semibold">Daftar Link Workspace</CardTitle>
@@ -448,6 +448,7 @@ export default function WorkspaceLinksPage() {
 
         <CardContent className="p-0">
           <DataTable
+            embedded={true}
             data={urls}
             columns={columns}
             loading={loading}
