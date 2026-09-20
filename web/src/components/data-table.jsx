@@ -2,9 +2,6 @@ import * as React from "react";
 import {
   flexRender,
   getCoreRowModel,
-  getFilteredRowModel,
-  getPaginationRowModel,
-  getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table";
 import {
@@ -112,7 +109,7 @@ export function DataTable({
   embedded = false,
   // Row selection
   enableSelection = false,
-  selectedRowIds = [],
+  _selectedRowIds = [],
   onSelectionChange,
   bulkActions = [],
   // Pagination
@@ -128,9 +125,9 @@ export function DataTable({
   searchPlaceholder = "Search records...",
   filters = [], // Array of { id, label, value, options: [{ label, value }], onChange }
   // Sorting
-  sortBy,
-  sortDirection,
-  onSortChange,
+  _sortBy,
+  _sortDirection,
+  _onSortChange,
   // Helper callbacks & customization
   getRowId = (row) => row.id,
   onRefresh,

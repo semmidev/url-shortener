@@ -1,6 +1,3 @@
-/* Self-hosted Plus Jakarta Sans — eliminates blocking Google Fonts external request */
-@import '@fontsource-variable/plus-jakarta-sans';
-
 @import 'tailwindcss';
 
 @import 'tw-animate-css';
@@ -10,6 +7,8 @@
 @import './theme.css';
 
 @theme inline {
+  --font-sans: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --font-heading: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   --color-background: var(--background);
   --color-foreground: var(--foreground);
 

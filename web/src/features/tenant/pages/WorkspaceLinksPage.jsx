@@ -36,8 +36,8 @@ import PermissionGuard from '@/components/PermissionGuard';
 
 import { getShortUrls, updateShortUrl, deleteShortUrl } from '@/features/urls/api';
 import { useDebounce } from '@/hooks/use-debounce';
-import { useI18n } from '@/context/I18nContext';
 import { useTenant } from '@/context/TenantContext';
+import { usePermission } from '@/hooks/usePermission';
 
 function formatDate(dateStr) {
   if (!dateStr) return '-';
@@ -53,8 +53,8 @@ function formatDate(dateStr) {
 }
 
 export default function WorkspaceLinksPage() {
-  const { t } = useI18n();
-  const { activeTenant, hasPermission } = useTenant();
+  const { activeTenant } = useTenant();
+  const { hasPermission } = usePermission();
   const navigate = useNavigate();
 
   const [urls, setUrls] = useState([]);
@@ -155,7 +155,7 @@ export default function WorkspaceLinksPage() {
       await Promise.all(selectedRows.map((r) => updateShortUrl(r.id, { is_active: false })));
       toast.success(`${selectedRows.length} tautan dinonaktifkan`);
       fetchUrls();
-    } catch (err) {
+    } catch {
       toast.error('Gagal menonaktifkan tautan terpilih');
     }
   };
@@ -166,7 +166,7 @@ export default function WorkspaceLinksPage() {
       await Promise.all(selectedRows.map((r) => updateShortUrl(r.id, { is_active: true })));
       toast.success(`${selectedRows.length} tautan diaktifkan`);
       fetchUrls();
-    } catch (err) {
+    } catch {
       toast.error('Gagal mengaktifkan tautan terpilih');
     }
   };
@@ -178,7 +178,7 @@ export default function WorkspaceLinksPage() {
       await Promise.all(selectedRows.map((r) => deleteShortUrl(r.id)));
       toast.success(`${selectedRows.length} tautan berhasil dihapus`);
       fetchUrls();
-    } catch (err) {
+    } catch {
       toast.error('Gagal menghapus tautan terpilih');
     }
   };

@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useTenant } from '@/context/TenantContext';
+import { usePermission } from '@/hooks/usePermission';
 import {
   getTenantMembers,
   addTenantMember,
@@ -28,7 +29,8 @@ import {
 import PermissionGuard from '@/components/PermissionGuard';
 
 export default function WorkspaceMembersPage() {
-  const { activeTenant, hasPermission } = useTenant();
+  const { activeTenant } = useTenant();
+  const { hasPermission } = usePermission();
   const [members, setMembers] = useState([]);
   const [roles, setRoles] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -60,7 +62,7 @@ export default function WorkspaceMembersPage() {
       ]);
       setMembers(membersData || []);
       setRoles(rolesData || []);
-    } catch (err) {
+    } catch {
       toast.error('Gagal memuat daftar anggota workspace');
     } finally {
       setIsLoading(false);
@@ -150,7 +152,7 @@ export default function WorkspaceMembersPage() {
       await Promise.all(nonOwners.map((m) => removeTenantMember(activeTenant.id, m.user_id)));
       toast.success(`${nonOwners.length} anggota berhasil dikeluarkan`);
       fetchMembersAndRoles();
-    } catch (err) {
+    } catch {
       toast.error('Gagal mengeluarkan anggota terpilih');
     }
   };
