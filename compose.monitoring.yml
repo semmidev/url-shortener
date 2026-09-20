@@ -1,0 +1,81 @@
+name: url-shortener-monitoring
+
+services:
+  alloy:
+    image: grafana/alloy:latest
+    container_name: url-shortener-alloy
+    user: root
+    command:
+      - run
+      - --server.http.listen-addr=0.0.0.0:12345
+      - --storage.path=/var/lib/alloy/data
+      - /etc/alloy/config.alloy
+    volumes:
+      - ./scripts/observability/alloy/config.alloy:/etc/alloy/config.alloy:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    ports:
+      - "127.0.0.1:4317:4317" # OTLP gRPC receiver
+      - "127.0.0.1:4318:4318" # OTLP HTTP receiver
+      - "127.0.0.1:12345:12345" # Alloy UI & metrics
+    restart: unless-stopped
+    networks:
+      - url_shortener_network
+
+  tempo:
+    image: grafana/tempo:latest
+    container_name: url-shortener-tempo
+    command: [ "-config.file=/etc/tempo/tempo.yml" ]
+    volumes:
+      - ./scripts/observability/tempo/tempo.yml:/etc/tempo/tempo.yml:ro
+    ports:
+      - "127.0.0.1:3200:3200" # Tempo HTTP
+    restart: unless-stopped
+    networks:
+      - url_shortener_network
+
+  loki:
+    image: grafana/loki:latest
+    container_name: url-shortener-loki
+    command: [ "-config.file=/etc/loki/loki.yml" ]
+    volumes:
+      - ./scripts/observability/loki/loki.yml:/etc/loki/loki.yml:ro
+    ports:
+      - "127.0.0.1:3100:3100" # Loki HTTP
+    restart: unless-stopped
+    networks:
+      - url_shortener_network
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: url-shortener-prometheus
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --web.enable-remote-write-receiver
+    volumes:
+      - ./scripts/observability/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    ports:
+      - "127.0.0.1:9090:9090" # Prometheus Web UI
+    restart: unless-stopped
+    networks:
+      - url_shortener_network
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: url-shortener-grafana
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - ./scripts/observability/grafana/provisioning:/etc/grafana/provisioning:ro
+    ports:
+      - "127.0.0.1:3000:3000" # Grafana UI
+    restart: unless-stopped
+    networks:
+      - url_shortener_network
+
+networks:
+  url_shortener_network:
+    external: true
+    name: url_shortener_network

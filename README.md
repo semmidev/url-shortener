@@ -71,14 +71,19 @@ cp .env.example .env
 # 3. Copy pgbouncer userlist template to userlist
 cp ./server/db/pgbouncer/userlist.txt.example ./server/db/pgbouncer/userlist.txt
 
-# 4. Start local development environment & observability stack via compose.dev.yml
-make up-dev
+# 4. Start App stack and optional Monitoring stack via Docker Compose
+make docker-up          # Start core App stack (compose.yml)
+make monitoring-up      # (Optional) Start Observability/Monitoring stack (compose.monitoring.yml)
 
-# 5. Stream logs for API, Worker, and Observability services
-make logs-dev
+# Or start both stacks together:
+# make up-all
 
-# 6. Stop local development environment
-make down-dev
+# 5. Stream logs for App services
+make docker-logs
+
+# 6. Stop containers
+make docker-down
+make monitoring-down    # Or 'make down-all' to stop both
 ```
 
 ### 3. Access Interactive API References
@@ -230,15 +235,18 @@ This repository implements a multi-layered security & quality audit pipeline:
 ## Makefile Commands
 
 ```bash
-make up-dev            # Start local development environment & containers via compose.dev.yml (--build)
-make down-dev          # Stop local development environment via compose.dev.yml
-make logs-dev          # Stream local development environment logs
+make docker-up         # Start core app stack via compose.yml (auto-creates external network)
+make docker-down       # Stop core app stack via compose.yml
+make docker-logs       # Stream app container logs
+make monitoring-up     # Start observability & monitoring stack via compose.monitoring.yml
+make monitoring-down   # Stop observability & monitoring stack
+make monitoring-logs   # Stream monitoring container logs
+make up-all            # Start both App and Monitoring stacks
+make down-all          # Stop both App and Monitoring stacks
 make seed              # Seed database with sample users, short URLs, and analytics events
 make setup-hooks       # Install pre-commit git hooks
 make build             # Build production static binary in bin/api
 make lint              # Run golangci-lint code analysis (0 issues requirement)
-make docker-up         # Start full stack production containers via compose.yml
-make docker-down       # Stop full stack production containers via compose.yml
 make test              # Run unit tests only (go test ./...)
 make test-integration  # Run E2E integration tests (-tags=integration)
 make test-all          # Run all unit and integration tests

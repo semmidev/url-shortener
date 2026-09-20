@@ -9,8 +9,9 @@ GOLANGCI_LINT_CMD ?= $(shell command -v golangci-lint 2>/dev/null || echo "go ru
 MIGRATE_CMD ?= $(shell command -v migrate 2>/dev/null || echo "go run github.com/golang-migrate/migrate/v4/cmd/migrate@latest")
 
 BUN_CMD ?= $(shell command -v bun 2>/dev/null || echo "$(HOME)/.bun/bin/bun")
+NETWORK_NAME ?= url_shortener_network
 
-.PHONY: build build-frontend test test-integration test-all lint seed setup-hooks swagger sqlc new_migration migrateup migrateup1 migratedown migratedown1 createdb dropdb docker-up docker-down up-dev down-dev logs-dev clean
+.PHONY: build build-frontend test test-integration test-all lint seed setup-hooks swagger sqlc new_migration migrateup migrateup1 migratedown migratedown1 createdb dropdb network-create docker-up docker-down monitoring-up monitoring-down monitoring-logs up-all down-all up-dev down-dev logs-dev clean
 
 # Seed database with initial default data
 seed:
@@ -115,25 +116,44 @@ createdb:
 dropdb:
 	$(DOCKER_CMD) exec -it url-shortener-db dropdb --username=postgres urlshortener
 
-# Start local development environment using compose.dev.yml
-up-dev:
-	$(DOCKER_CMD) compose -f compose.dev.yml up -d --build
+# Create shared external Docker network if it doesn't exist
+network-create:
+	@$(DOCKER_CMD) network inspect $(NETWORK_NAME) >/dev/null 2>&1 || $(DOCKER_CMD) network create $(NETWORK_NAME)
 
-# Stop local development infrastructure using compose.dev.yml
-down-dev:
-	$(DOCKER_CMD) compose -f compose.dev.yml down
-
-# Stream local development infrastructure logs
-logs-dev:
-	$(DOCKER_CMD) compose -f compose.dev.yml logs -f
-
-# Start full stack production containers via Docker Compose (compose.yml)
-docker-up:
+# Start app containers via Docker Compose (compose.yml)
+docker-up: network-create
 	$(DOCKER_CMD) compose -f compose.yml up -d
 
-# Stop full stack production containers via Docker Compose (compose.yml)
+# Stop app containers via Docker Compose (compose.yml)
 docker-down:
 	$(DOCKER_CMD) compose -f compose.yml down
+
+# Stream app container logs
+docker-logs:
+	$(DOCKER_CMD) compose -f compose.yml logs -f
+
+# Start monitoring & observability stack (compose.monitoring.yml)
+monitoring-up: network-create
+	$(DOCKER_CMD) compose -f compose.monitoring.yml up -d
+
+# Stop monitoring & observability stack (compose.monitoring.yml)
+monitoring-down:
+	$(DOCKER_CMD) compose -f compose.monitoring.yml down
+
+# Stream monitoring stack logs
+monitoring-logs:
+	$(DOCKER_CMD) compose -f compose.monitoring.yml logs -f
+
+# Start both App and Monitoring stacks
+up-all: network-create monitoring-up docker-up
+
+# Stop both App and Monitoring stacks
+down-all: docker-down monitoring-down
+
+# Development shortcuts
+up-dev: docker-up
+down-dev: docker-down
+logs-dev: docker-logs
 
 # Clean build artifacts
 clean:

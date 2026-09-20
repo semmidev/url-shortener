@@ -698,17 +698,21 @@ Dalam repository **URL Shortener** ini, OpenTelemetry (Traces, Metrics, Logs) da
    - Memproses telemetry menggunakan `otelcol.processor.batch`.
    - Menulis Traces ke **Tempo**, Metrics ke **Prometheus**, dan Logs ke **Loki**.
 
-5. **Unified Docker Compose Stack** ([compose.yml](file:///Users/sammidev/Developments/PETS/url-shortener/compose.yml) & [compose.dev.yml](file:///Users/sammidev/Developments/PETS/url-shortener/compose.dev.yml))
-   - Layanan observability (**Grafana Alloy**, **Tempo**, **Loki**, **Prometheus**, **Grafana**) telah digabungkan langsung ke dalam `compose.yml` (Image Production) dan `compose.dev.yml` (Local Build Context).
+5. **Decoupled Docker Compose Stacks** ([compose.yml](file:///Users/sammidev/Developments/PETS/url-shortener/compose.yml) & [compose.monitoring.yml](file:///Users/sammidev/Developments/PETS/url-shortener/compose.monitoring.yml))
+   - Layanan aplikasi utama ada di `compose.yml`, sedangkan layanan observability (**Grafana Alloy**, **Tempo**, **Loki**, **Prometheus**, **Grafana**) dipisahkan ke `compose.monitoring.yml`.
+   - Kedua stack berkomunikasi via shared external network `url_shortener_network`.
 
 ### 13.2 Cara Menjalankan Stack Aplikasi & Observability
 
 ```bash
-# Untuk Lingkungan Pengembangan (Local Build Context):
-docker compose -f compose.dev.yml up -d --build
+# 1. Jalankan Stack Aplikasi:
+make docker-up         # Atau: docker compose -f compose.yml up -d
 
-# Untuk Lingkungan Production (Image dari Docker Hub):
-docker compose up -d
+# 2. Jalankan Stack Monitoring (Opsional / Terpisah):
+make monitoring-up     # Atau: docker compose -f compose.monitoring.yml up -d
+
+# 3. Atau Jalankan Keduanya Sekaligus:
+make up-all
 
 # Akses Grafana Dashboard:
 # URL: http://localhost:3000 (User: admin / Pass: admin)
