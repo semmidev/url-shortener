@@ -9,9 +9,23 @@ function HoverCard({
 }
 
 function HoverCardTrigger({
+  asChild,
+  render,
+  children,
   ...props
 }) {
-  return (<PreviewCardPrimitive.Trigger data-slot="hover-card-trigger" {...props} />);
+  const renderProp = render || (asChild && React.isValidElement(children) ? children : undefined);
+  const childrenProp = asChild && React.isValidElement(children) ? undefined : children;
+
+  return (
+    <PreviewCardPrimitive.Trigger
+      data-slot="hover-card-trigger"
+      render={renderProp}
+      {...props}
+    >
+      {childrenProp}
+    </PreviewCardPrimitive.Trigger>
+  );
 }
 
 function HoverCardContent({

@@ -42,9 +42,23 @@ function Drawer({
 }
 
 function DrawerTrigger({
+  asChild,
+  render,
+  children,
   ...props
 }) {
-  return <DrawerPrimitive.Trigger data-slot="drawer-trigger" {...props} />;
+  const renderProp = render || (asChild && React.isValidElement(children) ? children : undefined);
+  const childrenProp = asChild && React.isValidElement(children) ? undefined : children;
+
+  return (
+    <DrawerPrimitive.Trigger
+      data-slot="drawer-trigger"
+      render={renderProp}
+      {...props}
+    >
+      {childrenProp}
+    </DrawerPrimitive.Trigger>
+  );
 }
 
 function DrawerPortal({
@@ -54,9 +68,23 @@ function DrawerPortal({
 }
 
 function DrawerClose({
+  asChild,
+  render,
+  children,
   ...props
 }) {
-  return <DrawerPrimitive.Close data-slot="drawer-close" {...props} />;
+  const renderProp = render || (asChild && React.isValidElement(children) ? children : undefined);
+  const childrenProp = asChild && React.isValidElement(children) ? undefined : children;
+
+  return (
+    <DrawerPrimitive.Close
+      data-slot="drawer-close"
+      render={renderProp}
+      {...props}
+    >
+      {childrenProp}
+    </DrawerPrimitive.Close>
+  );
 }
 
 function DrawerOverlay({

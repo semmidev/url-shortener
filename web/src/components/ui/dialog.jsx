@@ -12,9 +12,23 @@ function Dialog({
 }
 
 function DialogTrigger({
+  asChild,
+  render,
+  children,
   ...props
 }) {
-  return <DialogPrimitive.Trigger data-slot="dialog-trigger" {...props} />;
+  const renderProp = render || (asChild && React.isValidElement(children) ? children : undefined);
+  const childrenProp = asChild && React.isValidElement(children) ? undefined : children;
+
+  return (
+    <DialogPrimitive.Trigger
+      data-slot="dialog-trigger"
+      render={renderProp}
+      {...props}
+    >
+      {childrenProp}
+    </DialogPrimitive.Trigger>
+  );
 }
 
 function DialogPortal({
@@ -24,9 +38,23 @@ function DialogPortal({
 }
 
 function DialogClose({
+  asChild,
+  render,
+  children,
   ...props
 }) {
-  return <DialogPrimitive.Close data-slot="dialog-close" {...props} />;
+  const renderProp = render || (asChild && React.isValidElement(children) ? children : undefined);
+  const childrenProp = asChild && React.isValidElement(children) ? undefined : children;
+
+  return (
+    <DialogPrimitive.Close
+      data-slot="dialog-close"
+      render={renderProp}
+      {...props}
+    >
+      {childrenProp}
+    </DialogPrimitive.Close>
+  );
 }
 
 function DialogOverlay({

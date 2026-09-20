@@ -13,9 +13,23 @@ function AlertDialog({
 }
 
 function AlertDialogTrigger({
+  asChild,
+  render,
+  children,
   ...props
 }) {
-  return (<AlertDialogPrimitive.Trigger data-slot="alert-dialog-trigger" {...props} />);
+  const renderProp = render || (asChild && React.isValidElement(children) ? children : undefined);
+  const childrenProp = asChild && React.isValidElement(children) ? undefined : children;
+
+  return (
+    <AlertDialogPrimitive.Trigger
+      data-slot="alert-dialog-trigger"
+      render={renderProp}
+      {...props}
+    >
+      {childrenProp}
+    </AlertDialogPrimitive.Trigger>
+  );
 }
 
 function AlertDialogPortal({
