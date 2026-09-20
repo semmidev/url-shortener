@@ -11,7 +11,7 @@ MIGRATE_CMD ?= $(shell command -v migrate 2>/dev/null || echo "go run github.com
 BUN_CMD ?= $(shell command -v bun 2>/dev/null || echo "$(HOME)/.bun/bin/bun")
 NETWORK_NAME ?= url_shortener_network
 
-.PHONY: build build-frontend test test-integration test-all lint seed setup-hooks swagger sqlc new_migration migrateup migrateup1 migratedown migratedown1 createdb dropdb network-create docker-up docker-down monitoring-up monitoring-down monitoring-logs up-all down-all up-dev down-dev logs-dev clean
+.PHONY: build build-frontend test test-integration test-all lint seed setup-hooks swagger sqlc new_migration migrateup migrateup1 migratedown migratedown1 createdb dropdb network-create docker-up docker-down docker-logs monitoring-up monitoring-down monitoring-logs up-all down-all run-dev run-api run-worker up-dev down-dev logs-dev clean
 
 # Seed database with initial default data
 seed:
@@ -150,7 +150,16 @@ up-all: network-create monitoring-up docker-up
 # Stop both App and Monitoring stacks
 down-all: docker-down monitoring-down
 
-# Development shortcuts
+# Development shortcuts & native execution
+run-dev:
+	go run $(LDFLAGS) ./server/cmd/api
+
+run-api:
+	go run $(LDFLAGS) ./server/cmd/api
+
+run-worker:
+	go run $(LDFLAGS) ./server/cmd/worker
+
 up-dev: docker-up
 down-dev: docker-down
 logs-dev: docker-logs

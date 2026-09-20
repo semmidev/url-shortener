@@ -10,6 +10,12 @@ services:
       - --server.http.listen-addr=0.0.0.0:12345
       - --storage.path=/var/lib/alloy/data
       - /etc/alloy/config.alloy
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      TEMPO_ENDPOINT: ${TEMPO_ENDPOINT:-tempo:4317}
+      PROMETHEUS_URL: ${PROMETHEUS_URL:-http://prometheus:9090/api/v1/write}
+      LOKI_URL: ${LOKI_URL:-http://loki:3100/loki/api/v1/push}
     volumes:
       - ./scripts/observability/alloy/config.alloy:/etc/alloy/config.alloy:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
@@ -52,6 +58,8 @@ services:
       - --config.file=/etc/prometheus/prometheus.yml
       - --storage.tsdb.path=/prometheus
       - --web.enable-remote-write-receiver
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     volumes:
       - ./scripts/observability/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
     ports:

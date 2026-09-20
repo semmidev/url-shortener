@@ -71,17 +71,17 @@ cp .env.example .env
 # 3. Copy pgbouncer userlist template to userlist
 cp ./server/db/pgbouncer/userlist.txt.example ./server/db/pgbouncer/userlist.txt
 
-# 4. Start App stack and optional Monitoring stack via Docker Compose
-make docker-up          # Start core App stack (compose.yml)
+# 4. Start Infrastructure (PostgreSQL, Redis, NATS) & Monitoring via Docker Compose
+make docker-up          # Start DB, PgBouncer, Redis, NATS containers (compose.yml)
 make monitoring-up      # (Optional) Start Observability/Monitoring stack (compose.monitoring.yml)
 
-# Or start both stacks together:
-# make up-all
+# 5. Run Go API server natively on host for fast local development (instant feedback, no docker build delay!)
+make run-dev            # Or 'make run-api'
 
-# 5. Stream logs for App services
-make docker-logs
+# (Optional) Run Go background worker natively on host in another terminal:
+# make run-worker
 
-# 6. Stop containers
+# 6. Stop infrastructure containers
 make docker-down
 make monitoring-down    # Or 'make down-all' to stop both
 ```
@@ -235,14 +235,16 @@ This repository implements a multi-layered security & quality audit pipeline:
 ## Makefile Commands
 
 ```bash
-make docker-up         # Start core app stack via compose.yml (auto-creates external network)
-make docker-down       # Stop core app stack via compose.yml
+make run-dev           # Run Go API server natively on host machine for fast local development
+make run-worker        # Run Go background worker natively on host machine
+make docker-up         # Start core infrastructure containers via compose.yml (auto-creates external network)
+make docker-down       # Stop core infrastructure containers via compose.yml
 make docker-logs       # Stream app container logs
 make monitoring-up     # Start observability & monitoring stack via compose.monitoring.yml
 make monitoring-down   # Stop observability & monitoring stack
 make monitoring-logs   # Stream monitoring container logs
-make up-all            # Start both App and Monitoring stacks
-make down-all          # Stop both App and Monitoring stacks
+make up-all            # Start both App infrastructure and Monitoring stacks
+make down-all          # Stop both App infrastructure and Monitoring stacks
 make seed              # Seed database with sample users, short URLs, and analytics events
 make setup-hooks       # Install pre-commit git hooks
 make build             # Build production static binary in bin/api

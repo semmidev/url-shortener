@@ -6,7 +6,7 @@ scrape_configs:
   - job_name: "url-shortener-api"
     metrics_path: "/metrics"
     static_configs:
-      - targets: ["api:9090"]
+      - targets: ["host.docker.internal:9090", "api:9090"]
 
   - job_name: "grafana-alloy"
     static_configs:

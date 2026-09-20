@@ -31,7 +31,7 @@ otelcol.processor.batch "default" {
 // OTLP Exporter to Grafana Tempo for Traces
 otelcol.exporter.otlp "tempo" {
   client {
-    endpoint = "tempo:4317"
+    endpoint = coalesce(sys.env("TEMPO_ENDPOINT"), "tempo:4317")
     tls {
       insecure = true
     }
@@ -45,7 +45,7 @@ otelcol.exporter.prometheus "prometheus" {
 
 prometheus.remote_write "default" {
   endpoint {
-    url = "http://prometheus:9090/api/v1/write"
+    url = coalesce(sys.env("PROMETHEUS_URL"), "http://prometheus:9090/api/v1/write")
   }
 }
 
@@ -90,6 +90,6 @@ loki.process "container_logs" {
 // Loki Write Endpoint for all log streams
 loki.write "default" {
   endpoint {
-    url = "http://loki:3100/loki/api/v1/push"
+    url = coalesce(sys.env("LOKI_URL"), "http://loki:3100/loki/api/v1/push")
   }
 }
