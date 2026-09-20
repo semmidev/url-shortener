@@ -13,6 +13,7 @@ import {
   SidebarHeader,
   SidebarGroup,
   SidebarGroupLabel,
+  SidebarRail,
 } from "@/components/ui/sidebar"
 import { Loader2Icon } from "lucide-react"
 
@@ -137,6 +138,7 @@ export function AppSidebar({ ...props }) {
           </SidebarGroup>
         )}
       </SidebarContent>
+      <SidebarRail />
     </Sidebar>
   )
 }
