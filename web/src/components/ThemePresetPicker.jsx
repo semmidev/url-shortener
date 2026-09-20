@@ -8,9 +8,13 @@ export const THEMES = [
   { id: "whatsapp", name: "WhatsApp", color: "#25d366" },
   { id: "deb",      name: "Deb",      color: "#2563eb" },
   { id: "seline",   name: "Seline",   color: "#3ba6f1" },
+  { id: "apple",    name: "Apple",    color: "#0071e3" },
+  { id: "clickup",  name: "ClickUp",  color: "#6647f0" },
+  { id: "notion",   name: "Notion",   color: "#0075de" },
+  { id: "stripe",   name: "Stripe",   color: "#533afd" },
 ]
 
-const VALID_THEMES = ["claude", "whatsapp", "deb", "seline"]
+const VALID_THEMES = ["claude", "whatsapp", "deb", "seline", "apple", "clickup", "notion", "stripe"]
 function getValidTheme(id) {
   return VALID_THEMES.includes(id) ? id : "claude"
 }

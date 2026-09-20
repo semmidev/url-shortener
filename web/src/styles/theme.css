@@ -3,6 +3,10 @@
 @import './themes/whatsapp.css';
 @import './themes/deb.css';
 @import './themes/seline.css';
+@import './themes/apple.css';
+@import './themes/clickup.css';
+@import './themes/notion.css';
+@import './themes/stripe.css';
 
 body {
   @apply overscroll-none;
