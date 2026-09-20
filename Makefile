@@ -155,7 +155,7 @@ up-all: network-create monitoring-up docker-up
 down-all: docker-down monitoring-down
 
 # Development shortcuts & native execution
-run-dev:
+run-dev: build-frontend
 	go run $(LDFLAGS) ./server/cmd/api
 
 run-api:

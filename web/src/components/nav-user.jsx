@@ -72,7 +72,7 @@ export function NavUser({ user }) {
                 <span className="truncate">{activeTenant?.name || "Personal Workspace"}</span>
               </span>
             </div>
-            <ChevronsUpDownIcon className="ml-auto size-4 shrink-0 text-muted-foreground group-data-[collapsible=icon]:hidden" aria-hidden="true" />
+            <EllipsisVerticalIcon className="ml-auto size-4 shrink-0 text-muted-foreground group-data-[collapsible=icon]:hidden" aria-hidden="true" />
           </DropdownMenuTrigger>
 
           <DropdownMenuContent

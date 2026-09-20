@@ -91,7 +91,7 @@ export function AppSidebar({ ...props }) {
 
   return (
     <Sidebar style={{ viewTransitionName: 'app-sidebar' }} collapsible="icon" {...props}>
-      <SidebarHeader className="border-b border-border/40 p-2 shrink-0">
+      <SidebarHeader className="flex h-14 items-center border-b border-border/60 px-2 shrink-0">
         <NavUser user={sidebarUser} />
       </SidebarHeader>
 
