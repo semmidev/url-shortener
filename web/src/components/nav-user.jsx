@@ -33,6 +33,7 @@ import {
   PlusIcon,
   KeyIcon,
   UserIcon,
+  ChevronsUpDownIcon,
 } from "lucide-react"
 import { startTransition, addTransitionType } from "react"
 import { useNavigate } from "react-router-dom"
@@ -65,12 +66,13 @@ export function NavUser({ user }) {
               <AvatarFallback className="rounded-lg bg-primary/10 text-primary font-bold font-mono text-xs">{initials}</AvatarFallback>
             </Avatar>
             <div className="grid flex-1 min-w-0 text-left text-sm leading-tight gap-0.5 group-data-[collapsible=icon]:hidden">
-              <span className="truncate font-medium">{user.name}</span>
-              <span className="truncate text-xs text-foreground/70">
-                {user.email}
+              <span className="truncate font-semibold text-foreground">{user.name}</span>
+              <span className="truncate text-xs text-muted-foreground flex items-center gap-1">
+                <Building2Icon className="size-3 shrink-0 text-primary" aria-hidden="true" />
+                <span className="truncate">{activeTenant?.name || "Personal Workspace"}</span>
               </span>
             </div>
-            <EllipsisVerticalIcon className="ml-auto size-4 shrink-0 group-data-[collapsible=icon]:hidden" aria-hidden="true" />
+            <ChevronsUpDownIcon className="ml-auto size-4 shrink-0 text-muted-foreground group-data-[collapsible=icon]:hidden" aria-hidden="true" />
           </DropdownMenuTrigger>
 
           <DropdownMenuContent

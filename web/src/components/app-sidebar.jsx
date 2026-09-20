@@ -10,15 +10,11 @@ import { resolveIcon } from "@/lib/iconResolver"
 import {
   Sidebar,
   SidebarContent,
-  SidebarFooter,
   SidebarHeader,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
   SidebarGroup,
   SidebarGroupLabel,
 } from "@/components/ui/sidebar"
-import { ZapIcon, Loader2Icon } from "lucide-react"
+import { Loader2Icon } from "lucide-react"
 
 /**
  * Build a NavMain item from a DB navigation menu item.
@@ -95,20 +91,8 @@ export function AppSidebar({ ...props }) {
 
   return (
     <Sidebar style={{ viewTransitionName: 'app-sidebar' }} collapsible="icon" {...props}>
-      <SidebarHeader className="border-b border-border/40 p-3 shrink-0 group-data-[collapsible=icon]:px-0! group-data-[collapsible=icon]:justify-center!">
-        <SidebarMenu className="group-data-[collapsible=icon]:items-center">
-          <SidebarMenuItem>
-            <div className="flex items-center gap-2.5 group-data-[collapsible=icon]:justify-center">
-              <div className="flex aspect-square size-8 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground font-bold shadow-xs">
-                <ZapIcon className="size-4 shrink-0" />
-              </div>
-              <div className="grid flex-1 text-left text-xs leading-tight group-data-[collapsible=icon]:hidden">
-                <span className="font-bold text-foreground text-sm tracking-tight truncate">URL Shortener</span>
-                <span className="text-[11px] text-muted-foreground truncate">{activeTenant?.name || "Belum ada Workspace"}</span>
-              </div>
-            </div>
-          </SidebarMenuItem>
-        </SidebarMenu>
+      <SidebarHeader className="border-b border-border/40 p-2 shrink-0">
+        <NavUser user={sidebarUser} />
       </SidebarHeader>
 
       <SidebarContent>
@@ -153,10 +137,6 @@ export function AppSidebar({ ...props }) {
           </SidebarGroup>
         )}
       </SidebarContent>
-
-      <SidebarFooter>
-        <NavUser user={sidebarUser} />
-      </SidebarFooter>
     </Sidebar>
   )
 }
