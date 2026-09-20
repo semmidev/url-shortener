@@ -11,7 +11,7 @@ MIGRATE_CMD ?= $(shell command -v migrate 2>/dev/null || echo "go run github.com
 BUN_CMD ?= $(shell command -v bun 2>/dev/null || echo "$(HOME)/.bun/bin/bun")
 NETWORK_NAME ?= url_shortener_network
 
-.PHONY: build build-frontend test test-integration test-all lint seed setup-hooks swagger sqlc new_migration migrateup migrateup1 migratedown migratedown1 createdb dropdb network-create docker-up docker-down docker-logs monitoring-up monitoring-down monitoring-logs up-all down-all run-dev run-api run-worker up-dev down-dev logs-dev clean
+.PHONY: build build-frontend test test-integration test-all lint seed setup-hooks swagger sqlc new_migration migrateup migrateup1 migratedown migratedown1 createdb dropdb network-create docker-up docker-up-dev docker-down docker-logs monitoring-up monitoring-down monitoring-logs up-all down-all run-dev run-api run-worker up-dev down-dev logs-dev clean
 
 # Seed database with initial default data
 seed:
@@ -120,9 +120,13 @@ dropdb:
 network-create:
 	@$(DOCKER_CMD) network inspect $(NETWORK_NAME) >/dev/null 2>&1 || $(DOCKER_CMD) network create $(NETWORK_NAME)
 
-# Start app containers via Docker Compose (compose.yml)
+# Start all app & infrastructure containers via Docker Compose (compose.yml)
 docker-up: network-create
 	$(DOCKER_CMD) compose -f compose.yml up -d
+
+# Start infrastructure dependency containers only (excluding api & worker)
+docker-up-dev: network-create
+	$(DOCKER_CMD) compose -f compose.yml up -d postgres pgbouncer db-backup redis nats
 
 # Stop app containers via Docker Compose (compose.yml)
 docker-down:
@@ -160,7 +164,7 @@ run-api:
 run-worker:
 	go run $(LDFLAGS) ./server/cmd/worker
 
-up-dev: docker-up
+up-dev: docker-up-dev
 down-dev: docker-down
 logs-dev: docker-logs
 

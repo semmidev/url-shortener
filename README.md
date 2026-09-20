@@ -71,8 +71,8 @@ cp .env.example .env
 # 3. Copy pgbouncer userlist template to userlist
 cp ./server/db/pgbouncer/userlist.txt.example ./server/db/pgbouncer/userlist.txt
 
-# 4. Start Infrastructure (PostgreSQL, Redis, NATS) & Monitoring via Docker Compose
-make docker-up          # Start DB, PgBouncer, Redis, NATS containers (compose.yml)
+# 4. Start Infrastructure dependencies (PostgreSQL, Redis, NATS) & Monitoring via Docker Compose
+make docker-up-dev      # Start DB, PgBouncer, Redis, NATS containers only (compose.yml)
 make monitoring-up      # (Optional) Start Observability/Monitoring stack (compose.monitoring.yml)
 
 # 5. Run Go API server natively on host for fast local development (instant feedback, no docker build delay!)
