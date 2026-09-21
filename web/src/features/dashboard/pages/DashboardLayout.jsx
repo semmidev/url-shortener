@@ -12,6 +12,8 @@ import {
 } from "@/components/ui/sidebar"
 import { Button } from "@/components/ui/button"
 
+import { NotificationDropdown } from "@/components/NotificationDropdown"
+
 const PAGE_TITLE_KEYS = {
   "/dashboard":            "nav.dashboard",
   "/dashboard/urls":       "nav.shortUrls",
@@ -55,6 +57,9 @@ export default function DashboardLayout() {
 
             {/* i18n Language Toggle */}
             <LanguageToggle />
+
+            {/* Notification Dropdown Bell */}
+            <NotificationDropdown />
 
             {/* Theme palette picker */}
             <ThemePresetPicker />
