@@ -15,10 +15,11 @@ import { Button } from "@/components/ui/button"
 import { NotificationDropdown } from "@/components/NotificationDropdown"
 
 const PAGE_TITLE_KEYS = {
-  "/dashboard":            "nav.dashboard",
-  "/dashboard/urls":       "nav.shortUrls",
-  "/dashboard/analytics":  "nav.analytics",
-  "/dashboard/account":    "nav.accountProfile",
+  "/dashboard":               "nav.dashboard",
+  "/dashboard/urls":          "nav.shortUrls",
+  "/dashboard/analytics":     "nav.analytics",
+  "/dashboard/account":       "nav.accountProfile",
+  "/dashboard/notifications": "Pusat Notifikasi",
 }
 
 export default function DashboardLayout() {

@@ -26,6 +26,7 @@ import WorkspaceSettingsPage from '@/features/tenant/pages/WorkspaceSettingsPage
 import WorkspaceLinksPage from '@/features/tenant/pages/WorkspaceLinksPage';
 
 import Account from '@/features/account/pages/AccountPage';
+import NotificationsPage from '@/features/notifications/pages/NotificationsPage';
 
 function PrivateRoute({ children }) {
   const { isAuthenticated, isLoading } = useAuthStore();
@@ -127,6 +128,7 @@ export default function App() {
               <Route path="workspace/roles" element={<DirectionalTransition><WorkspaceRolesPage /></DirectionalTransition>} />
               <Route path="workspace/settings" element={<DirectionalTransition><WorkspaceSettingsPage /></DirectionalTransition>} />
               <Route path="account" element={<DirectionalTransition><Account /></DirectionalTransition>} />
+              <Route path="notifications" element={<DirectionalTransition><NotificationsPage /></DirectionalTransition>} />
             </Route>
 
             {/* Fallback wildcard route */}

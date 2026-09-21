@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Bell, CheckCheck, Sparkles, ShieldCheck, BarChart3, Info } from 'lucide-react';
+import { Bell, CheckCheck, Sparkles, ShieldCheck, BarChart3, Info, ChevronRight } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useI18n } from '@/context/I18nContext';
@@ -88,7 +89,7 @@ export function NotificationDropdown({ className = '' }) {
       >
         <Bell className="h-4 w-4" />
         {unreadCount > 0 && (
-          <span className="absolute top-1 right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold text-primary-foreground shadow-xs animate-in zoom-in-50">
+          <span className="absolute -top-0.5 -right-0.5 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-primary px-1 text-[9px] font-bold text-primary-foreground ring-2 ring-card shadow-xs animate-in zoom-in-50">
             {unreadCount}
           </span>
         )}
@@ -171,10 +172,15 @@ export function NotificationDropdown({ className = '' }) {
           </div>
 
           {/* Footer */}
-          <div className="p-2.5 border-t border-border/60 bg-muted/20 text-center">
-            <span className="text-[11px] text-muted-foreground font-medium">
-              Sistem Notifikasi Modul UI Demo
-            </span>
+          <div className="p-2 border-t border-border/60 bg-muted/20 text-center">
+            <Link
+              to="/dashboard/notifications"
+              onClick={() => setIsOpen(false)}
+              className="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline py-1 px-3 rounded-lg hover:bg-primary/5 transition-colors cursor-pointer"
+            >
+              Lihat semua
+              <ChevronRight className="size-3.5" />
+            </Link>
           </div>
         </div>
       )}
