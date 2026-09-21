@@ -1,4 +1,4 @@
-# URL Shortener API
+<h1 align="center">URL Shortener API</h1>
 
 <p align="center">
   <a href="https://github.com/semmidev/url-shortener/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/semmidev/url-shortener/ci.yml?branch=main&label=CI&style=flat-square" alt="CI Status"></a>
