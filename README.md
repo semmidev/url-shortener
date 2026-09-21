@@ -20,6 +20,10 @@
 
 A high-performance, enterprise-grade Multi-Tenant SaaS URL Shortener REST API written in Go using **Modular Monolith** architecture, **Casbin RBAC Decision Engine**, **destel/rill concurrency pipelines**, **Asynq Redis Worker Queues**, and **PostgreSQL 18**. Features embedded React 19 SPA frontend single-binary distribution, Scalar & Swagger interactive API documentation, automated database migrations, SSRF prevention, structured wide-event logging, transactional outbox event streaming, and multi-layered CI/CD security pipelines.
 
+<p align="center">
+  <img src="docs/ss/demo.png" alt="URL Shortener Application Preview" width="100%">
+</p>
+
 ---
 
 ## Table of Contents
