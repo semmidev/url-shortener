@@ -71,7 +71,7 @@ func (s *Service) GeneratePresignedUploadURL(ctx context.Context, userID uuid.UU
 
 	uploadURL, publicURL, err := s.provider.GeneratePresignedUploadURL(ctx, key, req.ContentType, expiresIn)
 	if err != nil {
-		return nil, apperr.Internal("failed to generate presigned upload URL", err)
+		return nil, apperr.Internal(fmt.Sprintf("failed to generate presigned upload URL: %v", err), err)
 	}
 
 	return &PresignedURLResponse{

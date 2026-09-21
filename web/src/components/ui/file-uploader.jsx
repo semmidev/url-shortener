@@ -268,7 +268,7 @@ export function FileUploader({
           </div>
 
           <p className="text-[11px] text-muted-foreground mt-0.5">
-            Format: JPG, PNG, WEBP, GIF (Maks. {maxSizeMB}MB). Berkas akan disimpan aman di S3 storage.
+            Format: JPG, PNG, WEBP, GIF (Maks. {maxSizeMB}MB).
           </p>
         </div>
       </div>

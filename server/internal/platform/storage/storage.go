@@ -43,11 +43,21 @@ func NewS3Provider(ctx context.Context, cfg config.Config) (*S3Provider, error) 
 		region = "us-east-1"
 	}
 
+	accessKey := cfg.S3AccessKeyID
+	if accessKey == "" {
+		accessKey = "rustfsadmin"
+	}
+
+	secretKey := cfg.S3SecretAccessKey
+	if secretKey == "" {
+		secretKey = "rustfsadminpassword"
+	}
+
 	awsCfg, err := awsconfig.LoadDefaultConfig(ctx,
 		awsconfig.WithRegion(region),
 		awsconfig.WithCredentialsProvider(credentials.NewStaticCredentialsProvider(
-			cfg.S3AccessKeyID,
-			cfg.S3SecretAccessKey,
+			accessKey,
+			secretKey,
 			"",
 		)),
 	)
@@ -70,8 +80,12 @@ func NewS3Provider(ctx context.Context, cfg config.Config) (*S3Provider, error) 
 		cfg:           cfg,
 	}
 
-	// Ensure bucket exists in local/dev storage (RustFS / MinIO)
-	_ = provider.ensureBucketExists(ctx)
+	// Ensure bucket exists in background with timeout (RustFS / MinIO)
+	go func() { //nolint:gosec // background context for asynchronous initialization
+		ctxTimeout, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+		defer cancel()
+		_ = provider.ensureBucketExists(ctxTimeout)
+	}()
 
 	return provider, nil
 }
