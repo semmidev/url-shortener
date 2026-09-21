@@ -45,12 +45,12 @@ func NewS3Provider(ctx context.Context, cfg config.Config) (*S3Provider, error) 
 
 	accessKey := cfg.S3AccessKeyID
 	if accessKey == "" {
-		accessKey = "rustfsadmin"
+		accessKey = "admin"
 	}
 
 	secretKey := cfg.S3SecretAccessKey
 	if secretKey == "" {
-		secretKey = "rustfsadminpassword"
+		secretKey = "password123"
 	}
 
 	awsCfg, err := awsconfig.LoadDefaultConfig(ctx,

@@ -200,8 +200,24 @@ services:
     networks:
       - url_shortener_network
 
+  rustfs:
+    image: rustfs/rustfs:latest
+    container_name: url-shortener-rustfs
+    restart: unless-stopped
+    ports:
+      - "9000:9000" # S3 API
+      - "9001:9001" # Web Console
+    environment:
+      RUSTFS_ROOT_USER: ${S3_ACCESS_KEY_ID:-admin}
+      RUSTFS_ROOT_PASSWORD: ${S3_SECRET_ACCESS_KEY:-password123}
+    volumes:
+      - rustfs_data:/data
+    networks:
+      - url_shortener_network
+
 volumes:
   postgres_data:
+  rustfs_data:
 
 networks:
   url_shortener_network:

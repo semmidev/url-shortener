@@ -162,8 +162,8 @@ func LoadConfig(path string) (config Config, err error) {
 
 	viper.SetDefault("S3_ENDPOINT", "http://127.0.0.1:9000")
 	viper.SetDefault("S3_REGION", "us-east-1")
-	viper.SetDefault("S3_ACCESS_KEY_ID", "rustfsadmin")
-	viper.SetDefault("S3_SECRET_ACCESS_KEY", "rustfsadminpassword")
+	viper.SetDefault("S3_ACCESS_KEY_ID", "admin")
+	viper.SetDefault("S3_SECRET_ACCESS_KEY", "password123")
 	viper.SetDefault("S3_BUCKET", "url-shortener-storage")
 	viper.SetDefault("S3_PUBLIC_URL", "")
 	viper.SetDefault("S3_USE_PATH_STYLE", true)
