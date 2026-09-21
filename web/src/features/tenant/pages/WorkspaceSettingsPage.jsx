@@ -24,6 +24,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useTenant } from '@/context/TenantContext';
+import { useI18n } from '@/context/I18nContext';
 import { updateTenant, regenerateJoinCode, deleteTenant } from '../api';
 import PermissionGuard from '@/components/PermissionGuard';
 
@@ -39,6 +40,7 @@ function FieldError({ error }) {
 
 export default function WorkspaceSettingsPage() {
   const { activeTenant, selectTenant, fetchTenants } = useTenant();
+  const { t } = useI18n();
 
   const [form, setForm] = useState({ name: '', slug: '' });
   const [copiedCode, setCopiedCode] = useState(false);
@@ -65,7 +67,7 @@ export default function WorkspaceSettingsPage() {
     if (!activeTenant?.join_code) return;
     navigator.clipboard.writeText(activeTenant.join_code);
     setCopiedCode(true);
-    toast.success('Kode gabung berhasil disalin ke clipboard!');
+    toast.success(t('common.copied'));
     setTimeout(() => setCopiedCode(false), 2000);
   };
 
@@ -73,7 +75,7 @@ export default function WorkspaceSettingsPage() {
     e.preventDefault();
     if (!activeTenant?.id) return;
     if (!form.name.trim()) {
-      setErrors({ name: 'Nama workspace wajib diisi' });
+      setErrors({ name: t('common.error') });
       return;
     }
     setErrors({});
@@ -83,11 +85,11 @@ export default function WorkspaceSettingsPage() {
         name: form.name.trim(),
         slug: form.slug.trim().toLowerCase(),
       });
-      toast.success('Pengaturan workspace berhasil disimpan!');
+      toast.success(t('workspace.settingsSaved'));
       await fetchTenants();
       selectTenant(updated);
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Gagal menyimpan perubahan workspace');
+      toast.error(err.response?.data?.message || t('common.error'));
     } finally {
       setIsSaving(false);
     }
@@ -98,12 +100,12 @@ export default function WorkspaceSettingsPage() {
     setIsRegenerating(true);
     try {
       const updated = await regenerateJoinCode(activeTenant.id);
-      toast.success('Kode gabung baru berhasil dibuat!');
+      toast.success(t('workspace.regenSuccess'));
       setShowRegenModal(false);
       await fetchTenants();
       selectTenant(updated);
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Gagal membuat ulang kode gabung');
+      toast.error(err.response?.data?.message || t('common.error'));
     } finally {
       setIsRegenerating(false);
     }
@@ -112,19 +114,19 @@ export default function WorkspaceSettingsPage() {
   const handleDeleteWorkspace = async () => {
     if (!activeTenant?.id) return;
     if (confirmDeleteInput.trim() !== activeTenant.name.trim()) {
-      toast.error('Nama workspace yang dimasukkan tidak cocok');
+      toast.error(t('common.error'));
       return;
     }
     setIsDeleting(true);
     try {
       await deleteTenant(activeTenant.id);
-      toast.success(`Workspace "${activeTenant.name}" berhasil dihapus`);
+      toast.success(t('common.success'));
       setShowDeleteModal(false);
       localStorage.removeItem('active_tenant_id');
       await fetchTenants();
       window.location.href = '/dashboard';
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Gagal menghapus workspace');
+      toast.error(err.response?.data?.message || t('common.error'));
     } finally {
       setIsDeleting(false);
     }
@@ -135,8 +137,8 @@ export default function WorkspaceSettingsPage() {
   return (
     <div className="space-y-6 animate-in fade-in duration-200 pb-12">
       <DynamicPageHeader
-        title="Pengaturan Workspace"
-        subtitle={`Kelola konfigurasi, kode gabung, dan identitas workspace "${activeTenant?.name || 'Aktif'}"`}
+        title={t('workspace.settingsTitle')}
+        subtitle={t('workspace.settingsSubtitle', { name: activeTenant?.name || 'Active' })}
         fallbackIcon={SettingsIcon}
       />
 
@@ -157,7 +159,7 @@ export default function WorkspaceSettingsPage() {
                 </div>
                 <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
                   <CheckCircle2Icon className="size-3.5 text-emerald-500 shrink-0" />
-                  <span>Kode Gabung: <strong className="font-mono text-foreground">{activeTenant?.join_code}</strong></span>
+                  <span>{t('workspace.joinCode')}: <strong className="font-mono text-foreground">{activeTenant?.join_code}</strong></span>
                 </div>
               </div>
             </div>
@@ -165,7 +167,7 @@ export default function WorkspaceSettingsPage() {
             <div className="flex items-center gap-2 shrink-0">
               <Badge variant="secondary" className="px-3 py-1.5 gap-1.5 uppercase tracking-wider text-xs font-bold">
                 <BadgeCheckIcon className="size-4 text-emerald-500" />
-                Peran: {activeTenant?.role || 'Member'}
+                {t('workspace.roleLabel')}: {activeTenant?.role || 'Member'}
               </Badge>
             </div>
           </div>
@@ -178,9 +180,9 @@ export default function WorkspaceSettingsPage() {
           <div className="flex items-center gap-2">
             <Building2Icon className="size-5 text-muted-foreground shrink-0" />
             <div>
-              <CardTitle className="text-base font-semibold">Informasi Umum Workspace</CardTitle>
+              <CardTitle className="text-base font-semibold">{t('workspace.generalInfo')}</CardTitle>
               <CardDescription className="text-xs">
-                Perbarui nama dan slug URL unik untuk workspace ini
+                {t('workspace.generalInfoDesc')}
               </CardDescription>
             </div>
           </div>
@@ -189,27 +191,27 @@ export default function WorkspaceSettingsPage() {
           <form onSubmit={handleSaveGeneral} className="space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <Label htmlFor="ws-name" className="text-xs font-medium text-foreground">Nama Workspace</Label>
+                <Label htmlFor="ws-name" className="text-xs font-medium text-foreground">{t('workspace.workspaceName')}</Label>
                 <Input
                   id="ws-name"
                   type="text"
                   required
                   value={form.name}
                   onChange={(e) => setForm({ ...form, name: e.target.value })}
-                  placeholder="Contoh: Kelas Pemrograman Web"
+                  placeholder="Workspace Name"
                   className="bg-background/80 text-sm"
                 />
                 <FieldError error={errors.name} />
               </div>
 
               <div className="space-y-1.5">
-                <Label htmlFor="ws-slug" className="text-xs font-medium text-foreground">Slug URL (Identifier Unik)</Label>
+                <Label htmlFor="ws-slug" className="text-xs font-medium text-foreground">{t('workspace.urlSlug')}</Label>
                 <Input
                   id="ws-slug"
                   type="text"
                   value={form.slug}
                   onChange={(e) => setForm({ ...form, slug: e.target.value })}
-                  placeholder="web-programming-2026"
+                  placeholder="workspace-slug"
                   className="bg-background/80 font-mono text-xs"
                 />
                 <FieldError error={errors.slug} />
@@ -222,12 +224,12 @@ export default function WorkspaceSettingsPage() {
                   {isSaving ? (
                     <>
                       <Loader2Icon className="size-4 animate-spin" />
-                      Menyimpan...
+                      {t('common.saving')}
                     </>
                   ) : (
                     <>
                       <SaveIcon className="size-4" />
-                      Simpan Perubahan
+                      {t('common.save')}
                     </>
                   )}
                 </Button>
@@ -243,9 +245,9 @@ export default function WorkspaceSettingsPage() {
           <div className="flex items-center gap-2">
             <KeyIcon className="size-5 text-muted-foreground shrink-0" />
             <div>
-              <CardTitle className="text-base font-semibold">Kode Gabung (Join Code)</CardTitle>
+              <CardTitle className="text-base font-semibold">{t('workspace.joinCodeTitle')}</CardTitle>
               <CardDescription className="text-xs">
-                Kode akses unik yang dibagikan kepada anggota untuk bergabung ke workspace ini
+                {t('workspace.joinCodeDesc')}
               </CardDescription>
             </div>
           </div>
@@ -253,7 +255,7 @@ export default function WorkspaceSettingsPage() {
         <CardContent className="space-y-4">
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 rounded-xl border border-border/60 bg-muted/30 shadow-xs">
             <div className="space-y-1 text-center sm:text-left">
-              <span className="text-xs text-muted-foreground block font-medium">Kode Gabung Aktif</span>
+              <span className="text-xs text-muted-foreground block font-medium">{t('workspace.activeJoinCode')}</span>
               <span className="font-mono text-3xl font-black tracking-widest text-primary select-all">
                 {activeTenant?.join_code || '------'}
               </span>
@@ -261,7 +263,7 @@ export default function WorkspaceSettingsPage() {
             <div className="flex items-center gap-2">
               <Button variant="outline" size="sm" onClick={handleCopyJoinCode} className="gap-1.5 cursor-pointer h-9">
                 {copiedCode ? <CheckIcon className="size-4 text-emerald-500" /> : <CopyIcon className="size-4" />}
-                {copiedCode ? 'Tersalin!' : 'Salin Kode'}
+                {copiedCode ? t('common.copied') : t('workspace.copyCode')}
               </Button>
               <PermissionGuard permission="tenants.update">
                 <Button
@@ -271,7 +273,7 @@ export default function WorkspaceSettingsPage() {
                   className="gap-1.5 cursor-pointer h-9"
                 >
                   <RefreshCwIcon className="size-3.5" />
-                  Buat Ulang Kode
+                  {t('workspace.regenCode')}
                 </Button>
               </PermissionGuard>
             </div>
@@ -280,7 +282,7 @@ export default function WorkspaceSettingsPage() {
           <div className="rounded-lg bg-muted/40 border border-border/60 px-3.5 py-2.5 text-xs text-muted-foreground leading-relaxed flex items-start gap-2">
             <span className="shrink-0 text-base">💡</span>
             <span>
-              Anggota baru dapat bergabung dengan memasukkan kode gabung ini via menu dropdown workspace di pojok kanan atas layar.
+              {t('workspace.joinTip')}
             </span>
           </div>
         </CardContent>
@@ -293,9 +295,9 @@ export default function WorkspaceSettingsPage() {
             <div className="flex items-center gap-2">
               <AlertTriangleIcon className="size-5 text-destructive shrink-0" />
               <div>
-                <CardTitle className="text-base font-semibold text-destructive">Zona Bahaya (Danger Zone)</CardTitle>
+                <CardTitle className="text-base font-semibold text-destructive">{t('workspace.dangerZone')}</CardTitle>
                 <CardDescription className="text-xs text-muted-foreground">
-                  Tindakan destruktif di bawah ini bersifat permanen dan tidak dapat dibatalkan
+                  {t('workspace.deleteWorkspaceDesc')}
                 </CardDescription>
               </div>
             </div>
@@ -303,9 +305,9 @@ export default function WorkspaceSettingsPage() {
           <CardContent>
             <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 rounded-xl border border-destructive/20 bg-card">
               <div>
-                <h4 className="text-sm font-bold text-foreground">Hapus Workspace Ini</h4>
+                <h4 className="text-sm font-bold text-foreground">{t('workspace.deleteWorkspace')}</h4>
                 <p className="text-xs text-muted-foreground mt-0.5">
-                  Menghapus workspace beserta seluruh tautan, peran, dan data keanggotaannya secara permanen.
+                  {t('workspace.deleteWorkspaceDesc')}
                 </p>
               </div>
               <Button
@@ -317,7 +319,7 @@ export default function WorkspaceSettingsPage() {
                 className="gap-2 cursor-pointer shrink-0 h-9 font-semibold"
               >
                 <Trash2Icon className="size-4" />
-                Hapus Workspace
+                {t('workspace.deleteWorkspaceBtn')}
               </Button>
             </div>
           </CardContent>
@@ -339,20 +341,20 @@ export default function WorkspaceSettingsPage() {
                   <RefreshCwIcon className="size-5" />
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-foreground">Buat Ulang Kode Gabung?</h3>
-                  <p className="text-xs text-muted-foreground">Konfirmasi perubahan kode gabung</p>
+                  <h3 className="text-base font-bold text-foreground">{t('workspace.regenModalTitle')}</h3>
+                  <p className="text-xs text-muted-foreground">{t('workspace.regenModalDesc')}</p>
                 </div>
               </div>
               <p className="text-xs text-muted-foreground leading-relaxed">
-                Kode gabung lama (<strong className="font-mono text-foreground">{activeTenant?.join_code}</strong>) akan menjadi kadaluarsa seketika. Anggota baru harus menggunakan kode baru untuk bergabung.
+                {t('workspace.regenModalText', { code: activeTenant?.join_code })}
               </p>
 
               <div className="flex justify-end gap-3 pt-2">
                 <Button variant="outline" onClick={() => setShowRegenModal(false)} className="cursor-pointer">
-                  Batal
+                  {t('common.cancel')}
                 </Button>
                 <Button onClick={handleRegenerateCode} disabled={isRegenerating} className="cursor-pointer">
-                  {isRegenerating ? 'Membuat Ulang...' : 'Ya, Buat Ulang Kode'}
+                  {isRegenerating ? t('common.loading') : t('workspace.yesRegen')}
                 </Button>
               </div>
             </motion.div>
@@ -375,13 +377,13 @@ export default function WorkspaceSettingsPage() {
                   <AlertTriangleIcon className="size-5" />
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-foreground">Hapus Workspace Permanen</h3>
-                  <p className="text-xs text-muted-foreground">Tindakan ini tidak dapat dibatalkan</p>
+                  <h3 className="text-base font-bold text-foreground">{t('workspace.deleteModalTitle')}</h3>
+                  <p className="text-xs text-muted-foreground">{t('workspace.deleteModalSubtitle')}</p>
                 </div>
               </div>
 
               <p className="text-xs text-muted-foreground leading-relaxed">
-                Ketikkan nama workspace <strong className="text-foreground">{activeTenant?.name}</strong> di bawah ini untuk mengonfirmasi penghapusan secara permanen.
+                {t('workspace.deleteModalText', { name: activeTenant?.name })}
               </p>
 
               <Input
@@ -394,7 +396,7 @@ export default function WorkspaceSettingsPage() {
 
               <div className="flex justify-end gap-3 pt-2">
                 <Button variant="outline" onClick={() => setShowDeleteModal(false)} className="cursor-pointer">
-                  Batal
+                  {t('common.cancel')}
                 </Button>
                 <Button
                   variant="destructive"
@@ -402,7 +404,7 @@ export default function WorkspaceSettingsPage() {
                   onClick={handleDeleteWorkspace}
                   className="cursor-pointer"
                 >
-                  {isDeleting ? 'Menghapus...' : 'Hapus Workspace Ini'}
+                  {isDeleting ? t('workspace.deleting') : t('workspace.deleteWorkspaceBtn')}
                 </Button>
               </div>
             </motion.div>

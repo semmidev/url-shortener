@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useTenant } from '@/context/TenantContext';
+import { useI18n } from '@/context/I18nContext';
 import {
   getTenantRoles,
   createTenantRole,
@@ -58,6 +59,7 @@ const MODULE_METADATA = {
 };
 
 function PermissionMatrixSelector({ selectedPermissions, onChange }) {
+  const { t } = useI18n();
   const [searchQuery, setSearchQuery] = useState('');
   const [activeModuleFilter, setActiveModuleFilter] = useState('all');
 
@@ -120,7 +122,7 @@ function PermissionMatrixSelector({ selectedPermissions, onChange }) {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
           <input
             type="text"
-            placeholder="Cari izin berdasarkan nama atau kode (e.g. urls.create)..."
+            placeholder={t('workspace.searchPermissionsPlaceholder')}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full pl-9 pr-8 py-2 bg-background border border-border rounded-lg text-sm placeholder:text-muted-foreground focus:outline-hidden focus:ring-2 focus:ring-primary/30"
@@ -145,7 +147,7 @@ function PermissionMatrixSelector({ selectedPermissions, onChange }) {
             className="text-xs gap-1.5 h-9 cursor-pointer"
           >
             <CheckSquare className="size-3.5 text-primary" />
-            Pilih Semua
+            {t('workspace.selectAll')}
           </Button>
           <Button
             type="button"
@@ -155,7 +157,7 @@ function PermissionMatrixSelector({ selectedPermissions, onChange }) {
             className="text-xs gap-1.5 h-9 cursor-pointer text-muted-foreground hover:text-foreground"
           >
             <Square className="size-3.5" />
-            Reset
+            {t('workspace.reset')}
           </Button>
         </div>
       </div>
@@ -171,7 +173,7 @@ function PermissionMatrixSelector({ selectedPermissions, onChange }) {
               : 'bg-background hover:bg-muted text-muted-foreground border-border'
           }`}
         >
-          Semua Modul ({AVAILABLE_PERMISSIONS.length})
+          {t('workspace.allModules')} ({AVAILABLE_PERMISSIONS.length})
         </button>
 
         {Object.keys(MODULE_METADATA).map((modKey) => {
@@ -209,8 +211,8 @@ function PermissionMatrixSelector({ selectedPermissions, onChange }) {
         {Object.keys(groupedPermissions).length === 0 ? (
           <div className="text-center py-10 border border-dashed border-border rounded-xl">
             <Filter className="size-8 text-muted-foreground/40 mx-auto mb-2" />
-            <p className="text-sm font-medium text-muted-foreground">Tidak ada izin yang cocok</p>
-            <p className="text-xs text-muted-foreground/70 mt-1">Coba gunakan kata kunci pencarian atau filter yang berbeda.</p>
+            <p className="text-sm font-medium text-muted-foreground">{t('workspace.noMatchingPermissions')}</p>
+            <p className="text-xs text-muted-foreground/70 mt-1">{t('workspace.tryDifferentFilter')}</p>
           </div>
         ) : (
           Object.keys(groupedPermissions).map((modKey) => {
@@ -233,7 +235,7 @@ function PermissionMatrixSelector({ selectedPermissions, onChange }) {
                       <div className="flex items-center gap-2">
                         <h4 className="text-sm font-bold text-foreground">{meta.title}</h4>
                         <Badge variant="outline" className="text-[10px] px-1.5 py-0 font-mono">
-                          {moduleSelectedCount}/{allModulePerms.length} terpilih
+                          {moduleSelectedCount}/{allModulePerms.length}
                         </Badge>
                       </div>
                       {meta.description && (
@@ -249,7 +251,7 @@ function PermissionMatrixSelector({ selectedPermissions, onChange }) {
                     onClick={() => handleToggleModule(modKey)}
                     className="text-xs cursor-pointer hover:bg-muted text-primary hover:text-primary h-8 px-2.5 font-medium"
                   >
-                    {isModuleAllSelected ? 'Batal Pilih Modul' : 'Pilih Modul Ini'}
+                    {isModuleAllSelected ? t('workspace.deselectModule') : t('workspace.selectModule')}
                   </Button>
                 </div>
 
@@ -307,6 +309,7 @@ function PermissionMatrixSelector({ selectedPermissions, onChange }) {
 
 export default function WorkspaceRolesPage() {
   const { activeTenant } = useTenant();
+  const { t } = useI18n();
   const [roles, setRoles] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -324,8 +327,8 @@ export default function WorkspaceRolesPage() {
     try {
       const data = await getTenantRoles(activeTenant.id);
       setRoles(data || []);
-    } catch (err) {
-      toast.error('Gagal memuat daftar peran workspace');
+    } catch {
+      toast.error(t('common.error'));
     } finally {
       setIsLoading(false);
     }
@@ -346,12 +349,12 @@ export default function WorkspaceRolesPage() {
         description: createForm.description.trim(),
         permissions: createForm.permissions,
       });
-      toast.success(`Peran "${createForm.display_name}" berhasil dibuat!`);
+      toast.success(t('workspace.roleCreatedSuccess', { name: createForm.display_name }));
       setCreateForm({ name: '', display_name: '', description: '', permissions: [] });
       setIsCreateModalOpen(false);
       fetchRoles();
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Gagal membuat peran custom');
+      toast.error(err.response?.data?.message || t('common.error'));
     } finally {
       setActionLoading(false);
     }
@@ -362,39 +365,39 @@ export default function WorkspaceRolesPage() {
     setActionLoading(true);
     try {
       await updateTenantRolePermissions(activeTenant.id, selectedRole.id, editPermissions);
-      toast.success(`Izin untuk peran "${selectedRole.display_name || selectedRole.name}" berhasil diperbarui`);
+      toast.success(t('workspace.roleUpdatedSuccess', { name: selectedRole.display_name || selectedRole.name }));
       setIsEditModalOpen(false);
       setSelectedRole(null);
       fetchRoles();
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Gagal memperbarui izin peran');
+      toast.error(err.response?.data?.message || t('common.error'));
     } finally {
       setActionLoading(false);
     }
   };
 
   const handleDeleteRole = async (role) => {
-    if (!window.confirm(`Apakah Anda yakin ingin menghapus peran "${role.display_name || role.name}"?`)) return;
+    if (!window.confirm(t('workspace.removeConfirmDesc', { name: role.display_name || role.name }))) return;
     try {
       await deleteTenantRole(activeTenant.id, role.id);
-      toast.success('Peran berhasil dihapus');
+      toast.success(t('workspace.roleDeletedSuccess'));
       fetchRoles();
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Gagal menghapus peran');
+      toast.error(err.response?.data?.message || t('common.error'));
     }
   };
 
   return (
     <div className="space-y-6">
       <DynamicPageHeader
-        title="Peran & Matriks Akses"
-        subtitle={`Kelola daftar peran dan izin fitur untuk anggota di workspace "${activeTenant?.name || 'Aktif'}"`}
+        title={t('workspace.rolesTitle')}
+        subtitle={t('workspace.rolesSubtitle', { name: activeTenant?.name || 'Active' })}
         fallbackIcon={KeyRound}
         actions={
           <PermissionGuard permission="roles.create">
             <Button onClick={() => setIsCreateModalOpen(true)} className="gap-2 cursor-pointer shadow-xs">
               <Plus className="size-4" />
-              Buat Peran Custom
+              {t('workspace.createCustomRole')}
             </Button>
           </PermissionGuard>
         }
@@ -416,7 +419,7 @@ export default function WorkspaceRolesPage() {
                     className="px-2.5 py-0.5 capitalize text-xs font-semibold"
                   >
                     {isOwner && <ShieldAlert className="size-3 mr-1 text-amber-500" />}
-                    {isSystem ? 'Peran Bawaan' : 'Peran Custom'}
+                    {isSystem ? t('workspace.systemRole') : t('workspace.customRole')}
                   </Badge>
                   {!isSystem && (
                     <Button
@@ -431,13 +434,15 @@ export default function WorkspaceRolesPage() {
                 </div>
                 <CardTitle className="text-lg font-bold pt-1">{role.display_name || role.name}</CardTitle>
                 <CardDescription className="text-xs line-clamp-2">
-                  {role.description || `Peran ${role.name} dalam workspace.`}
+                  {role.description || `Role ${role.name}`}
                 </CardDescription>
               </CardHeader>
               <CardContent className="pt-0 space-y-3">
                 <div className="space-y-1.5 border-t border-border/50 pt-3">
                   <span className="text-xs font-semibold text-muted-foreground block">
-                    {perms.length > 0 ? `${perms.length} Izin Aktif` : 'Semua Izin Aktif'}
+                    {perms.length > 0
+                      ? t('workspace.activePermissionsCount', { count: perms.length })
+                      : t('workspace.allPermissionsActive')}
                   </span>
                   <div className="flex flex-wrap gap-1 max-h-24 overflow-y-auto">
                     {perms.length > 0 ? (
@@ -448,10 +453,10 @@ export default function WorkspaceRolesPage() {
                       ))
                     ) : isOwner ? (
                       <span className="text-xs text-emerald-500 font-medium flex items-center gap-1">
-                        <CheckCircle2 className="size-3.5" /> Semua Fitur & Administrasi
+                        <CheckCircle2 className="size-3.5" /> {t('workspace.allPermissionsActive')}
                       </span>
                     ) : (
-                      <span className="text-xs text-muted-foreground italic">Belum ada izin</span>
+                      <span className="text-xs text-muted-foreground italic">{t('workspace.noPermissions')}</span>
                     )}
                   </div>
                 </div>
@@ -468,7 +473,7 @@ export default function WorkspaceRolesPage() {
                     className="w-full mt-2 gap-1.5 cursor-pointer text-xs"
                   >
                     <ShieldCheck className="size-3.5" />
-                    Edit Matriks Izin
+                    {t('workspace.editMatrix')}
                   </Button>
                 </PermissionGuard>
               </CardContent>
@@ -494,8 +499,8 @@ export default function WorkspaceRolesPage() {
                     <KeyRound className="size-6" />
                   </div>
                   <div>
-                    <h3 className="text-xl font-bold text-foreground">Buat Peran Custom</h3>
-                    <p className="text-xs text-muted-foreground">Tentukan nama, deskripsi, dan matriks izin untuk peran baru</p>
+                    <h3 className="text-xl font-bold text-foreground">{t('workspace.createCustomRole')}</h3>
+                    <p className="text-xs text-muted-foreground">{t('workspace.rolesSubtitle', { name: activeTenant?.name })}</p>
                   </div>
                 </div>
                 <button
@@ -511,11 +516,11 @@ export default function WorkspaceRolesPage() {
                 <div className="p-6 space-y-4 flex-1 min-h-0 overflow-y-auto">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-1.5">
-                      <label className="text-xs font-semibold text-foreground">Nama Tampilan (Display Name)</label>
+                      <label className="text-xs font-semibold text-foreground">{t('workspace.displayNameLabel')}</label>
                       <input
                         type="text"
                         required
-                        placeholder="Contoh: Editor Link"
+                        placeholder="Display Name"
                         value={createForm.display_name}
                         onChange={(e) =>
                           setCreateForm({
@@ -529,10 +534,10 @@ export default function WorkspaceRolesPage() {
                     </div>
 
                     <div className="space-y-1.5">
-                      <label className="text-xs font-semibold text-foreground">Deskripsi (Opsional)</label>
+                      <label className="text-xs font-semibold text-foreground">{t('workspace.descriptionOptionalLabel')}</label>
                       <input
                         type="text"
-                        placeholder="Anggota yang hanya bisa membuat dan mengedit link"
+                        placeholder="Role description"
                         value={createForm.description}
                         onChange={(e) => setCreateForm({ ...createForm, description: e.target.value })}
                         className="w-full px-3 py-2 rounded-lg bg-background border border-border text-sm focus:outline-hidden focus:ring-2 focus:ring-primary/30"
@@ -541,7 +546,7 @@ export default function WorkspaceRolesPage() {
                   </div>
 
                   <div className="space-y-2 pt-2 border-t border-border/50">
-                    <label className="text-xs font-semibold text-foreground block">Matriks Izin Akses</label>
+                    <label className="text-xs font-semibold text-foreground block">{t('workspace.permissionMatrix')}</label>
                     <PermissionMatrixSelector
                       selectedPermissions={createForm.permissions}
                       onChange={(perms) => setCreateForm({ ...createForm, permissions: perms })}
@@ -551,20 +556,20 @@ export default function WorkspaceRolesPage() {
 
                 <div className="p-4 px-6 border-t border-border/70 bg-muted/20 flex items-center justify-between gap-3">
                   <div className="text-xs text-muted-foreground">
-                    <span className="font-bold text-foreground">{createForm.permissions.length}</span> dari <span className="font-bold text-foreground">{AVAILABLE_PERMISSIONS.length}</span> izin dipilih
+                    {t('workspace.permissionsSelected', { selected: createForm.permissions.length, total: AVAILABLE_PERMISSIONS.length })}
                   </div>
                   <div className="flex items-center gap-2">
                     <Button type="button" variant="outline" onClick={() => setIsCreateModalOpen(false)}>
-                      Batal
+                      {t('common.cancel')}
                     </Button>
                     <Button type="submit" disabled={actionLoading} className="gap-2 cursor-pointer">
                       {actionLoading ? (
                         <>
                           <RefreshCw className="size-4 animate-spin" />
-                          Membuat...
+                          {t('workspace.creating')}
                         </>
                       ) : (
-                        'Buat Peran'
+                        t('workspace.createRole')
                       )}
                     </Button>
                   </div>
@@ -594,14 +599,11 @@ export default function WorkspaceRolesPage() {
                   </div>
                   <div>
                     <div className="flex items-center gap-2">
-                      <h3 className="text-xl font-bold text-foreground">Edit Matriks Izin</h3>
+                      <h3 className="text-xl font-bold text-foreground">{t('workspace.editMatrix')}</h3>
                       <Badge variant={selectedRole.is_system ? 'secondary' : 'outline'} className="capitalize text-xs font-semibold">
                         {selectedRole.display_name || selectedRole.name}
                       </Badge>
                     </div>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      Atur hak akses & kapabilitas fitur untuk peran <span className="font-semibold text-foreground">{selectedRole.display_name || selectedRole.name}</span> dalam workspace ini.
-                    </p>
                   </div>
                 </div>
                 <button
@@ -624,23 +626,23 @@ export default function WorkspaceRolesPage() {
               {/* Modal Footer */}
               <div className="p-4 px-6 border-t border-border/70 bg-muted/20 flex items-center justify-between gap-3">
                 <div className="text-xs text-muted-foreground">
-                  <span className="font-bold text-foreground">{editPermissions.length}</span> dari <span className="font-bold text-foreground">{AVAILABLE_PERMISSIONS.length}</span> izin dipilih
+                  {t('workspace.permissionsSelected', { selected: editPermissions.length, total: AVAILABLE_PERMISSIONS.length })}
                 </div>
 
                 <div className="flex items-center gap-2">
                   <Button type="button" variant="outline" onClick={() => setIsEditModalOpen(false)} className="cursor-pointer">
-                    Batal
+                    {t('common.cancel')}
                   </Button>
                   <Button onClick={handleSavePermissions} disabled={actionLoading} className="gap-2 cursor-pointer">
                     {actionLoading ? (
                       <>
                         <RefreshCw className="size-4 animate-spin" />
-                        Menyimpan...
+                        {t('common.saving')}
                       </>
                     ) : (
                       <>
                         <CheckCircle2 className="size-4" />
-                        Simpan Matriks Izin
+                        {t('workspace.savePermissionMatrix')}
                       </>
                     )}
                   </Button>

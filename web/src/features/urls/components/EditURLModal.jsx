@@ -2,8 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { X, Edit3, Link2, Calendar, CheckSquare, Square } from 'lucide-react';
 import client from '../lib/client';
 import { toast } from 'sonner';
+import { useI18n } from '@/context/I18nContext';
 
 export default function EditURLModal({ isOpen, onClose, item, onSuccess }) {
+  const { t } = useI18n();
   const [title, setTitle] = useState('');
   const [originalUrl, setOriginalUrl] = useState('');
   const [isActive, setIsActive] = useState(true);
@@ -42,11 +44,11 @@ export default function EditURLModal({ isOpen, onClose, item, onSuccess }) {
       };
 
       await client.put(`/urls/${item.id}`, payload);
-      toast.success('Short URL updated successfully!');
+      toast.success(t('common.success'));
       if (onSuccess) onSuccess();
       onClose();
     } catch (err) {
-      const msg = err.response?.data?.message || 'Failed to update short URL';
+      const msg = err.response?.data?.message || t('common.error');
       toast.error(msg);
     } finally {
       setLoading(false);
@@ -69,7 +71,7 @@ export default function EditURLModal({ isOpen, onClose, item, onSuccess }) {
             <Edit3 className="w-5 h-5" />
           </div>
           <div>
-            <h3 className="text-lg font-bold text-white">Edit Short URL</h3>
+            <h3 className="text-lg font-bold text-white">{t('modals.editTitle')}</h3>
             <p className="text-xs text-indigo-300 font-mono">/{item.short_code}</p>
           </div>
         </div>
@@ -77,7 +79,7 @@ export default function EditURLModal({ isOpen, onClose, item, onSuccess }) {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label htmlFor="edit-title" className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5 cursor-pointer">
-              Title / Label
+              {t('modals.titleLabel')}
             </label>
             <input
               id="edit-title"
@@ -91,7 +93,7 @@ export default function EditURLModal({ isOpen, onClose, item, onSuccess }) {
           <div>
             <label htmlFor="edit-original-url" className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5 flex items-center gap-1.5 cursor-pointer">
               <Link2 className="w-3.5 h-3.5 text-indigo-400" />
-              Original Destination URL
+              {t('modals.originalUrlLabel')}
             </label>
             <input
               id="edit-original-url"
@@ -106,7 +108,7 @@ export default function EditURLModal({ isOpen, onClose, item, onSuccess }) {
           <div>
             <label htmlFor="edit-expires-at" className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5 flex items-center gap-1.5 cursor-pointer">
               <Calendar className="w-3.5 h-3.5 text-amber-400" />
-              Expiration Date
+              {t('modals.expirationDateLabel')}
             </label>
             <input
               id="edit-expires-at"
@@ -128,7 +130,7 @@ export default function EditURLModal({ isOpen, onClose, item, onSuccess }) {
               ) : (
                 <Square className="w-5 h-5 text-slate-500" />
               )}
-              Active Link Status (Enables redirection)
+              {t('modals.activeStatusLabel')}
             </button>
           </div>
 
@@ -136,16 +138,16 @@ export default function EditURLModal({ isOpen, onClose, item, onSuccess }) {
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2.5 text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl transition"
+              className="px-4 py-2.5 text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl transition cursor-pointer"
             >
-              Cancel
+              {t('common.cancel')}
             </button>
             <button
               type="submit"
               disabled={loading}
-              className="px-5 py-2.5 text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl shadow-lg shadow-indigo-600/30 transition disabled:opacity-50"
+              className="px-5 py-2.5 text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl shadow-lg shadow-indigo-600/30 transition disabled:opacity-50 cursor-pointer"
             >
-              {loading ? 'Saving…' : 'Save Changes'}
+              {loading ? t('common.saving') : t('common.save')}
             </button>
           </div>
         </form>

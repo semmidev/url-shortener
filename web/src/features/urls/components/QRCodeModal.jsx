@@ -3,8 +3,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Button } from '@/components/ui/button';
 import { DownloadIcon, CopyIcon } from 'lucide-react';
 import { toast } from 'sonner';
+import { useI18n } from '@/context/I18nContext';
 
 export default function QRCodeModal({ isOpen, onClose, shortURL, shortCode }) {
+  const { t } = useI18n();
   const qrApiUrl = `/${shortCode}/qr`;
 
   const handleDownload = () => {
@@ -14,20 +16,20 @@ export default function QRCodeModal({ isOpen, onClose, shortURL, shortCode }) {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    toast.success('QR Code downloaded!');
+    toast.success(t('common.success'));
   };
 
   const handleCopyLink = () => {
     navigator.clipboard.writeText(shortURL);
-    toast.success('Short URL copied!');
+    toast.success(t('common.copied'));
   };
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-md text-center">
         <DialogHeader>
-          <DialogTitle className="text-center">QR Code for /{shortCode}</DialogTitle>
-          <DialogDescription className="text-center">Scan with smartphone to open target destination</DialogDescription>
+          <DialogTitle className="text-center">{t('modals.qrTitle', { shortCode })}</DialogTitle>
+          <DialogDescription className="text-center">{t('modals.qrDesc')}</DialogDescription>
         </DialogHeader>
 
         <div className="flex flex-col items-center justify-center p-4 bg-muted/40 rounded-xl my-2 border border-border/60">
@@ -44,11 +46,11 @@ export default function QRCodeModal({ isOpen, onClose, shortURL, shortCode }) {
         <div className="flex gap-2 justify-center">
           <Button variant="outline" size="sm" onClick={handleCopyLink}>
             <CopyIcon className="size-4 shrink-0" />
-            <span>Copy Link</span>
+            <span>{t('modals.copyLink')}</span>
           </Button>
           <Button size="sm" onClick={handleDownload}>
             <DownloadIcon className="size-4 shrink-0" />
-            <span>Download PNG</span>
+            <span>{t('modals.downloadPng')}</span>
           </Button>
         </div>
       </DialogContent>

@@ -82,7 +82,7 @@ export function NotificationDropdown({ className = '' }) {
         id="notification-bell-btn"
         variant="ghost"
         size="icon"
-        aria-label="Notifikasi"
+        aria-label={t("notifications.title")}
         aria-expanded={isOpen}
         onClick={() => setIsOpen((prev) => !prev)}
         className="relative cursor-pointer h-8 w-8 text-muted-foreground hover:text-foreground"
@@ -98,16 +98,16 @@ export function NotificationDropdown({ className = '' }) {
       {isOpen && (
         <div
           role="dialog"
-          aria-label="Daftar Notifikasi"
+          aria-label={t("notifications.title")}
           className="absolute right-0 top-full mt-2 z-50 w-80 sm:w-96 bg-card border border-border/80 rounded-2xl shadow-xl overflow-hidden animate-in fade-in-20 slide-in-from-top-2"
         >
           {/* Header */}
           <div className="flex items-center justify-between px-4 py-3 border-b border-border/60 bg-muted/30">
             <div className="flex items-center gap-2">
-              <span className="text-sm font-bold text-foreground">Notifikasi</span>
+              <span className="text-sm font-bold text-foreground">{t("notifications.title")}</span>
               {unreadCount > 0 && (
                 <Badge variant="secondary" className="text-[10px] px-1.5 py-0.5 font-semibold">
-                  {unreadCount} baru
+                  {unreadCount} {t("notifications.new")}
                 </Badge>
               )}
             </div>
@@ -118,7 +118,7 @@ export function NotificationDropdown({ className = '' }) {
                 className="text-xs text-primary hover:underline font-medium flex items-center gap-1 cursor-pointer"
               >
                 <CheckCheck className="size-3.5" />
-                Tandai dibaca
+                {t("notifications.markAllRead")}
               </button>
             )}
           </div>
@@ -127,7 +127,7 @@ export function NotificationDropdown({ className = '' }) {
           <div className="max-h-80 overflow-y-auto divide-y divide-border/40">
             {notifications.length === 0 ? (
               <div className="p-8 text-center text-xs text-muted-foreground">
-                Tidak ada notifikasi
+                {t("notifications.empty")}
               </div>
             ) : (
               notifications.map((item) => {
@@ -178,7 +178,7 @@ export function NotificationDropdown({ className = '' }) {
               onClick={() => setIsOpen(false)}
               className="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline py-1 px-3 rounded-lg hover:bg-primary/5 transition-colors cursor-pointer"
             >
-              Lihat semua
+              {t("notifications.viewAll")}
               <ChevronRight className="size-3.5" />
             </Link>
           </div>

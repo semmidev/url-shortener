@@ -38,6 +38,7 @@ import { getShortUrls, updateShortUrl, deleteShortUrl } from '@/features/urls/ap
 import { useDebounce } from '@/hooks/use-debounce';
 import { useTenant } from '@/context/TenantContext';
 import { usePermission } from '@/hooks/usePermission';
+import { useI18n } from '@/context/I18nContext';
 
 function formatDate(dateStr) {
   if (!dateStr) return '-';
@@ -55,6 +56,7 @@ function formatDate(dateStr) {
 export default function WorkspaceLinksPage() {
   const { activeTenant } = useTenant();
   const { hasPermission } = usePermission();
+  const { t } = useI18n();
   const navigate = useNavigate();
 
   const [urls, setUrls] = useState([]);
@@ -95,11 +97,11 @@ export default function WorkspaceLinksPage() {
       setUrls(items);
       setTotal(data?.meta?.total || items.length);
     } catch (err) {
-      toast.error(err.message || 'Gagal memuat tautan workspace');
+      toast.error(err.message || t('common.error'));
     } finally {
       setLoading(false);
     }
-  }, [page, limit, debouncedSearch, activeFilter, sortBy, sortDirection, activeTenant?.id]);
+  }, [page, limit, debouncedSearch, activeFilter, sortBy, sortDirection, activeTenant?.id, t]);
 
   useEffect(() => {
     fetchUrls();
@@ -108,7 +110,7 @@ export default function WorkspaceLinksPage() {
   const handleCopy = (shortUrl, id) => {
     navigator.clipboard.writeText(shortUrl);
     setCopiedId(id);
-    toast.success('Tautan berhasil disalin!');
+    toast.success(t('workspace.linkCopied'));
     setTimeout(() => setCopiedId(null), 2000);
   };
 
@@ -126,10 +128,10 @@ export default function WorkspaceLinksPage() {
     setTogglingId(urlItem.id);
     try {
       await updateShortUrl(urlItem.id, { is_active: !urlItem.is_active });
-      toast.success(urlItem.is_active ? 'Tautan dinonaktifkan' : 'Tautan diaktifkan');
+      toast.success(urlItem.is_active ? t('workspace.linkDeactivated') : t('workspace.linkActivated'));
       fetchUrls();
     } catch (err) {
-      toast.error(err.message || 'Gagal mengubah status tautan');
+      toast.error(err.message || t('common.error'));
     } finally {
       setTogglingId(null);
     }
@@ -140,11 +142,11 @@ export default function WorkspaceLinksPage() {
     setDeleteModal((prev) => ({ ...prev, loading: true }));
     try {
       await deleteShortUrl(deleteModal.id);
-      toast.success('Tautan berhasil dihapus');
+      toast.success(t('common.success'));
       setDeleteModal({ isOpen: false, id: null, loading: false });
       fetchUrls();
     } catch (err) {
-      toast.error(err.message || 'Gagal menghapus tautan');
+      toast.error(err.message || t('common.error'));
       setDeleteModal((prev) => ({ ...prev, loading: false }));
     }
   };
@@ -153,10 +155,10 @@ export default function WorkspaceLinksPage() {
     if (!selectedRows?.length) return;
     try {
       await Promise.all(selectedRows.map((r) => updateShortUrl(r.id, { is_active: false })));
-      toast.success(`${selectedRows.length} tautan dinonaktifkan`);
+      toast.success(t('workspace.deactivateSelected'));
       fetchUrls();
     } catch {
-      toast.error('Gagal menonaktifkan tautan terpilih');
+      toast.error(t('common.error'));
     }
   };
 
@@ -164,22 +166,22 @@ export default function WorkspaceLinksPage() {
     if (!selectedRows?.length) return;
     try {
       await Promise.all(selectedRows.map((r) => updateShortUrl(r.id, { is_active: true })));
-      toast.success(`${selectedRows.length} tautan diaktifkan`);
+      toast.success(t('workspace.activateSelected'));
       fetchUrls();
     } catch {
-      toast.error('Gagal mengaktifkan tautan terpilih');
+      toast.error(t('common.error'));
     }
   };
 
   const handleBulkDelete = async (selectedRows) => {
     if (!selectedRows?.length) return;
-    if (!window.confirm(`Hapus ${selectedRows.length} tautan terpilih?`)) return;
+    if (!window.confirm(t('workspace.deleteSelected'))) return;
     try {
       await Promise.all(selectedRows.map((r) => deleteShortUrl(r.id)));
-      toast.success(`${selectedRows.length} tautan berhasil dihapus`);
+      toast.success(t('common.success'));
       fetchUrls();
     } catch {
-      toast.error('Gagal menghapus tautan terpilih');
+      toast.error(t('common.error'));
     }
   };
 
@@ -193,7 +195,7 @@ export default function WorkspaceLinksPage() {
       header: ({ column }) => (
         <DataTableColumnHeader
           column={column}
-          title="Tautan Singkat"
+          title={t('workspace.shortLinkCol')}
           sortBy={sortBy}
           sortDirection={sortDirection}
           onSortChange={handleSort}
@@ -214,7 +216,7 @@ export default function WorkspaceLinksPage() {
               size="icon"
               className="size-7 shrink-0 text-muted-foreground hover:text-foreground cursor-pointer"
               onClick={() => handleCopy(fullShortUrl, item.id)}
-              title="Salin Tautan"
+              title={t('workspace.copyLink')}
             >
               {isCopied ? <CheckIcon className="size-3.5 text-emerald-500" /> : <CopyIcon className="size-3.5" />}
             </Button>
@@ -228,7 +230,7 @@ export default function WorkspaceLinksPage() {
       header: ({ column }) => (
         <DataTableColumnHeader
           column={column}
-          title="Judul & URL Asli"
+          title={t('workspace.titleOriginalUrlCol')}
           sortBy={sortBy}
           sortDirection={sortDirection}
           onSortChange={handleSort}
@@ -239,7 +241,7 @@ export default function WorkspaceLinksPage() {
         return (
           <div className="flex flex-col max-w-[320px]">
             <span className="font-semibold text-foreground text-sm truncate" title={item.title}>
-              {item.title || 'Tanpa Judul'}
+              {item.title || '-'}
             </span>
             <a
               href={item.original_url}
@@ -258,7 +260,7 @@ export default function WorkspaceLinksPage() {
     {
       id: 'is_active',
       accessorKey: 'is_active',
-      header: 'Status',
+      header: t('admin.statusHeader'),
       cell: ({ row }) => {
         const item = row.original;
         return (
@@ -269,7 +271,7 @@ export default function WorkspaceLinksPage() {
                 : 'bg-rose-500/10 text-rose-600 border-rose-500/20 dark:bg-rose-500/20 dark:text-rose-400 dark:border-rose-500/30'
             }`}
           >
-            {item.is_active ? 'Aktif' : 'Non-Aktif'}
+            {item.is_active ? t('common.active') : t('common.inactive')}
           </Badge>
         );
       },
@@ -280,7 +282,7 @@ export default function WorkspaceLinksPage() {
       header: ({ column }) => (
         <DataTableColumnHeader
           column={column}
-          title="Total Klik"
+          title={t('workspace.clicksCol')}
           sortBy={sortBy}
           sortDirection={sortDirection}
           onSortChange={handleSort}
@@ -301,7 +303,7 @@ export default function WorkspaceLinksPage() {
       header: ({ column }) => (
         <DataTableColumnHeader
           column={column}
-          title="Tanggal Dibuat"
+          title={t('workspace.createdCol')}
           sortBy={sortBy}
           sortDirection={sortDirection}
           onSortChange={handleSort}
@@ -315,7 +317,7 @@ export default function WorkspaceLinksPage() {
     },
     {
       id: 'actions',
-      header: () => <div className="text-right">Aksi</div>,
+      header: () => <div className="text-right">{t('common.actions')}</div>,
       cell: ({ row }) => {
         const item = row.original;
         const fullShortUrl = `${window.location.origin}/${item.short_code}`;
@@ -330,23 +332,23 @@ export default function WorkspaceLinksPage() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-48">
-                <DropdownMenuLabel className="text-xs">Aksi Link</DropdownMenuLabel>
+                <DropdownMenuLabel className="text-xs">{t('common.actions')}</DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={() => handleCopy(fullShortUrl, item.id)} className="cursor-pointer text-xs">
                   <CopyIcon className="size-4 mr-2 text-muted-foreground" />
-                  Salin Tautan
+                  {t('workspace.copyLink')}
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={() => setQrModal({ isOpen: true, url: fullShortUrl, code: item.short_code })}
                   className="cursor-pointer text-xs"
                 >
                   <QrCodeIcon className="size-4 mr-2 text-muted-foreground" />
-                  Lihat QR Code
+                  {t('workspace.viewQr')}
                 </DropdownMenuItem>
                 <PermissionGuard permission="analytics.read">
                   <DropdownMenuItem onClick={() => navigate(`/dashboard/urls/${item.id}`)} className="cursor-pointer text-xs">
                     <BarChart2Icon className="size-4 mr-2 text-muted-foreground" />
-                    Analitik Detail
+                    {t('workspace.detailedAnalytics')}
                   </DropdownMenuItem>
                 </PermissionGuard>
                 <PermissionGuard permission="urls.update">
@@ -357,7 +359,7 @@ export default function WorkspaceLinksPage() {
                     className="cursor-pointer text-xs"
                   >
                     <PowerIcon className="size-4 mr-2 text-muted-foreground" />
-                    {item.is_active ? 'Nonaktifkan Tautan' : 'Aktifkan Tautan'}
+                    {item.is_active ? t('workspace.deactivateLink') : t('workspace.activateLink')}
                   </DropdownMenuItem>
                 </PermissionGuard>
                 <PermissionGuard permission="urls.delete">
@@ -367,7 +369,7 @@ export default function WorkspaceLinksPage() {
                     onClick={() => setDeleteModal({ isOpen: true, id: item.id, loading: false })}
                   >
                     <Trash2Icon className="size-4 mr-2" />
-                    Hapus Tautan
+                    {t('workspace.deleteLink')}
                   </DropdownMenuItem>
                 </PermissionGuard>
               </DropdownMenuContent>
@@ -382,13 +384,13 @@ export default function WorkspaceLinksPage() {
     ...(hasPermission('urls.update')
       ? [
           {
-            label: 'Nonaktifkan Terpilih',
+            label: t('workspace.deactivateSelected'),
             icon: PowerIcon,
             variant: 'outline',
             onClick: handleBulkDeactivate,
           },
           {
-            label: 'Aktifkan Terpilih',
+            label: t('workspace.activateSelected'),
             icon: PowerIcon,
             variant: 'outline',
             onClick: handleBulkActivate,
@@ -398,7 +400,7 @@ export default function WorkspaceLinksPage() {
     ...(hasPermission('urls.delete')
       ? [
           {
-            label: 'Hapus Terpilih',
+            label: t('workspace.deleteSelected'),
             icon: Trash2Icon,
             variant: 'destructive',
             onClick: handleBulkDelete,
@@ -410,14 +412,14 @@ export default function WorkspaceLinksPage() {
   return (
     <div className="space-y-6 pb-12">
       <DynamicPageHeader
-        title={`Kontrol Link ${activeTenant?.name || 'Workspace'}`}
-        subtitle="Kelola dan pantau seluruh tautan pendek yang dibuat oleh semua anggota di workspace ini"
+        title={t('workspace.linksTitle')}
+        subtitle={t('workspace.linksSubtitle', { name: activeTenant?.name || 'Workspace' })}
         fallbackIcon={GlobeIcon}
       >
         <PermissionGuard permission="urls.create">
           <Button onClick={() => setIsCreateOpen(true)} className="cursor-pointer">
             <PlusIcon className="size-4 shrink-0 mr-1.5" />
-            <span>Buat Link Workspace</span>
+            <span>{t('workspace.createWorkspaceLink')}</span>
           </Button>
         </PermissionGuard>
       </DynamicPageHeader>
@@ -427,7 +429,7 @@ export default function WorkspaceLinksPage() {
         <Card className="border-border/60 shadow-xs">
           <CardContent className="p-4 flex items-center justify-between">
             <div>
-              <p className="text-xs font-medium text-muted-foreground">Total Link Workspace</p>
+              <p className="text-xs font-medium text-muted-foreground">{t('workspace.totalWorkspaceLinks')}</p>
               <h3 className="text-2xl font-bold text-foreground mt-1">{total}</h3>
             </div>
             <div className="size-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
@@ -439,7 +441,7 @@ export default function WorkspaceLinksPage() {
         <Card className="border-border/60 shadow-xs">
           <CardContent className="p-4 flex items-center justify-between">
             <div>
-              <p className="text-xs font-medium text-muted-foreground">Link Aktif</p>
+              <p className="text-xs font-medium text-muted-foreground">{t('workspace.activeLinks')}</p>
               <h3 className="text-2xl font-bold text-emerald-600 dark:text-emerald-400 mt-1">{activeCount}</h3>
             </div>
             <div className="size-10 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-500">
@@ -451,7 +453,7 @@ export default function WorkspaceLinksPage() {
         <Card className="border-border/60 shadow-xs">
           <CardContent className="p-4 flex items-center justify-between">
             <div>
-              <p className="text-xs font-medium text-muted-foreground">Total Performa Klik</p>
+              <p className="text-xs font-medium text-muted-foreground">{t('workspace.totalClickPerformance')}</p>
               <h3 className="text-2xl font-bold text-foreground mt-1">{totalClicks.toLocaleString()}</h3>
             </div>
             <div className="size-10 rounded-xl bg-blue-500/10 flex items-center justify-center text-blue-500">
@@ -480,20 +482,20 @@ export default function WorkspaceLinksPage() {
           setSearch(val);
           setPage(1);
         }}
-        searchPlaceholder="Cari tautan, kode, URL..."
+        searchPlaceholder={t('workspace.searchLinksPlaceholder')}
         filters={[
           {
             id: 'status',
-            label: 'Status',
+            label: t('admin.statusHeader'),
             value: activeFilter,
             onChange: (val) => {
               setActiveFilter(val);
               setPage(1);
             },
             options: [
-              { label: 'Semua Status', value: 'all' },
-              { label: 'Aktif', value: 'active' },
-              { label: 'Non-Aktif', value: 'inactive' },
+              { label: t('urls.allStatuses'), value: 'all' },
+              { label: t('common.active'), value: 'active' },
+              { label: t('common.inactive'), value: 'inactive' },
             ],
           },
         ]}

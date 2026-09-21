@@ -8,15 +8,21 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { AlertTriangleIcon, Trash2Icon, Loader2Icon } from 'lucide-react';
+import { useI18n } from '@/context/I18nContext';
 
 export default function DeleteConfirmModal({
   isOpen,
   onClose,
   onConfirm,
   loading = false,
-  title = 'Delete Short Link',
-  description = 'Are you sure you want to delete this short URL? This action cannot be undone and any existing redirects will stop working immediately.',
+  title,
+  description,
 }) {
+  const { t } = useI18n();
+
+  const modalTitle = title || t('modals.deleteTitle');
+  const modalDesc = description || t('modals.deleteDesc');
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-md">
@@ -24,15 +30,15 @@ export default function DeleteConfirmModal({
           <div className="flex h-10 w-10 items-center justify-center rounded-full bg-destructive/10 text-destructive shrink-0">
             <AlertTriangleIcon className="size-5" aria-hidden="true" />
           </div>
-          <DialogTitle className="text-lg font-semibold">{title}</DialogTitle>
+          <DialogTitle className="text-lg font-semibold">{modalTitle}</DialogTitle>
           <DialogDescription className="text-sm text-muted-foreground leading-normal">
-            {description}
+            {modalDesc}
           </DialogDescription>
         </DialogHeader>
 
         <div className="flex justify-end gap-2 pt-4 border-t border-border/60 mt-2">
           <Button variant="outline" onClick={onClose} disabled={loading} className="cursor-pointer">
-            Cancel
+            {t('common.cancel')}
           </Button>
           <Button
             variant="destructive"
@@ -45,7 +51,7 @@ export default function DeleteConfirmModal({
             ) : (
               <Trash2Icon className="size-4 shrink-0" aria-hidden="true" />
             )}
-            <span>{loading ? 'Deleting…' : 'Delete Permanently'}</span>
+            <span>{loading ? t('common.saving') : t('modals.deletePermanently')}</span>
           </Button>
         </div>
       </DialogContent>

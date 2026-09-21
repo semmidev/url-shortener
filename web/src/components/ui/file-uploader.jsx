@@ -2,6 +2,7 @@ import React, { useState, useRef } from 'react';
 import axios from 'axios';
 import { toast } from 'sonner';
 import { requestPresignedURL } from '@/features/account/api';
+import { useI18n } from '@/context/I18nContext';
 import {
   UploadCloudIcon,
   CameraIcon,
@@ -25,26 +26,29 @@ export function FileUploader({
   variant = 'dropzone', // 'avatar' | 'dropzone' | 'button'
   className = '',
   disabled = false,
-  label = 'Unggah Berkas',
+  label,
   description,
   fallbackInitials = 'U',
 }) {
+  const { t } = useI18n();
   const [isDragging, setIsDragging] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const fileInputRef = useRef(null);
+
+  const displayLabel = label || t('uploader.selectFile');
 
   // Helper to validate a file before presigning
   const validateFile = (file) => {
     if (!file) return false;
     const maxSizeBytes = maxSizeMB * 1024 * 1024;
     if (file.size > maxSizeBytes) {
-      toast.error(`Ukuran file "${file.name}" melebihi batas maksimal ${maxSizeMB}MB`);
+      toast.error(t('uploader.maxSizeNotice', { maxSize: maxSizeMB }));
       return false;
     }
 
     if (accept && accept !== '*/*') {
-      const allowedTypes = accept.split(',').map((t) => t.trim().toLowerCase());
+      const allowedTypes = accept.split(',').map((tItem) => tItem.trim().toLowerCase());
       const fileType = file.type.toLowerCase();
       const isTypeAllowed = allowedTypes.some((allowed) => {
         if (allowed.endsWith('/*')) {
@@ -55,7 +59,7 @@ export function FileUploader({
       });
 
       if (!isTypeAllowed) {
-        toast.error(`Format file "${file.name}" tidak diizinkan. Diterima: ${accept}`);
+        toast.error(t('uploader.uploadError'));
         return false;
       }
     }
@@ -75,7 +79,7 @@ export function FileUploader({
       });
 
       if (!presignedData?.upload_url || !presignedData?.public_url) {
-        throw new Error('Gagal mendapatkan presigned URL dari server');
+        throw new Error(t('uploader.uploadError'));
       }
 
       setUploadProgress(30);
@@ -94,10 +98,10 @@ export function FileUploader({
       });
 
       setUploadProgress(100);
-      toast.success('Berkas berhasil diunggah ke S3!');
+      toast.success(t('uploader.uploadSuccess'));
       return presignedData.public_url;
     } catch (err) {
-      const msg = err.response?.data?.message || err.message || 'Gagal mengunggah berkas ke S3';
+      const msg = err.response?.data?.message || err.message || t('uploader.uploadError');
       toast.error(msg);
       throw err;
     }
@@ -207,10 +211,10 @@ export function FileUploader({
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
                 className="absolute inset-0 bg-black/40 backdrop-blur-xs opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex flex-col items-center justify-center text-white cursor-pointer z-10"
-                title="Ubah Foto Profil"
+                title={t('uploader.changePhoto')}
               >
                 <CameraIcon className="size-6 mb-0.5" />
-                <span className="text-[10px] font-medium">Ubah</span>
+                <span className="text-[10px] font-medium">{t('uploader.changePhoto')}</span>
               </button>
             )}
           </div>
@@ -221,7 +225,7 @@ export function FileUploader({
               type="button"
               onClick={() => fileInputRef.current?.click()}
               className="absolute bottom-0 right-0 size-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-md border-2 border-background hover:bg-primary/90 transition-transform hover:scale-110 cursor-pointer z-20"
-              title="Unggah Foto Baru"
+              title={t('uploader.selectPhoto')}
             >
               <CameraIcon className="size-4" />
             </button>
@@ -242,12 +246,12 @@ export function FileUploader({
               {isUploading ? (
                 <>
                   <Loader2Icon className="size-3.5 animate-spin" />
-                  Mengunggah ({uploadProgress}%)
+                  {t('uploader.uploading')} ({uploadProgress}%)
                 </>
               ) : (
                 <>
                   <UploadCloudIcon className="size-3.5" />
-                  Pilih Foto
+                  {t('uploader.selectPhoto')}
                 </>
               )}
             </Button>
@@ -259,16 +263,16 @@ export function FileUploader({
                 size="sm"
                 onClick={() => handleRemove(avatarUrl)}
                 className="text-xs h-8 text-destructive hover:text-destructive hover:bg-destructive/10 cursor-pointer"
-                title="Hapus Foto Profil"
+                title={t('uploader.remove')}
               >
                 <Trash2Icon className="size-3.5 mr-1" />
-                Hapus
+                {t('uploader.remove')}
               </Button>
             )}
           </div>
 
           <p className="text-[11px] text-muted-foreground mt-0.5">
-            Format: JPG, PNG, WEBP, GIF (Maks. {maxSizeMB}MB).
+            {t('uploader.maxSizeNotice', { maxSize: maxSizeMB })}
           </p>
         </div>
       </div>
@@ -300,12 +304,12 @@ export function FileUploader({
           {isUploading ? (
             <>
               <Loader2Icon className="size-4 animate-spin" />
-              Mengunggah ({uploadProgress}%)
+              {t('uploader.uploading')} ({uploadProgress}%)
             </>
           ) : (
             <>
               <UploadCloudIcon className="size-4" />
-              {label}
+              {displayLabel}
             </>
           )}
         </Button>
@@ -345,14 +349,14 @@ export function FileUploader({
           <div className="space-y-3 py-2 w-full max-w-xs mx-auto">
             <Loader2Icon className="size-8 text-primary animate-spin mx-auto" />
             <div>
-              <p className="text-xs font-semibold text-foreground">Mengunggah ke S3 Storage...</p>
+              <p className="text-xs font-semibold text-foreground">{t('uploader.uploadingToS3')}</p>
               <div className="w-full bg-muted rounded-full h-2 mt-2 overflow-hidden border border-border/40">
                 <div
                   className="bg-primary h-full transition-all duration-300 rounded-full"
                   style={{ width: `${uploadProgress}%` }}
                 />
               </div>
-              <span className="text-[10px] font-mono text-muted-foreground mt-1 block">{uploadProgress}% selesai</span>
+              <span className="text-[10px] font-mono text-muted-foreground mt-1 block">{uploadProgress}% {t('uploader.completed')}</span>
             </div>
           </div>
         ) : (
@@ -362,10 +366,10 @@ export function FileUploader({
             </div>
             <div>
               <p className="text-sm font-semibold text-foreground">
-                <span className="text-primary hover:underline">Klik untuk memilih</span> atau seret berkas ke sini
+                <span className="text-primary hover:underline">{t('uploader.clickToSelect')}</span> {t('uploader.orDragHere')}
               </p>
               <p className="text-xs text-muted-foreground mt-1">
-                {description || `Mendukung ${accept} hingga ${maxSizeMB}MB`}
+                {description || t('uploader.supportsNotice', { accept, maxSize: maxSizeMB })}
               </p>
             </div>
           </div>
@@ -387,14 +391,14 @@ export function FileUploader({
                     type="button"
                     onClick={() => handleRemove(url)}
                     className="absolute top-1 right-1 p-1 rounded-md bg-black/60 text-white hover:bg-destructive transition-colors cursor-pointer"
-                    title="Hapus berkas"
+                    title={t('uploader.remove')}
                   >
                     <XIcon className="size-3.5" />
                   </button>
                 )}
               </div>
               <span className="text-[10px] font-mono text-muted-foreground mt-1 truncate w-full text-center">
-                Berkas #{idx + 1}
+                {t('uploader.fileNum', { num: idx + 1 })}
               </span>
             </div>
           ))}

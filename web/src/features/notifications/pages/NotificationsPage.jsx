@@ -24,6 +24,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { toast } from 'sonner';
+import { useI18n } from '@/context/I18nContext';
 
 const INITIAL_NOTIFICATIONS = [
   {
@@ -140,6 +141,7 @@ const MORE_NOTIFICATIONS_BATCH_1 = [
 ];
 
 export default function NotificationsPage() {
+  const { t } = useI18n();
   const [items, setItems] = useState(INITIAL_NOTIFICATIONS);
   const [filterTab, setFilterTab] = useState('all'); // all, unread, system, security, analytics
   const [searchQuery, setSearchQuery] = useState('');
@@ -187,12 +189,12 @@ export default function NotificationsPage() {
 
   const handleMarkAllAsRead = () => {
     setItems((prev) => prev.map((item) => ({ ...item, unread: false })));
-    toast.success('Semua notifikasi ditandai sebagai dibaca');
+    toast.success(t('notifications.markAllRead'));
   };
 
   const handleClearRead = () => {
     setItems((prev) => prev.filter((item) => item.unread));
-    toast.info('Notifikasi yang sudah dibaca telah dibersihkan');
+    toast.info(t('notifications.clearRead'));
   };
 
   const handleToggleSingleRead = (id) => {
@@ -203,7 +205,7 @@ export default function NotificationsPage() {
 
   const handleDeleteSingle = (id) => {
     setItems((prev) => prev.filter((item) => item.id !== id));
-    toast.success('Notifikasi dihapus');
+    toast.success(t('notifications.deleteNotification'));
   };
 
   const filteredItems = items.filter((item) => {
@@ -225,8 +227,8 @@ export default function NotificationsPage() {
   return (
     <div className="space-y-6 animate-in fade-in duration-200 pb-16">
       <DynamicPageHeader
-        title="Pusat Notifikasi"
-        subtitle="Kelola seluruh pemberitahuan sistem, aktivitas keamanan, dan analitik platform"
+        title={t('notifications.pageTitle')}
+        subtitle={t('notifications.pageSubtitle')}
         fallbackIcon={BellIcon}
       />
 
@@ -235,11 +237,11 @@ export default function NotificationsPage() {
         {/* Category Tabs */}
         <div className="flex items-center gap-1 p-1 rounded-xl bg-muted/50 border border-border/60 overflow-x-auto">
           {[
-            { id: 'all', label: 'Semua', count: items.length },
-            { id: 'unread', label: 'Belum Dibaca', count: unreadCount },
-            { id: 'system', label: 'Sistem' },
-            { id: 'security', label: 'Keamanan' },
-            { id: 'analytics', label: 'Analytics' },
+            { id: 'all', label: t('notifications.all'), count: items.length },
+            { id: 'unread', label: t('notifications.unread'), count: unreadCount },
+            { id: 'system', label: t('notifications.system') },
+            { id: 'security', label: t('notifications.security') },
+            { id: 'analytics', label: t('notifications.analytics') },
           ].map((tab) => (
             <button
               key={tab.id}
@@ -270,7 +272,7 @@ export default function NotificationsPage() {
             <Input
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Cari notifikasi..."
+              placeholder={t('notifications.searchPlaceholder')}
               className="pl-8 h-8 text-xs bg-background/80"
             />
           </div>
@@ -281,10 +283,10 @@ export default function NotificationsPage() {
               size="sm"
               onClick={handleMarkAllAsRead}
               className="h-8 text-xs gap-1.5 cursor-pointer shrink-0"
-              title="Tandai Semua Dibaca"
+              title={t('notifications.markAllRead')}
             >
               <CheckCheckIcon className="size-3.5 text-emerald-500" />
-              <span className="hidden sm:inline">Tandai Dibaca</span>
+              <span className="hidden sm:inline">{t('notifications.markAllRead')}</span>
             </Button>
           )}
 
@@ -293,7 +295,7 @@ export default function NotificationsPage() {
             size="sm"
             onClick={handleClearRead}
             className="h-8 text-xs text-muted-foreground hover:text-destructive hover:bg-destructive/10 cursor-pointer shrink-0"
-            title="Bersihkan Yang Dibaca"
+            title={t('notifications.clearRead')}
           >
             <Trash2Icon className="size-3.5" />
           </Button>
@@ -308,9 +310,9 @@ export default function NotificationsPage() {
               <div className="size-12 rounded-full bg-muted flex items-center justify-center mx-auto text-muted-foreground">
                 <InboxIcon className="size-6" />
               </div>
-              <p className="text-sm font-semibold text-foreground">Tidak Ada Notifikasi</p>
+              <p className="text-sm font-semibold text-foreground">{t('notifications.empty')}</p>
               <p className="text-xs text-muted-foreground max-w-sm mx-auto">
-                Tidak ada riwayat pemberitahuan yang sesuai dengan filter atau kata kunci pencarian Anda.
+                {t('notifications.emptyDesc')}
               </p>
             </CardContent>
           </Card>
@@ -340,7 +342,7 @@ export default function NotificationsPage() {
                     <div className="flex items-center justify-between gap-2">
                       <div className="flex items-center gap-2 min-w-0">
                         {item.unread && (
-                          <span className="size-2 rounded-full bg-primary shrink-0" title="Belum dibaca" />
+                          <span className="size-2 rounded-full bg-primary shrink-0" title={t('notifications.unread')} />
                         )}
                         <span className={`text-xs font-semibold truncate ${item.unread ? 'text-foreground' : 'text-muted-foreground'}`}>
                           {item.title}
@@ -365,7 +367,7 @@ export default function NotificationsPage() {
                           to={item.link}
                           className="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline"
                         >
-                          Buka Halaman
+                          {t('notifications.openPage')}
                           <ArrowUpRightIcon className="size-3" />
                         </Link>
                       )}
@@ -375,7 +377,7 @@ export default function NotificationsPage() {
                         onClick={() => handleToggleSingleRead(item.id)}
                         className="text-xs text-muted-foreground hover:text-foreground font-medium cursor-pointer"
                       >
-                        {item.unread ? 'Tandai Dibaca' : 'Tandai Belum Dibaca'}
+                        {item.unread ? t('notifications.markAsRead') : t('notifications.markAsUnread')}
                       </button>
                     </div>
                   </div>
@@ -385,7 +387,7 @@ export default function NotificationsPage() {
                     type="button"
                     onClick={() => handleDeleteSingle(item.id)}
                     className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive p-1 rounded-md hover:bg-destructive/10 cursor-pointer"
-                    title="Hapus Notifikasi"
+                    title={t('notifications.deleteNotification')}
                   >
                     <Trash2Icon className="size-3.5" />
                   </button>
@@ -414,7 +416,7 @@ export default function NotificationsPage() {
             ))}
             <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground py-2">
               <Loader2Icon className="size-4 animate-spin text-primary" />
-              <span>Memuat notifikasi lebih lama...</span>
+              <span>{t('common.loading')}</span>
             </div>
           </div>
         ) : hasMore ? (
@@ -425,11 +427,11 @@ export default function NotificationsPage() {
             className="text-xs text-muted-foreground hover:text-foreground gap-1.5 cursor-pointer"
           >
             <RefreshCwIcon className="size-3.5" />
-            Muat Notifikasi Lainnya
+            {t('notifications.loadMore')}
           </Button>
         ) : (
           <p className="text-xs text-muted-foreground py-2">
-            Semua notifikasi telah ditampilkan.
+            {t('notifications.allLoaded')}
           </p>
         )}
       </div>

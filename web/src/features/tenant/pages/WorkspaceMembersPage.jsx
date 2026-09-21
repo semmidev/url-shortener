@@ -19,6 +19,7 @@ import {
 import { toast } from 'sonner';
 import { useTenant } from '@/context/TenantContext';
 import { usePermission } from '@/hooks/usePermission';
+import { useI18n } from '@/context/I18nContext';
 import {
   getTenantMembers,
   addTenantMember,
@@ -31,6 +32,7 @@ import PermissionGuard from '@/components/PermissionGuard';
 export default function WorkspaceMembersPage() {
   const { activeTenant } = useTenant();
   const { hasPermission } = usePermission();
+  const { t } = useI18n();
   const [members, setMembers] = useState([]);
   const [roles, setRoles] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -63,7 +65,7 @@ export default function WorkspaceMembersPage() {
       setMembers(membersData || []);
       setRoles(rolesData || []);
     } catch {
-      toast.error('Gagal memuat daftar anggota workspace');
+      toast.error(t('common.error'));
     } finally {
       setIsLoading(false);
     }
@@ -77,7 +79,7 @@ export default function WorkspaceMembersPage() {
     if (!activeTenant?.join_code) return;
     navigator.clipboard.writeText(activeTenant.join_code);
     setCopiedCode(true);
-    toast.success('Kode gabung berhasil disalin');
+    toast.success(t('common.copied'));
     setTimeout(() => setCopiedCode(false), 2000);
   };
 
@@ -97,12 +99,12 @@ export default function WorkspaceMembersPage() {
     setActionLoading(true);
     try {
       await addTenantMember(activeTenant.id, addForm.email.trim(), addForm.role);
-      toast.success(`Anggota ${addForm.email} berhasil ditambahkan!`);
+      toast.success(t('workspace.memberAddedSuccess', { email: addForm.email }));
       setAddForm({ email: '', role: 'member' });
       setIsAddModalOpen(false);
       fetchMembersAndRoles();
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Gagal menambahkan anggota. Pastikan email terdaftar.');
+      toast.error(err.response?.data?.message || t('common.error'));
     } finally {
       setActionLoading(false);
     }
@@ -113,12 +115,12 @@ export default function WorkspaceMembersPage() {
     setActionLoading(true);
     try {
       await updateTenantMemberRole(activeTenant.id, selectedMember.user_id, newRole);
-      toast.success('Peran anggota berhasil diperbarui');
+      toast.success(t('workspace.roleUpdatedSuccess'));
       setModalType(null);
       setSelectedMember(null);
       fetchMembersAndRoles();
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Gagal memperbarui peran anggota');
+      toast.error(err.response?.data?.message || t('common.error'));
     } finally {
       setActionLoading(false);
     }
@@ -129,12 +131,12 @@ export default function WorkspaceMembersPage() {
     setActionLoading(true);
     try {
       await removeTenantMember(activeTenant.id, selectedMember.user_id);
-      toast.success('Anggota berhasil dikeluarkan dari workspace');
+      toast.success(t('workspace.memberRemovedSuccess'));
       setModalType(null);
       setSelectedMember(null);
       fetchMembersAndRoles();
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Gagal mengeluarkan anggota');
+      toast.error(err.response?.data?.message || t('common.error'));
     } finally {
       setActionLoading(false);
     }
@@ -144,16 +146,16 @@ export default function WorkspaceMembersPage() {
     if (!selectedRows?.length) return;
     const nonOwners = selectedRows.filter((m) => m.role !== 'owner');
     if (!nonOwners.length) {
-      toast.error('Role Owner tidak dapat dikeluarkan');
+      toast.error(t('common.error'));
       return;
     }
-    if (!window.confirm(`Keluarkan ${nonOwners.length} anggota terpilih dari workspace?`)) return;
+    if (!window.confirm(t('workspace.removeConfirmDesc', { name: `${nonOwners.length} ${t('workspace.memberCol')}` }))) return;
     try {
       await Promise.all(nonOwners.map((m) => removeTenantMember(activeTenant.id, m.user_id)));
-      toast.success(`${nonOwners.length} anggota berhasil dikeluarkan`);
+      toast.success(t('workspace.bulkRemoveSuccess', { count: nonOwners.length }));
       fetchMembersAndRoles();
     } catch {
-      toast.error('Gagal mengeluarkan anggota terpilih');
+      toast.error(t('common.error'));
     }
   };
 
@@ -199,7 +201,7 @@ export default function WorkspaceMembersPage() {
       header: ({ column }) => (
         <DataTableColumnHeader
           column={column}
-          title="Anggota"
+          title={t('workspace.memberCol')}
           sortBy={sortBy}
           sortDirection={sortDirection}
           onSortChange={handleSort}
@@ -226,7 +228,7 @@ export default function WorkspaceMembersPage() {
       header: ({ column }) => (
         <DataTableColumnHeader
           column={column}
-          title="Peran Workspace"
+          title={t('workspace.roleCol')}
           sortBy={sortBy}
           sortDirection={sortDirection}
           onSortChange={handleSort}
@@ -255,7 +257,7 @@ export default function WorkspaceMembersPage() {
       header: ({ column }) => (
         <DataTableColumnHeader
           column={column}
-          title="Tanggal Bergabung"
+          title={t('workspace.joinedDateCol')}
           sortBy={sortBy}
           sortDirection={sortDirection}
           onSortChange={handleSort}
@@ -263,7 +265,7 @@ export default function WorkspaceMembersPage() {
       ),
       cell: ({ row }) => (
         <span className="text-xs text-muted-foreground font-mono">
-          {new Date(row.original.created_at).toLocaleDateString('id-ID', {
+          {new Date(row.original.created_at).toLocaleDateString(undefined, {
             day: 'numeric',
             month: 'short',
             year: 'numeric'
@@ -273,7 +275,7 @@ export default function WorkspaceMembersPage() {
     },
     {
       id: 'actions',
-      header: () => <div className="text-right">Aksi</div>,
+      header: () => <div className="text-right">{t('common.actions')}</div>,
       cell: ({ row }) => {
         const u = row.original;
         if (u.role === 'owner') return null;
@@ -288,7 +290,7 @@ export default function WorkspaceMembersPage() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-44">
-                <DropdownMenuLabel className="text-xs">Kelola Anggota</DropdownMenuLabel>
+                <DropdownMenuLabel className="text-xs">{t('workspace.manageMember')}</DropdownMenuLabel>
                 <PermissionGuard permission="tenants.members.manage">
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
@@ -300,7 +302,7 @@ export default function WorkspaceMembersPage() {
                     className="cursor-pointer text-xs"
                   >
                     <ShieldCheck className="size-4 mr-2 text-muted-foreground" />
-                    Ubah Peran
+                    {t('workspace.changeRole')}
                   </DropdownMenuItem>
                   <DropdownMenuItem
                     onClick={() => {
@@ -310,7 +312,7 @@ export default function WorkspaceMembersPage() {
                     className="cursor-pointer text-xs text-destructive focus:text-destructive"
                   >
                     <UserX className="size-4 mr-2" />
-                    Keluarkan
+                    {t('workspace.removeMember')}
                   </DropdownMenuItem>
                 </PermissionGuard>
               </DropdownMenuContent>
@@ -325,7 +327,7 @@ export default function WorkspaceMembersPage() {
     ...(hasPermission('tenants.members.manage')
       ? [
           {
-            label: 'Keluarkan Terpilih',
+            label: t('workspace.removeSelected'),
             icon: UserX,
             variant: 'destructive',
             onClick: handleBulkRemove,
@@ -337,14 +339,14 @@ export default function WorkspaceMembersPage() {
   return (
     <div className="space-y-6 pb-12">
       <DynamicPageHeader
-        title="Anggota Workspace"
-        subtitle={`Kelola anggota dan hak akses pada workspace "${activeTenant?.name || 'Aktif'}"`}
+        title={t('workspace.membersTitle')}
+        subtitle={t('workspace.membersSubtitle', { name: activeTenant?.name || 'Active' })}
         fallbackIcon={Users}
       >
         <PermissionGuard permission="tenants.members.manage">
           <Button onClick={() => setIsAddModalOpen(true)} className="gap-2 cursor-pointer shadow-xs">
             <UserPlus className="size-4" />
-            <span>Tambah Anggota</span>
+            <span>{t('workspace.addMember')}</span>
           </Button>
         </PermissionGuard>
       </DynamicPageHeader>
@@ -357,8 +359,8 @@ export default function WorkspaceMembersPage() {
               <Key className="size-5" />
             </div>
             <div>
-              <h4 className="text-sm font-bold text-foreground">Kode Gabung Workspace</h4>
-              <p className="text-xs text-muted-foreground">Bagikan kode ini ke tim Anda untuk langsung bergabung</p>
+              <h4 className="text-sm font-bold text-foreground">{t('workspace.joinCodeCardTitle')}</h4>
+              <p className="text-xs text-muted-foreground">{t('workspace.joinCodeCardDesc')}</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -367,7 +369,7 @@ export default function WorkspaceMembersPage() {
             </span>
             <Button variant="outline" size="sm" onClick={handleCopyJoinCode} className="gap-1.5 cursor-pointer">
               {copiedCode ? <Check className="size-4 text-emerald-500" /> : <Copy className="size-4" />}
-              {copiedCode ? 'Tersalin' : 'Salin'}
+              {copiedCode ? t('common.copied') : t('common.copy')}
             </Button>
           </div>
         </div>
@@ -392,18 +394,18 @@ export default function WorkspaceMembersPage() {
           setSearch(val);
           setPage(1);
         }}
-        searchPlaceholder="Cari anggota berdasarkan nama, email..."
+        searchPlaceholder={t('workspace.searchMembersPlaceholder')}
         filters={[
           {
             id: 'role',
-            label: 'Peran',
+            label: t('workspace.roleLabel'),
             value: roleFilter,
             onChange: (val) => {
               setRoleFilter(val);
               setPage(1);
             },
             options: [
-              { label: 'Semua Peran', value: 'all' },
+              { label: t('workspace.allRoles'), value: 'all' },
               { label: 'Admin', value: 'admin' },
               { label: 'Member', value: 'member' },
             ],
@@ -431,14 +433,14 @@ export default function WorkspaceMembersPage() {
                   <UserPlus className="size-5" />
                 </div>
                 <div>
-                  <h3 className="text-lg font-bold text-foreground">Tambah Anggota Baru</h3>
-                  <p className="text-xs text-muted-foreground">Masukkan email pengguna yang sudah terdaftar</p>
+                  <h3 className="text-lg font-bold text-foreground">{t('workspace.addMemberModalTitle')}</h3>
+                  <p className="text-xs text-muted-foreground">{t('workspace.addMemberModalDesc')}</p>
                 </div>
               </div>
 
               <form onSubmit={handleAddMember} className="space-y-4 pt-2">
                 <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-foreground">Email Pengguna</label>
+                  <label className="text-xs font-semibold text-foreground">{t('workspace.userEmail')}</label>
                   <input
                     type="email"
                     required
@@ -450,7 +452,7 @@ export default function WorkspaceMembersPage() {
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-foreground">Peran (Role)</label>
+                  <label className="text-xs font-semibold text-foreground">{t('workspace.roleLabel')}</label>
                   <select
                     value={addForm.role}
                     onChange={(e) => setAddForm({ ...addForm, role: e.target.value })}
@@ -466,10 +468,10 @@ export default function WorkspaceMembersPage() {
 
                 <div className="flex justify-end gap-3 pt-2">
                   <Button type="button" variant="outline" onClick={() => setIsAddModalOpen(false)}>
-                    Batal
+                    {t('common.cancel')}
                   </Button>
                   <Button type="submit" disabled={actionLoading}>
-                    {actionLoading ? 'Menambahkan...' : 'Tambah Anggota'}
+                    {actionLoading ? t('workspace.adding') : t('workspace.addMember')}
                   </Button>
                 </div>
               </form>
@@ -488,13 +490,13 @@ export default function WorkspaceMembersPage() {
               exit={{ opacity: 0, scale: 0.95 }}
               className="bg-card border border-border rounded-2xl p-6 max-w-md w-full shadow-xl space-y-4"
             >
-              <h3 className="text-lg font-bold text-foreground">Ubah Peran Anggota</h3>
+              <h3 className="text-lg font-bold text-foreground">{t('workspace.changeRoleTitle')}</h3>
               <p className="text-xs text-muted-foreground">
-                Pilih peran baru untuk <span className="font-semibold text-foreground">{selectedMember.full_name || selectedMember.email}</span>
+                {t('workspace.changeRoleDesc', { name: selectedMember.full_name || selectedMember.email })}
               </p>
 
               <div className="space-y-1.5 pt-2">
-                <label className="text-xs font-semibold text-foreground">Peran Baru</label>
+                <label className="text-xs font-semibold text-foreground">{t('workspace.newRole')}</label>
                 <select
                   value={newRole}
                   onChange={(e) => setNewRole(e.target.value)}
@@ -510,10 +512,10 @@ export default function WorkspaceMembersPage() {
 
               <div className="flex justify-end gap-3 pt-2">
                 <Button type="button" variant="outline" onClick={() => setModalType(null)}>
-                  Batal
+                  {t('common.cancel')}
                 </Button>
                 <Button onClick={handleUpdateRole} disabled={actionLoading}>
-                  {actionLoading ? 'Menyimpan...' : 'Simpan Perubahan'}
+                  {actionLoading ? t('common.saving') : t('common.save')}
                 </Button>
               </div>
             </motion.div>
@@ -533,18 +535,18 @@ export default function WorkspaceMembersPage() {
             >
               <div className="flex items-center gap-3 text-destructive">
                 <UserX className="size-6" />
-                <h3 className="text-lg font-bold text-foreground">Keluarkan Anggota</h3>
+                <h3 className="text-lg font-bold text-foreground">{t('workspace.removeConfirmTitle')}</h3>
               </div>
               <p className="text-sm text-muted-foreground">
-                Apakah Anda yakin ingin mengeluarkan <span className="font-semibold text-foreground">{selectedMember.full_name || selectedMember.email}</span> dari workspace ini?
+                {t('workspace.removeConfirmDesc', { name: selectedMember.full_name || selectedMember.email })}
               </p>
 
               <div className="flex justify-end gap-3 pt-2">
                 <Button type="button" variant="outline" onClick={() => setModalType(null)}>
-                  Batal
+                  {t('common.cancel')}
                 </Button>
                 <Button variant="destructive" onClick={handleRemoveMember} disabled={actionLoading}>
-                  {actionLoading ? 'Mengeluarkan...' : 'Ya, Keluarkan'}
+                  {actionLoading ? t('workspace.removing') : t('workspace.confirmRemove')}
                 </Button>
               </div>
             </motion.div>

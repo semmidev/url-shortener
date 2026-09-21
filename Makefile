@@ -126,7 +126,7 @@ docker-up: network-create
 
 # Start infrastructure dependency containers only (excluding api & worker)
 docker-up-dev: network-create
-	$(DOCKER_CMD) compose -f compose.yml up -d postgres pgbouncer db-backup redis nats
+	$(DOCKER_CMD) compose -f compose.yml up -d postgres pgbouncer db-backup redis nats rustfs
 
 # Stop app containers via Docker Compose (compose.yml)
 docker-down:
