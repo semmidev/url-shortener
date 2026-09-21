@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion } from 'motion/react';
 import {
   BellIcon,
   CheckCheckIcon,
@@ -7,13 +7,11 @@ import {
   SparklesIcon,
   ShieldCheckIcon,
   BarChart3Icon,
-  KeyRoundIcon,
-  AlertTriangleIcon,
-  FilterIcon,
+  UsersIcon,
+  InfoIcon,
   SearchIcon,
   Loader2Icon,
   ArrowUpRightIcon,
-  CheckIcon,
   InboxIcon,
   RefreshCwIcon,
 } from 'lucide-react';
@@ -25,158 +23,133 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { toast } from 'sonner';
 import { useI18n } from '@/context/I18nContext';
+import {
+  getNotifications,
+  markNotificationAsRead,
+  markAllNotificationsAsRead,
+  deleteNotification,
+  clearReadNotifications,
+} from '@/features/notifications/api';
 
-const INITIAL_NOTIFICATIONS = [
-  {
-    id: 'n1',
-    category: 'system',
-    categoryLabel: 'Sistem',
-    title: 'Upload Foto Profil S3 Presigned URL Aktif',
-    description: 'Modul upload foto profil via S3 RustFS & otomatisasi sync avatar Google berhasil dikonfigurasi.',
-    time: '2 menit yang lalu',
-    unread: true,
-    icon: SparklesIcon,
-    color: 'text-amber-500 bg-amber-500/10 border-amber-500/20',
-    link: '/dashboard/account',
-  },
-  {
-    id: 'n2',
-    category: 'security',
-    categoryLabel: 'Keamanan',
-    title: 'Domain Kustom short.link Diverifikasi',
-    description: 'Sertifikat SSL dan verifikasi DNS domain kustom short.link telah diselesaikan.',
-    time: '45 menit yang lalu',
-    unread: true,
-    icon: ShieldCheckIcon,
-    color: 'text-emerald-500 bg-emerald-500/10 border-emerald-500/20',
-    link: '/dashboard/workspace/settings',
-  },
-  {
-    id: 'n3',
-    category: 'analytics',
-    categoryLabel: 'Analytics',
-    title: 'Lonjakan Trafik Tautan Promo Kampanye',
-    description: 'Tautan promo-september menerima 1,240 klik dalam 1 jam terakhir.',
-    time: '2 jam yang lalu',
-    unread: true,
-    icon: BarChart3Icon,
-    color: 'text-blue-500 bg-blue-500/10 border-blue-500/20',
-    link: '/dashboard/analytics',
-  },
-  {
-    id: 'n4',
-    category: 'security',
-    categoryLabel: 'Keamanan',
-    title: 'Sesi Login Baru Terdeteksi',
-    description: 'Login dari IP 182.253.110.4 (Jakarta, Indonesia) via Google OAuth.',
-    time: '5 jam yang lalu',
-    unread: false,
-    icon: KeyRoundIcon,
-    color: 'text-purple-500 bg-purple-500/10 border-purple-500/20',
-    link: '/dashboard/account',
-  },
-  {
-    id: 'n5',
-    category: 'system',
-    categoryLabel: 'Sistem',
-    title: 'Batas Kuota Simpanan Tautan 80%',
-    description: 'Workspace Anda telah menggunakan 800 dari 1,000 kuota tautan singkat.',
-    time: '1 hari yang lalu',
-    unread: false,
-    icon: AlertTriangleIcon,
-    color: 'text-orange-500 bg-orange-500/10 border-orange-500/20',
-    link: '/dashboard/urls',
-  },
-  {
-    id: 'n6',
-    category: 'system',
-    categoryLabel: 'Sistem',
-    title: 'Pembaruan Kebijakan Keamanan CSP',
-    description: 'Pengaturan Content Security Policy diperbarui untuk mendukung S3 storage lokal.',
-    time: '2 hari yang lalu',
-    unread: false,
-    icon: ShieldCheckIcon,
-    color: 'text-cyan-500 bg-cyan-500/10 border-cyan-500/20',
-    link: '/dashboard',
-  },
-];
+function getCategoryConfig(type) {
+  switch (type) {
+    case 'workspace':
+    case 'workspace_invite':
+    case 'workspace_leave':
+      return {
+        label: 'Workspace',
+        icon: UsersIcon,
+        color: 'text-amber-500 bg-amber-500/10 border-amber-500/20',
+        link: '/dashboard/workspace/members',
+      };
+    case 'security':
+      return {
+        label: 'Keamanan',
+        icon: ShieldCheckIcon,
+        color: 'text-emerald-500 bg-emerald-500/10 border-emerald-500/20',
+        link: '/dashboard/account',
+      };
+    case 'analytics':
+      return {
+        label: 'Analytics',
+        icon: BarChart3Icon,
+        color: 'text-blue-500 bg-blue-500/10 border-blue-500/20',
+        link: '/dashboard/analytics',
+      };
+    default:
+      return {
+        label: 'Sistem',
+        icon: InfoIcon,
+        color: 'text-purple-500 bg-purple-500/10 border-purple-500/20',
+        link: '/dashboard',
+      };
+  }
+}
 
-const MORE_NOTIFICATIONS_BATCH_1 = [
-  {
-    id: 'n7',
-    category: 'analytics',
-    categoryLabel: 'Analytics',
-    title: 'Laporan Performa Tautan Mingguan',
-    description: 'Total klik meningkat 18% dibandingkan minggu lalu. Rincian geografis tersedia.',
-    time: '3 hari yang lalu',
-    unread: false,
-    icon: BarChart3Icon,
-    color: 'text-blue-500 bg-blue-500/10 border-blue-500/20',
-    link: '/dashboard/analytics',
-  },
-  {
-    id: 'n8',
-    category: 'security',
-    categoryLabel: 'Keamanan',
-    title: 'Anggota Baru Bergabung ke Workspace',
-    description: 'Budi Santoso (budi@example.com) telah menerima undangan sebagai Editor.',
-    time: '4 hari yang lalu',
-    unread: false,
-    icon: ShieldCheckIcon,
-    color: 'text-emerald-500 bg-emerald-500/10 border-emerald-500/20',
-    link: '/dashboard/workspace/members',
-  },
-  {
-    id: 'n9',
-    category: 'system',
-    categoryLabel: 'Sistem',
-    title: 'Pembersihan Otomatis Cache Redis',
-    description: 'Proses pembersihan rutin cache tautan kedaluwarsa telah selesai dengan sukses.',
-    time: '5 hari yang lalu',
-    unread: false,
-    icon: SparklesIcon,
-    color: 'text-amber-500 bg-amber-500/10 border-amber-500/20',
-    link: '/dashboard',
-  },
-];
+function formatRelativeTime(dateStr) {
+  if (!dateStr) return '';
+  const date = new Date(dateStr);
+  const now = new Date();
+  const diffSec = Math.floor((now - date) / 1000);
+  if (diffSec < 60) return 'baru saja';
+  const diffMin = Math.floor(diffSec / 60);
+  if (diffMin < 60) return `${diffMin}m lalu`;
+  const diffHour = Math.floor(diffMin / 60);
+  if (diffHour < 24) return `${diffHour}j lalu`;
+  const diffDay = Math.floor(diffHour / 24);
+  return `${diffDay}h lalu`;
+}
 
 export default function NotificationsPage() {
   const { t } = useI18n();
-  const [items, setItems] = useState(INITIAL_NOTIFICATIONS);
-  const [filterTab, setFilterTab] = useState('all'); // all, unread, system, security, analytics
+  const [items, setItems] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [totalCount, setTotalCount] = useState(0);
+  const [filterTab, setFilterTab] = useState('all'); // all, unread, workspace, system, security
   const [searchQuery, setSearchQuery] = useState('');
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const observerTargetRef = useRef(null);
 
-  const unreadCount = items.filter((n) => n.unread).length;
+  const fetchPageData = useCallback(async (targetPage, isReset = false) => {
+    if (isReset) {
+      setIsLoading(true);
+    } else {
+      setIsLoadingMore(true);
+    }
 
-  const loadMoreItems = useCallback(() => {
-    if (isLoadingMore || !hasMore) return;
-    setIsLoadingMore(true);
-
-    setTimeout(() => {
-      setItems((prev) => {
-        const existingIds = new Set(prev.map((i) => i.id));
-        const newItems = MORE_NOTIFICATIONS_BATCH_1.filter((i) => !existingIds.has(i.id));
-        if (newItems.length === 0) {
-          setHasMore(false);
-          return prev;
-        }
-        return [...prev, ...newItems];
+    try {
+      const data = await getNotifications({
+        page: targetPage,
+        limit: 15,
+        unread_only: filterTab === 'unread',
+        type: filterTab !== 'all' && filterTab !== 'unread' ? filterTab : undefined,
+        search: searchQuery.trim() || undefined,
       });
-      setIsLoadingMore(false);
-    }, 800);
-  }, [isLoadingMore, hasMore]);
 
-  // Infinite scroll observer setup
+      const newItems = data.items || [];
+      if (isReset) {
+        setItems(newItems);
+      } else {
+        setItems((prev) => {
+          const existingIds = new Set(prev.map((i) => i.id));
+          return [...prev, ...newItems.filter((i) => !existingIds.has(i.id))];
+        });
+      }
+
+      setUnreadCount(data.unread_count || 0);
+      setTotalCount(data.total || 0);
+      setHasMore(newItems.length >= 15 && targetPage * 15 < data.total);
+    } catch (err) {
+      toast.error('Gagal memuat notifikasi');
+    } finally {
+      setIsLoading(false);
+      setIsLoadingMore(false);
+    }
+  }, [filterTab, searchQuery]);
+
+  useEffect(() => {
+    setPage(1);
+    fetchPageData(1, true);
+  }, [fetchPageData]);
+
+  const loadMoreItems = () => {
+    if (isLoadingMore || !hasMore) return;
+    const nextPage = page + 1;
+    setPage(nextPage);
+    fetchPageData(nextPage, false);
+  };
+
+  // Infinite scroll observer
   useEffect(() => {
     const target = observerTargetRef.current;
     if (!target) return;
 
     const observer = new IntersectionObserver(
       (entries) => {
-        if (entries[0].isIntersecting && hasMore && !isLoadingMore) {
+        if (entries[0].isIntersecting && hasMore && !isLoadingMore && !isLoading) {
           loadMoreItems();
         }
       },
@@ -185,44 +158,52 @@ export default function NotificationsPage() {
 
     observer.observe(target);
     return () => observer.disconnect();
-  }, [hasMore, isLoadingMore, loadMoreItems]);
+  }, [hasMore, isLoadingMore, isLoading, loadMoreItems]);
 
-  const handleMarkAllAsRead = () => {
-    setItems((prev) => prev.map((item) => ({ ...item, unread: false })));
-    toast.success(t('notifications.markAllRead'));
-  };
-
-  const handleClearRead = () => {
-    setItems((prev) => prev.filter((item) => item.unread));
-    toast.info(t('notifications.clearRead'));
-  };
-
-  const handleToggleSingleRead = (id) => {
-    setItems((prev) =>
-      prev.map((item) => (item.id === id ? { ...item, unread: !item.unread } : item))
-    );
-  };
-
-  const handleDeleteSingle = (id) => {
-    setItems((prev) => prev.filter((item) => item.id !== id));
-    toast.success(t('notifications.deleteNotification'));
-  };
-
-  const filteredItems = items.filter((item) => {
-    if (filterTab === 'unread' && !item.unread) return false;
-    if (filterTab === 'system' && item.category !== 'system') return false;
-    if (filterTab === 'security' && item.category !== 'security') return false;
-    if (filterTab === 'analytics' && item.category !== 'analytics') return false;
-
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase();
-      return (
-        item.title.toLowerCase().includes(q) ||
-        item.description.toLowerCase().includes(q)
-      );
+  const handleMarkAllAsRead = async () => {
+    try {
+      await markAllNotificationsAsRead();
+      setItems((prev) => prev.map((item) => ({ ...item, is_read: true })));
+      setUnreadCount(0);
+      toast.success(t('notifications.markAllRead'));
+    } catch {
+      toast.error('Gagal menandai semua notifikasi');
     }
-    return true;
-  });
+  };
+
+  const handleClearRead = async () => {
+    try {
+      await clearReadNotifications();
+      setItems((prev) => prev.filter((item) => !item.is_read));
+      toast.info(t('notifications.clearRead'));
+    } catch {
+      toast.error('Gagal menghapus notifikasi terbaca');
+    }
+  };
+
+  const handleToggleSingleRead = async (item) => {
+    if (!item.is_read) {
+      try {
+        await markNotificationAsRead(item.id);
+        setItems((prev) =>
+          prev.map((i) => (i.id === item.id ? { ...i, is_read: true } : i))
+        );
+        setUnreadCount((prev) => Math.max(0, prev - 1));
+      } catch {
+        toast.error('Gagal memperbarui notifikasi');
+      }
+    }
+  };
+
+  const handleDeleteSingle = async (id) => {
+    try {
+      await deleteNotification(id);
+      setItems((prev) => prev.filter((item) => item.id !== id));
+      toast.success(t('notifications.deleteNotification'));
+    } catch {
+      toast.error('Gagal menghapus notifikasi');
+    }
+  };
 
   return (
     <div className="space-y-6 animate-in fade-in duration-200 pb-16">
@@ -237,11 +218,11 @@ export default function NotificationsPage() {
         {/* Category Tabs */}
         <div className="flex items-center gap-1 p-1 rounded-xl bg-muted/50 border border-border/60 overflow-x-auto">
           {[
-            { id: 'all', label: t('notifications.all'), count: items.length },
+            { id: 'all', label: t('notifications.all'), count: totalCount },
             { id: 'unread', label: t('notifications.unread'), count: unreadCount },
+            { id: 'workspace', label: 'Workspace' },
             { id: 'system', label: t('notifications.system') },
             { id: 'security', label: t('notifications.security') },
-            { id: 'analytics', label: t('notifications.analytics') },
           ].map((tab) => (
             <button
               key={tab.id}
@@ -304,7 +285,22 @@ export default function NotificationsPage() {
 
       {/* Notifications Feed */}
       <div className="space-y-3">
-        {filteredItems.length === 0 ? (
+        {isLoading ? (
+          <div className="space-y-3">
+            {[1, 2, 3].map((sk) => (
+              <div
+                key={sk}
+                className="p-4 rounded-xl border border-border/40 bg-card/50 animate-pulse flex items-start gap-4"
+              >
+                <div className="size-9 rounded-xl bg-muted shrink-0" />
+                <div className="flex-1 space-y-2">
+                  <div className="h-3 w-1/3 bg-muted rounded-xs" />
+                  <div className="h-3 w-2/3 bg-muted/60 rounded-xs" />
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : items.length === 0 ? (
           <Card className="border-border/60">
             <CardContent className="py-12 text-center space-y-3">
               <div className="size-12 rounded-full bg-muted flex items-center justify-center mx-auto text-muted-foreground">
@@ -317,8 +313,11 @@ export default function NotificationsPage() {
             </CardContent>
           </Card>
         ) : (
-          filteredItems.map((item) => {
-            const IconComp = item.icon;
+          items.map((item) => {
+            const config = getCategoryConfig(item.type);
+            const IconComp = config.icon;
+            const isUnread = !item.is_read;
+
             return (
               <motion.div
                 key={item.id}
@@ -326,14 +325,14 @@ export default function NotificationsPage() {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.98 }}
                 className={`group relative p-4 rounded-xl border transition-all duration-200 bg-card hover:border-border/90 ${
-                  item.unread
+                  isUnread
                     ? 'border-border/80 bg-primary/[0.03] dark:bg-primary/[0.06]'
                     : 'border-border/60'
                 }`}
               >
                 <div className="flex items-start gap-4">
                   {/* Category Icon Badge */}
-                  <div className={`p-2.5 rounded-xl border shrink-0 ${item.color}`}>
+                  <div className={`p-2.5 rounded-xl border shrink-0 ${config.color}`}>
                     <IconComp className="size-4" />
                   </div>
 
@@ -341,30 +340,30 @@ export default function NotificationsPage() {
                   <div className="min-w-0 flex-1 space-y-1">
                     <div className="flex items-center justify-between gap-2">
                       <div className="flex items-center gap-2 min-w-0">
-                        {item.unread && (
+                        {isUnread && (
                           <span className="size-2 rounded-full bg-primary shrink-0" title={t('notifications.unread')} />
                         )}
-                        <span className={`text-xs font-semibold truncate ${item.unread ? 'text-foreground' : 'text-muted-foreground'}`}>
+                        <span className={`text-xs font-semibold truncate ${isUnread ? 'text-foreground' : 'text-muted-foreground'}`}>
                           {item.title}
                         </span>
                         <Badge variant="outline" className="text-[10px] px-1.5 py-0 font-medium shrink-0">
-                          {item.categoryLabel}
+                          {config.label}
                         </Badge>
                       </div>
                       <span className="text-[11px] text-muted-foreground shrink-0 font-mono">
-                        {item.time}
+                        {formatRelativeTime(item.created_at)}
                       </span>
                     </div>
 
                     <p className="text-xs text-muted-foreground leading-relaxed">
-                      {item.description}
+                      {item.message}
                     </p>
 
                     {/* Action Links */}
                     <div className="flex items-center gap-3 pt-2">
-                      {item.link && (
+                      {config.link && (
                         <Link
-                          to={item.link}
+                          to={config.link}
                           className="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline"
                         >
                           {t('notifications.openPage')}
@@ -374,10 +373,10 @@ export default function NotificationsPage() {
 
                       <button
                         type="button"
-                        onClick={() => handleToggleSingleRead(item.id)}
+                        onClick={() => handleToggleSingleRead(item)}
                         className="text-xs text-muted-foreground hover:text-foreground font-medium cursor-pointer"
                       >
-                        {item.unread ? t('notifications.markAsRead') : t('notifications.markAsUnread')}
+                        {isUnread ? t('notifications.markAsRead') : t('notifications.markAsUnread')}
                       </button>
                     </div>
                   </div>

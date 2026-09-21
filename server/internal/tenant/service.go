@@ -6,10 +6,12 @@ import (
 	"fmt"
 	"strings"
 	"time"
+
 	"uuid"
 
 	"github.com/jackc/pgx/v5/pgtype"
 	db "github.com/semmidev/url-shortener/server/db/sqlc"
+	"github.com/semmidev/url-shortener/server/internal/notification"
 	"github.com/semmidev/url-shortener/server/internal/platform/apperr"
 	"github.com/semmidev/url-shortener/server/internal/platform/authz"
 	"github.com/semmidev/url-shortener/server/internal/platform/telemetry"
@@ -19,12 +21,14 @@ import (
 type Service struct {
 	q          db.Querier
 	authorizer authz.Authorizer
+	notifSvc   *notification.Service
 }
 
-func NewService(q db.Querier, authorizer authz.Authorizer) *Service {
+func NewService(q db.Querier, authorizer authz.Authorizer, notifSvc *notification.Service) *Service {
 	return &Service{
 		q:          q,
 		authorizer: authorizer,
+		notifSvc:   notifSvc,
 	}
 }
 
@@ -130,6 +134,27 @@ func (s *Service) JoinTenant(ctx context.Context, userID uuid.UUID, req JoinTena
 
 	_ = s.authorizer.AddUserRole(ctx, userID, "member", t.ID.String())
 
+	if s.notifSvc != nil {
+		user, uErr := s.q.GetUserByID(ctx, userID)
+		members, mErr := s.q.ListTenantMembers(ctx, t.ID)
+		if uErr == nil && mErr == nil {
+			userName := user.FullName
+			if userName == "" {
+				userName = user.Email
+			}
+			for _, mem := range members {
+				if mem.Role == "owner" && mem.UserID != userID {
+					_, _ = s.notifSvc.CreateNotification(ctx, notification.CreateNotificationRequest{
+						UserID:  mem.UserID,
+						Title:   "Anggota Baru Bergabung",
+						Message: fmt.Sprintf("%s (%s) telah bergabung ke workspace '%s' menggunakan kode gabung.", userName, user.Email, t.Name),
+						Type:    "workspace",
+					})
+				}
+			}
+		}
+	}
+
 	return TenantResponse{
 		ID:        t.ID,
 		Name:      t.Name,
@@ -161,7 +186,7 @@ func (s *Service) ListTenantMembers(ctx context.Context, tenantID uuid.UUID) ([]
 	return res, nil
 }
 
-func (s *Service) AddTenantMember(ctx context.Context, tenantID uuid.UUID, req AddTenantMemberRequest) (TenantMemberResponse, error) {
+func (s *Service) AddTenantMember(ctx context.Context, tenantID uuid.UUID, req AddTenantMemberRequest, actorID uuid.UUID) (TenantMemberResponse, error) {
 	if err := req.Validate(); err != nil {
 		return TenantMemberResponse{}, err
 	}
@@ -181,6 +206,26 @@ func (s *Service) AddTenantMember(ctx context.Context, tenantID uuid.UUID, req A
 	}
 
 	_ = s.authorizer.AddUserRole(ctx, user.ID, req.Role, tenantID.String())
+
+	if s.notifSvc != nil {
+		t, tErr := s.q.GetTenantByID(ctx, tenantID)
+		actor, aErr := s.q.GetUserByID(ctx, actorID)
+		if tErr == nil {
+			actorName := actor.FullName
+			if actorName == "" || aErr != nil {
+				actorName = actor.Email
+			}
+			if actorName == "" {
+				actorName = "Admin Workspace"
+			}
+			_, _ = s.notifSvc.CreateNotification(ctx, notification.CreateNotificationRequest{
+				UserID:  user.ID,
+				Title:   "Undangan Workspace Baru",
+				Message: fmt.Sprintf("Anda telah ditambahkan ke workspace '%s' oleh %s.", t.Name, actorName),
+				Type:    "workspace",
+			})
+		}
+	}
 
 	return TenantMemberResponse{
 		UserID:    user.ID,
@@ -225,10 +270,36 @@ func (s *Service) UpdateTenantMemberRole(ctx context.Context, tenantID uuid.UUID
 }
 
 func (s *Service) RemoveTenantMember(ctx context.Context, tenantID uuid.UUID, targetUserID uuid.UUID) error {
-	return s.q.RemoveTenantMember(ctx, db.RemoveTenantMemberParams{
+	t, tErr := s.q.GetTenantByID(ctx, tenantID)
+	targetUser, uErr := s.q.GetUserByID(ctx, targetUserID)
+	members, mErr := s.q.ListTenantMembers(ctx, tenantID)
+
+	err := s.q.RemoveTenantMember(ctx, db.RemoveTenantMemberParams{
 		TenantID: tenantID,
 		UserID:   targetUserID,
 	})
+	if err != nil {
+		return err
+	}
+
+	if s.notifSvc != nil && tErr == nil && uErr == nil && mErr == nil {
+		memberName := targetUser.FullName
+		if memberName == "" {
+			memberName = targetUser.Email
+		}
+		for _, m := range members {
+			if m.Role == "owner" && m.UserID != targetUserID {
+				_, _ = s.notifSvc.CreateNotification(ctx, notification.CreateNotificationRequest{
+					UserID:  m.UserID,
+					Title:   "Anggota Meninggalkan Workspace",
+					Message: fmt.Sprintf("%s (%s) telah keluar dari workspace '%s'.", memberName, targetUser.Email, t.Name),
+					Type:    "workspace",
+				})
+			}
+		}
+	}
+
+	return nil
 }
 
 func (s *Service) ListTenantRoles(ctx context.Context, tenantID uuid.UUID) ([]TenantRoleResponse, error) {

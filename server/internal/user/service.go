@@ -538,7 +538,57 @@ func (s *Service) ExchangeOneTimeCode(ctx context.Context, req GoogleExchangeTok
 	return entry.loginResp, nil
 }
 
+func (s *Service) ensureDefaultWorkspace(ctx context.Context, q db.Querier, user db.User) error {
+	tenants, err := q.ListUserTenants(ctx, user.ID)
+	if err == nil && len(tenants) > 0 {
+		return nil
+	}
+
+	fullName := strings.TrimSpace(user.FullName)
+	wsName := fmt.Sprintf("%s's Workspace", fullName)
+	if fullName == "" {
+		parts := strings.Split(user.Email, "@")
+		wsName = fmt.Sprintf("Workspace %s", parts[0])
+	}
+
+	slug := fmt.Sprintf("workspace-%d", time.Now().UnixNano())
+
+	b := make([]byte, 8)
+	_, _ = rand.Read(b)
+	const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+	for i := range b {
+		b[i] = alphabet[int(b[i])%len(alphabet)]
+	}
+	joinCode := string(b)
+
+	t, err := q.CreateTenant(ctx, db.CreateTenantParams{
+		Name:     wsName,
+		Slug:     slug,
+		JoinCode: joinCode,
+	})
+	if err != nil {
+		return err
+	}
+
+	_, err = q.AddTenantMember(ctx, db.AddTenantMemberParams{
+		TenantID: t.ID,
+		UserID:   user.ID,
+		Role:     "owner",
+	})
+	if err != nil {
+		return err
+	}
+
+	if s.authorizer != nil {
+		_ = s.authorizer.AddUserRole(ctx, user.ID, "owner", t.ID.String())
+	}
+
+	return nil
+}
+
 func (s *Service) createSessionAndTokensWithQuerier(ctx context.Context, q db.Querier, user db.User, userAgent, clientIP string) (*LoginResponse, error) {
+	_ = s.ensureDefaultWorkspace(ctx, q, user)
+
 	sessionID := uuid.NewV7()
 
 	refreshTokenStr, refreshPayload, err := s.tokenMaker.CreateToken(
@@ -576,7 +626,7 @@ func (s *Service) createSessionAndTokensWithQuerier(ctx context.Context, q db.Qu
 
 	userResp := toUserResponse(user)
 	domain := authz.DefaultDomain
-	tenants, err := s.store.ListUserTenants(ctx, user.ID)
+	tenants, err := q.ListUserTenants(ctx, user.ID)
 	if err == nil && len(tenants) > 0 {
 		domain = tenants[0].ID.String()
 	}

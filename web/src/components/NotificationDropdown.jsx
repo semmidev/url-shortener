@@ -1,56 +1,82 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { Bell, CheckCheck, Sparkles, ShieldCheck, BarChart3, Info, ChevronRight } from 'lucide-react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { Bell, CheckCheck, Sparkles, ShieldCheck, BarChart3, Info, ChevronRight, Users } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useI18n } from '@/context/I18nContext';
+import {
+  getNotifications,
+  getUnreadNotificationCount,
+  markNotificationAsRead,
+  markAllNotificationsAsRead,
+} from '@/features/notifications/api';
 
-const DUMMY_NOTIFICATIONS = [
-  {
-    id: '1',
-    title: 'Pembaruan Fitur S3 Storage',
-    description: 'Fitur upload foto profil via S3 Presigned URL & Google Avatar Sync aktif.',
-    time: '5 mnt lalu',
-    unread: true,
-    icon: Sparkles,
-    color: 'text-amber-500 bg-amber-500/10 border-amber-500/20',
-  },
-  {
-    id: '2',
-    title: 'Domain Kustom Diverifikasi',
-    description: 'Domain short.link milik Anda telah diverifikasi dan aktif.',
-    time: '1 jam lalu',
-    unread: true,
-    icon: ShieldCheck,
-    color: 'text-emerald-500 bg-emerald-500/10 border-emerald-500/20',
-  },
-  {
-    id: '3',
-    title: 'Laporan Analytics Mingguan',
-    description: 'Statistik klik tautan minggu ini meningkat 24%.',
-    time: '3 jam lalu',
-    unread: true,
-    icon: BarChart3,
-    color: 'text-blue-500 bg-blue-500/10 border-blue-500/20',
-  },
-  {
-    id: '4',
-    title: 'Keamanan Akun',
-    description: 'Sesi autentikasi JWT berhasil diperbarui dengan aman.',
-    time: '1 hari lalu',
-    unread: false,
-    icon: Info,
-    color: 'text-purple-500 bg-purple-500/10 border-purple-500/20',
-  },
-];
+function getNotificationIcon(type) {
+  switch (type) {
+    case 'workspace':
+    case 'workspace_invite':
+    case 'workspace_leave':
+      return { icon: Users, color: 'text-amber-500 bg-amber-500/10 border-amber-500/20' };
+    case 'security':
+      return { icon: ShieldCheck, color: 'text-emerald-500 bg-emerald-500/10 border-emerald-500/20' };
+    case 'analytics':
+      return { icon: BarChart3, color: 'text-blue-500 bg-blue-500/10 border-blue-500/20' };
+    default:
+      return { icon: Info, color: 'text-purple-500 bg-purple-500/10 border-purple-500/20' };
+  }
+}
+
+function formatRelativeTime(dateStr) {
+  if (!dateStr) return '';
+  const date = new Date(dateStr);
+  const now = new Date();
+  const diffSec = Math.floor((now - date) / 1000);
+  if (diffSec < 60) return 'baru saja';
+  const diffMin = Math.floor(diffSec / 60);
+  if (diffMin < 60) return `${diffMin}m lalu`;
+  const diffHour = Math.floor(diffMin / 60);
+  if (diffHour < 24) return `${diffHour}j lalu`;
+  const diffDay = Math.floor(diffHour / 24);
+  return `${diffDay}h lalu`;
+}
 
 export function NotificationDropdown({ className = '' }) {
   const { t } = useI18n();
   const [isOpen, setIsOpen] = useState(false);
-  const [notifications, setNotifications] = useState(DUMMY_NOTIFICATIONS);
+  const [notifications, setNotifications] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
   const dropdownRef = useRef(null);
 
-  const unreadCount = notifications.filter((n) => n.unread).length;
+  const fetchUnread = useCallback(async () => {
+    try {
+      const data = await getUnreadNotificationCount();
+      setUnreadCount(data.unread_count || 0);
+    } catch {
+      // Ignore initial auth or network fetch errors quietly
+    }
+  }, []);
+
+  const fetchList = useCallback(async () => {
+    try {
+      const data = await getNotifications({ page: 1, limit: 10 });
+      setNotifications(data.items || []);
+      setUnreadCount(data.unread_count || 0);
+    } catch {
+      // Ignore quietly
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchUnread();
+    const interval = setInterval(fetchUnread, 15000); // Polling unread count every 15s
+    return () => clearInterval(interval);
+  }, [fetchUnread]);
+
+  useEffect(() => {
+    if (isOpen) {
+      fetchList();
+    }
+  }, [isOpen, fetchList]);
 
   useEffect(() => {
     function handleClickOutside(event) {
@@ -66,14 +92,28 @@ export function NotificationDropdown({ className = '' }) {
     };
   }, [isOpen]);
 
-  const handleMarkAllRead = () => {
-    setNotifications((prev) => prev.map((n) => ({ ...n, unread: false })));
+  const handleMarkAllRead = async () => {
+    try {
+      await markAllNotificationsAsRead();
+      setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
+      setUnreadCount(0);
+    } catch {
+      // Ignore
+    }
   };
 
-  const handleToggleRead = (id) => {
-    setNotifications((prev) =>
-      prev.map((n) => (n.id === id ? { ...n, unread: !n.unread } : n))
-    );
+  const handleToggleRead = async (item) => {
+    if (!item.is_read) {
+      try {
+        await markNotificationAsRead(item.id);
+        setNotifications((prev) =>
+          prev.map((n) => (n.id === item.id ? { ...n, is_read: true } : n))
+        );
+        setUnreadCount((prev) => Math.max(0, prev - 1));
+      } catch {
+        // Ignore
+      }
+    }
   };
 
   return (
@@ -90,7 +130,7 @@ export function NotificationDropdown({ className = '' }) {
         <Bell className="h-4 w-4" />
         {unreadCount > 0 && (
           <span className="absolute -top-0.5 -right-0.5 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-primary px-1 text-[9px] font-bold text-primary-foreground ring-2 ring-card shadow-xs animate-in zoom-in-50">
-            {unreadCount}
+            {unreadCount > 99 ? '99+' : unreadCount}
           </span>
         )}
       </Button>
@@ -131,17 +171,18 @@ export function NotificationDropdown({ className = '' }) {
               </div>
             ) : (
               notifications.map((item) => {
-                const IconComponent = item.icon;
+                const { icon: IconComponent, color } = getNotificationIcon(item.type);
+                const isUnread = !item.is_read;
                 return (
                   <div
                     key={item.id}
-                    onClick={() => handleToggleRead(item.id)}
+                    onClick={() => handleToggleRead(item)}
                     className={`p-3.5 flex items-start gap-3 transition-colors cursor-pointer hover:bg-muted/50 ${
-                      item.unread ? 'bg-primary/5' : ''
+                      isUnread ? 'bg-primary/5' : ''
                     }`}
                   >
                     <div
-                      className={`p-2 rounded-xl border shrink-0 mt-0.5 ${item.color}`}
+                      className={`p-2 rounded-xl border shrink-0 mt-0.5 ${color}`}
                     >
                       <IconComponent className="size-4" />
                     </div>
@@ -149,20 +190,20 @@ export function NotificationDropdown({ className = '' }) {
                       <div className="flex items-center justify-between gap-2">
                         <p
                           className={`text-xs font-semibold truncate ${
-                            item.unread ? 'text-foreground' : 'text-muted-foreground'
+                            isUnread ? 'text-foreground' : 'text-muted-foreground'
                           }`}
                         >
                           {item.title}
                         </p>
                         <span className="text-[10px] text-muted-foreground shrink-0 font-mono">
-                          {item.time}
+                          {formatRelativeTime(item.created_at)}
                         </span>
                       </div>
                       <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
-                        {item.description}
+                        {item.message}
                       </p>
                     </div>
-                    {item.unread && (
+                    {isUnread && (
                       <span className="size-2 rounded-full bg-primary shrink-0 mt-1.5" />
                     )}
                   </div>

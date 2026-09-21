@@ -14,14 +14,18 @@ import (
 type Querier interface {
 	AddRolePermission(ctx context.Context, arg AddRolePermissionParams) error
 	AddTenantMember(ctx context.Context, arg AddTenantMemberParams) (TenantMembership, error)
+	ClearReadNotifications(ctx context.Context, userID uuid.UUID) error
 	ClearRolePermissions(ctx context.Context, roleID uuid.UUID) error
 	ClearUserAvatar(ctx context.Context, id uuid.UUID) (User, error)
 	CountAllTenantsAdmin(ctx context.Context, search pgtype.Text) (int64, error)
 	CountAllUsers(ctx context.Context, search pgtype.Text) (int64, error)
 	CountAuditLogs(ctx context.Context, search pgtype.Text) (int64, error)
 	CountGlobalLinks(ctx context.Context, search pgtype.Text) (int64, error)
+	CountUnreadNotifications(ctx context.Context, userID uuid.UUID) (int64, error)
+	CountUserNotifications(ctx context.Context, arg CountUserNotificationsParams) (int64, error)
 	CountUserShortURLs(ctx context.Context, arg CountUserShortURLsParams) (int64, error)
 	CreateAuditLog(ctx context.Context, arg CreateAuditLogParams) (CreateAuditLogRow, error)
+	CreateNotification(ctx context.Context, arg CreateNotificationParams) (Notification, error)
 	CreateOutboxEvent(ctx context.Context, arg CreateOutboxEventParams) (OutboxEvent, error)
 	CreateRole(ctx context.Context, arg CreateRoleParams) (Role, error)
 	CreateSession(ctx context.Context, arg CreateSessionParams) (Session, error)
@@ -29,6 +33,7 @@ type Querier interface {
 	CreateTenant(ctx context.Context, arg CreateTenantParams) (Tenant, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
 	DeactivateExpiredURLs(ctx context.Context) ([]string, error)
+	DeleteNotification(ctx context.Context, arg DeleteNotificationParams) error
 	DeleteRole(ctx context.Context, id uuid.UUID) error
 	DeleteSessionsByUserID(ctx context.Context, userID uuid.UUID) error
 	DeleteShortURL(ctx context.Context, arg DeleteShortURLParams) error
@@ -71,8 +76,11 @@ type Querier interface {
 	ListSystemRoles(ctx context.Context) ([]Role, error)
 	ListTenantMembers(ctx context.Context, tenantID uuid.UUID) ([]ListTenantMembersRow, error)
 	ListTenantRoles(ctx context.Context, tenantID pgtype.UUID) ([]Role, error)
+	ListUserNotifications(ctx context.Context, arg ListUserNotificationsParams) ([]Notification, error)
 	ListUserShortURLs(ctx context.Context, arg ListUserShortURLsParams) ([]ShortUrl, error)
 	ListUserTenants(ctx context.Context, userID uuid.UUID) ([]ListUserTenantsRow, error)
+	MarkAllNotificationsAsRead(ctx context.Context, userID uuid.UUID) error
+	MarkNotificationAsRead(ctx context.Context, arg MarkNotificationAsReadParams) (Notification, error)
 	MarkOutboxEventProcessed(ctx context.Context, id uuid.UUID) error
 	RecordClick(ctx context.Context, arg RecordClickParams) (UrlAnalytic, error)
 	RegenerateTenantJoinCode(ctx context.Context, arg RegenerateTenantJoinCodeParams) (Tenant, error)

@@ -135,7 +135,8 @@ func (h *Handler) addTenantMember(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	member, err := h.svc.AddTenantMember(r.Context(), tenantID, req)
+	actorID, _ := web.UserID(r.Context())
+	member, err := h.svc.AddTenantMember(r.Context(), tenantID, req, actorID)
 	if err != nil {
 		web.Error(w, r, err)
 		return
