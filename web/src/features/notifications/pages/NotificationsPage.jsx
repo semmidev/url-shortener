@@ -323,10 +323,10 @@ export default function NotificationsPage() {
                 initial={{ opacity: 0, y: 4 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.98 }}
-                className={`group relative p-4 rounded-xl border transition-all duration-200 bg-card hover:shadow-md ${
+                className={`group relative p-4 rounded-xl border transition-all duration-200 bg-card hover:border-border/90 ${
                   item.unread
-                    ? 'border-l-4 border-l-primary border-border/80 bg-primary/5 dark:bg-primary/10'
-                    : 'border-border/60 hover:border-border'
+                    ? 'border-border/80 bg-primary/[0.03] dark:bg-primary/[0.06]'
+                    : 'border-border/60'
                 }`}
               >
                 <div className="flex items-start gap-4">
@@ -339,7 +339,10 @@ export default function NotificationsPage() {
                   <div className="min-w-0 flex-1 space-y-1">
                     <div className="flex items-center justify-between gap-2">
                       <div className="flex items-center gap-2 min-w-0">
-                        <span className="text-xs font-bold text-foreground truncate">
+                        {item.unread && (
+                          <span className="size-2 rounded-full bg-primary shrink-0" title="Belum dibaca" />
+                        )}
+                        <span className={`text-xs font-semibold truncate ${item.unread ? 'text-foreground' : 'text-muted-foreground'}`}>
                           {item.title}
                         </span>
                         <Badge variant="outline" className="text-[10px] px-1.5 py-0 font-medium shrink-0">
