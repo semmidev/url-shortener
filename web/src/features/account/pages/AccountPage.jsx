@@ -21,6 +21,8 @@ import {
   BadgeCheckIcon,
 } from 'lucide-react';
 
+import { FileUploader } from '@/components/ui/file-uploader';
+
 const GoogleLogo = ({ className = 'size-4' }) => (
   <svg viewBox="0 0 24 24" className={className} aria-hidden="true">
     <path
@@ -63,9 +65,20 @@ export default function Account() {
   // Profile Form state
   const [profileForm, setProfileForm] = useState({
     fullName: user?.full_name || '',
+    avatarUrl: user?.avatar_url || '',
   });
   const [profileLoading, setProfileLoading] = useState(false);
   const [profileErrors, setProfileErrors] = useState({});
+
+  // Sync state if user changes
+  React.useEffect(() => {
+    if (user) {
+      setProfileForm({
+        fullName: user.full_name || '',
+        avatarUrl: user.avatar_url || '',
+      });
+    }
+  }, [user?.full_name, user?.avatar_url]);
 
   // Password Form state
   const [passwordForm, setPasswordForm] = useState({
@@ -81,6 +94,16 @@ export default function Account() {
 
   if (!user) return null;
 
+  const handleAvatarChange = async (newAvatarUrl) => {
+    setProfileForm((prev) => ({ ...prev, avatarUrl: newAvatarUrl }));
+    const res = await updateProfile(profileForm.fullName, newAvatarUrl);
+    if (res.success) {
+      toast.success('Foto profil berhasil diperbarui!');
+    } else {
+      toast.error(res.message || 'Gagal memperbarui foto profil');
+    }
+  };
+
   const handleProfileSubmit = async (e) => {
     e.preventDefault();
     if (!profileForm.fullName.trim()) {
@@ -90,7 +113,7 @@ export default function Account() {
     setProfileErrors({});
     setProfileLoading(true);
 
-    const res = await updateProfile(profileForm.fullName.trim());
+    const res = await updateProfile(profileForm.fullName.trim(), profileForm.avatarUrl);
     setProfileLoading(false);
 
     if (res.success) {
@@ -177,30 +200,35 @@ export default function Account() {
   };
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-200">
+    <div className="space-y-6 animate-in fade-in duration-200 pb-12">
       <DynamicPageHeader
         title={t("account.title")}
         subtitle={t("account.subtitle")}
         fallbackIcon={UserIcon}
       />
 
-      {/* Identity Card */}
+      {/* Identity Card with S3 Avatar Uploader */}
       <Card className="border-border/60">
         <CardContent className="pt-6">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div className="flex items-center gap-4">
-              <div className="flex size-14 items-center justify-center rounded-full bg-primary/10 text-primary font-bold text-xl uppercase shrink-0">
-                {user.full_name ? user.full_name.charAt(0) : user.email.charAt(0)}
-              </div>
-              <div className="min-w-0">
-                <h2 className="text-lg font-bold truncate">{user.full_name || 'User'}</h2>
-                <div className="flex items-center gap-1.5 text-xs text-muted-foreground truncate">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
+            <div className="flex flex-col sm:flex-row items-center sm:items-start gap-5 text-center sm:text-left">
+              <FileUploader
+                variant="avatar"
+                value={user.avatar_url || profileForm.avatarUrl}
+                onChange={handleAvatarChange}
+                category="avatars"
+                maxSizeMB={5}
+                fallbackInitials={user.full_name ? user.full_name.charAt(0) : user.email.charAt(0)}
+              />
+              <div className="min-w-0 self-center">
+                <h2 className="text-xl font-bold truncate">{user.full_name || 'User'}</h2>
+                <div className="flex items-center justify-center sm:justify-start gap-1.5 text-xs text-muted-foreground truncate mt-1">
                   <CheckCircle2Icon className="size-3.5 text-emerald-500 shrink-0" />
-                  <span className="truncate">{user.email}</span>
+                  <span className="truncate font-mono">{user.email}</span>
                 </div>
               </div>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center justify-center sm:justify-end gap-2 shrink-0">
               <Badge variant="secondary" className="px-3 py-1 gap-1 uppercase tracking-wide text-xs">
                 <BadgeCheckIcon className="size-3.5 text-emerald-500" />
                 Active Account

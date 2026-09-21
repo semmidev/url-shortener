@@ -104,13 +104,13 @@ export const useAuthStore = create((set) => ({
     }
   },
 
-  updateProfile: async (fullName) => {
+  updateProfile: async (fullName, avatarUrl) => {
     try {
-      const data = await updateProfileApi(fullName);
+      const data = await updateProfileApi(fullName, avatarUrl);
       const updatedUser = data?.data || data;
       setUser(updatedUser);
       set({ user: updatedUser });
-      return { success: true };
+      return { success: true, user: updatedUser };
     } catch (err) {
       const message = err.response?.data?.message || 'Failed to update profile.';
       const errors = err.response?.data?.errors || null;

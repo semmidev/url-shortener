@@ -25,6 +25,7 @@ import (
 	"github.com/semmidev/url-shortener/server/internal/platform/crypto"
 	"github.com/semmidev/url-shortener/server/internal/platform/logger"
 	"github.com/semmidev/url-shortener/server/internal/platform/retry"
+	platformStorage "github.com/semmidev/url-shortener/server/internal/platform/storage"
 	"github.com/semmidev/url-shortener/server/internal/platform/telemetry"
 	"github.com/semmidev/url-shortener/server/internal/platform/token"
 	"github.com/semmidev/url-shortener/server/internal/platform/web"
@@ -47,17 +48,18 @@ type MetricsRecorder interface {
 }
 
 type Service struct {
-	store         db.Store
-	tokenMaker    *token.JWTMaker
-	cfg           config.Config
-	appLogger     *logger.Logger
-	cache         cache.Cache
-	metrics       MetricsRecorder
-	authorizer    authz.Authorizer
-	googleBreaker *breaker.CircuitBreaker
-	oneTimeCodes  sync.Map // fallback in-memory store
-	emailAttempts sync.Map // fallback in-memory store
-	httpClient    *http.Client
+	store           db.Store
+	tokenMaker      *token.JWTMaker
+	cfg             config.Config
+	appLogger       *logger.Logger
+	cache           cache.Cache
+	metrics         MetricsRecorder
+	authorizer      authz.Authorizer
+	googleBreaker   *breaker.CircuitBreaker
+	storageProvider platformStorage.Provider
+	oneTimeCodes    sync.Map // fallback in-memory store
+	emailAttempts   sync.Map // fallback in-memory store
+	httpClient      *http.Client
 }
 
 func NewService(store db.Store, tokenMaker *token.JWTMaker, cfg config.Config, appLogger *logger.Logger, c cache.Cache, authorizer authz.Authorizer) *Service {
@@ -73,6 +75,12 @@ func NewService(store db.Store, tokenMaker *token.JWTMaker, cfg config.Config, a
 	}
 	go s.cleanupExpiredOneTimeCodes()
 	return s
+}
+
+func (s *Service) SetStorageProvider(p platformStorage.Provider) {
+	if s != nil {
+		s.storageProvider = p
+	}
 }
 
 func (s *Service) SetMetricsRecorder(m MetricsRecorder) {
@@ -412,6 +420,15 @@ func (s *Service) HandleGoogleCallback(ctx context.Context, req HandleGoogleCall
 	logger.Enrich(ctx, "google.id", gUser.ID)
 	logger.Enrich(ctx, "google.email", gUser.Email)
 
+	avatarURL := gUser.Picture
+	if s.storageProvider != nil && gUser.Picture != "" {
+		if s3URL, uploadErr := s.uploadGoogleAvatarToS3(ctx, gUser.ID, gUser.Picture); uploadErr == nil && s3URL != "" {
+			avatarURL = s3URL
+		} else if uploadErr != nil {
+			s.appLogger.Warn(ctx, "failed to upload Google profile picture to S3 storage", "error", uploadErr, "google_id", gUser.ID)
+		}
+	}
+
 	var user db.User
 	var loginResp *LoginResponse
 
@@ -421,7 +438,7 @@ func (s *Service) HandleGoogleCallback(ctx context.Context, req HandleGoogleCall
 		user, txErr = q.UpsertGoogleUser(ctx, db.UpsertGoogleUserParams{
 			Email:     gUser.Email,
 			GoogleID:  pgtype.Text{String: gUser.ID, Valid: true},
-			AvatarUrl: gUser.Picture,
+			AvatarUrl: avatarURL,
 			FullName:  gUser.Name,
 		})
 		if txErr != nil {
@@ -436,6 +453,37 @@ func (s *Service) HandleGoogleCallback(ctx context.Context, req HandleGoogleCall
 	}
 
 	return loginResp, nil
+}
+
+func (s *Service) uploadGoogleAvatarToS3(ctx context.Context, googleID, pictureURL string) (string, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, pictureURL, nil)
+	if err != nil {
+		return "", err
+	}
+	resp, err := s.httpClient.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("unexpected status code fetching Google avatar: %d", resp.StatusCode)
+	}
+
+	contentType := resp.Header.Get("Content-Type")
+	if contentType == "" {
+		contentType = "image/jpeg"
+	}
+
+	ext := ".jpg"
+	if strings.Contains(contentType, "png") {
+		ext = ".png"
+	} else if strings.Contains(contentType, "webp") {
+		ext = ".webp"
+	}
+
+	key := fmt.Sprintf("avatars/google/%s-%d%s", googleID, time.Now().Unix(), ext)
+	return s.storageProvider.UploadFile(ctx, key, resp.Body, contentType)
 }
 
 // GenerateOneTimeCode creates a 5-minute single-use code for Google auth code exchange.
@@ -638,8 +686,9 @@ func (s *Service) UpdateProfile(ctx context.Context, req UpdateProfileRequest) (
 	}
 
 	updated, err := s.store.UpdateUser(ctx, db.UpdateUserParams{
-		ID:       req.UserID,
-		FullName: pgtype.Text{String: req.FullName, Valid: true},
+		ID:        req.UserID,
+		FullName:  pgtype.Text{String: req.FullName, Valid: strings.TrimSpace(req.FullName) != ""},
+		AvatarUrl: pgtype.Text{String: req.AvatarURL, Valid: strings.TrimSpace(req.AvatarURL) != ""},
 	})
 	if err != nil {
 		return nil, apperr.MapDBError(err, "failed to update user profile", "")

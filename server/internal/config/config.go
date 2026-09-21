@@ -79,6 +79,15 @@ type Config struct {
 
 	// NATS Event Bus Settings
 	NatsURL string `mapstructure:"NATS_URL"`
+
+	// S3 / RustFS Object Storage Settings
+	S3Endpoint        string `mapstructure:"S3_ENDPOINT"`
+	S3Region          string `mapstructure:"S3_REGION"`
+	S3AccessKeyID     string `mapstructure:"S3_ACCESS_KEY_ID"`
+	S3SecretAccessKey string `mapstructure:"S3_SECRET_ACCESS_KEY"`
+	S3Bucket          string `mapstructure:"S3_BUCKET"`
+	S3PublicURL       string `mapstructure:"S3_PUBLIC_URL"`
+	S3UsePathStyle    bool   `mapstructure:"S3_USE_PATH_STYLE"`
 }
 
 // LoadConfig reads configuration from file or environment variables.
@@ -150,6 +159,14 @@ func LoadConfig(path string) (config Config, err error) {
 	viper.SetDefault("CACHE_CONTROL_MAX_AGE", 300)
 
 	viper.SetDefault("NATS_URL", "nats://127.0.0.1:4222")
+
+	viper.SetDefault("S3_ENDPOINT", "http://127.0.0.1:9000")
+	viper.SetDefault("S3_REGION", "us-east-1")
+	viper.SetDefault("S3_ACCESS_KEY_ID", "rustfsadmin")
+	viper.SetDefault("S3_SECRET_ACCESS_KEY", "rustfsadminpassword")
+	viper.SetDefault("S3_BUCKET", "url-shortener-storage")
+	viper.SetDefault("S3_PUBLIC_URL", "")
+	viper.SetDefault("S3_USE_PATH_STYLE", true)
 
 	viper.SetDefault("OTEL_ENABLED", true)
 	viper.SetDefault("OTEL_EXPORTER_OTLP_ENDPOINT", "127.0.0.1:4317")

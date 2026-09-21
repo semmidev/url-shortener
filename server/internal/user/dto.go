@@ -1,6 +1,8 @@
 package user
 
 import (
+	"errors"
+	"strings"
 	"time"
 	"uuid"
 
@@ -111,12 +113,16 @@ type LogoutRequest struct {
 }
 
 type UpdateProfileRequest struct {
-	UserID   uuid.UUID `json:"-"`
-	FullName string    `json:"full_name" validate:"required"`
+	UserID    uuid.UUID `json:"-"`
+	FullName  string    `json:"full_name"`
+	AvatarURL string    `json:"avatar_url"`
 }
 
 func (r *UpdateProfileRequest) Validate() error {
-	return validator.Check(r)
+	if strings.TrimSpace(r.FullName) == "" && strings.TrimSpace(r.AvatarURL) == "" {
+		return errors.New("nama lengkap atau foto profil harus diisi")
+	}
+	return nil
 }
 
 type ChangePasswordRequest struct {

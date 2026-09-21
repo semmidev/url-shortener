@@ -30,9 +30,11 @@ import (
 	"github.com/semmidev/url-shortener/server/internal/platform/outbox"
 	"github.com/semmidev/url-shortener/server/internal/platform/permission"
 	"github.com/semmidev/url-shortener/server/internal/platform/postgres"
+	platformStorage "github.com/semmidev/url-shortener/server/internal/platform/storage"
 	"github.com/semmidev/url-shortener/server/internal/platform/telemetry"
 	"github.com/semmidev/url-shortener/server/internal/platform/token"
 	"github.com/semmidev/url-shortener/server/internal/platform/web"
+	"github.com/semmidev/url-shortener/server/internal/storage"
 	"github.com/semmidev/url-shortener/server/internal/tenant"
 	"github.com/semmidev/url-shortener/server/internal/url"
 	"github.com/semmidev/url-shortener/server/internal/user"
@@ -217,9 +219,25 @@ func BuildRouter(cfg config.Config, pool *pgxpool.Pool, appLogger *logger.Logger
 		appLogger.Info(context.Background(), "casbin decision engine initialized and synced successfully")
 	}
 
+	// Initialize Storage Provider (S3 / RustFS)
+	var storageProvider platformStorage.Provider
+	s3Prov, s3Err := platformStorage.NewS3Provider(context.Background(), cfg)
+	if s3Err != nil {
+		appLogger.Warn(context.Background(), "s3 storage provider initialization skipped/failed", "error", s3Err)
+	} else {
+		appLogger.Info(context.Background(), "s3 storage provider initialized successfully", "bucket", cfg.S3Bucket, "endpoint", cfg.S3Endpoint)
+		storageProvider = s3Prov
+	}
+
 	// Initialize Services
 	userSvc := user.NewService(store, tokenMaker, cfg, appLogger, redisCache, authorizer)
 	userSvc.SetMetricsRecorder(appMetrics)
+	if storageProvider != nil {
+		userSvc.SetStorageProvider(storageProvider)
+	}
+
+	storageSvc := storage.NewService(storageProvider)
+	storageH := storage.NewHandler(storageSvc)
 
 	urlSvc := url.NewService(store, cfg, redisCache, authorizer, taskDistributor)
 	urlSvc.SetMetricsRecorder(appMetrics)
@@ -374,6 +392,9 @@ func BuildRouter(cfg config.Config, pool *pgxpool.Pool, appLogger *logger.Logger
 			tenantH.Mount(r, authMw)
 			urlH.Mount(r, authMw)
 			analyticsH.Mount(r, authMw)
+			r.Route("/storage", func(r chi.Router) {
+				storageH.Mount(r, authMw)
+			})
 		})
 	})
 
