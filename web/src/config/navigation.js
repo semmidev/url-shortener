@@ -1,6 +1,7 @@
 /**
  * Static Predefined Application Navigation Configuration (Source of Truth for Frontend Menu Derivative)
- * Each item specifies title, path, icon, and optional requiredPermission.
+ * Supports 3-Level Navigation Hierarchy: Group -> Menu -> Submenu
+ * Each item specifies title, path (if leaf item), icon, optional requiredPermission, and optional children.
  */
 export const NAVIGATION_GROUPS = [
   {
@@ -21,25 +22,33 @@ export const NAVIGATION_GROUPS = [
   },
   {
     id: "links",
-    title_id: "Tautan",
-    title_en: "Links",
+    title_id: "Tautan & Analitik",
+    title_en: "Links & Analytics",
     is_group: true,
     children: [
       {
-        id: "my-links",
-        title_id: "URL Singkat",
-        title_en: "My Links",
-        path: "/dashboard/urls",
-        icon: "Link",
-        requiredPermission: "urls.read",
-      },
-      {
-        id: "analytics",
-        title_id: "Analitik",
-        title_en: "Analytics",
-        path: "/dashboard/analytics",
-        icon: "BarChart3",
-        requiredPermission: "analytics.read",
+        id: "link-management",
+        title_id: "Kelola Tautan",
+        title_en: "Link Management",
+        icon: "Link2",
+        children: [
+          {
+            id: "my-links",
+            title_id: "URL Singkat",
+            title_en: "My Links",
+            path: "/dashboard/urls",
+            icon: "Link",
+            requiredPermission: "urls.read",
+          },
+          {
+            id: "analytics",
+            title_id: "Analitik Traffic",
+            title_en: "Traffic Analytics",
+            path: "/dashboard/analytics",
+            icon: "BarChart3",
+            requiredPermission: "analytics.read",
+          },
+        ],
       },
     ],
   },
@@ -50,52 +59,84 @@ export const NAVIGATION_GROUPS = [
     is_group: true,
     children: [
       {
-        id: "workspace-links",
+        id: "workspace-content",
         title_id: "Kontrol Link Workspace",
-        title_en: "Workspace Links",
-        path: "/dashboard/workspace/links",
+        title_en: "Workspace Links Control",
         icon: "Globe",
-        requiredPermission: "links.read",
+        children: [
+          {
+            id: "workspace-links",
+            title_id: "Tautan Tim",
+            title_en: "Team Links",
+            path: "/dashboard/workspace/links",
+            icon: "Globe",
+            requiredPermission: "links.read",
+          },
+        ],
       },
       {
-        id: "workspace-members",
-        title_id: "Anggota Workspace",
-        title_en: "Workspace Members",
-        path: "/dashboard/workspace/members",
+        id: "workspace-team",
+        title_id: "Tim & Hak Akses",
+        title_en: "Team & Permissions",
         icon: "Users",
-        requiredPermission: "tenants.members.manage",
+        children: [
+          {
+            id: "workspace-members",
+            title_id: "Anggota Workspace",
+            title_en: "Workspace Members",
+            path: "/dashboard/workspace/members",
+            icon: "UserCheck",
+            requiredPermission: "tenants.members.manage",
+          },
+          {
+            id: "workspace-roles",
+            title_id: "Peran & Akses (RBAC)",
+            title_en: "Roles & Access (RBAC)",
+            path: "/dashboard/workspace/roles",
+            icon: "KeyRound",
+            requiredPermission: "roles.read",
+          },
+        ],
       },
       {
-        id: "workspace-roles",
-        title_id: "Peran & Akses",
-        title_en: "Roles & Access",
-        path: "/dashboard/workspace/roles",
-        icon: "KeyRound",
-        requiredPermission: "roles.read",
-      },
-      {
-        id: "workspace-settings",
+        id: "workspace-config",
         title_id: "Pengaturan Workspace",
         title_en: "Workspace Settings",
-        path: "/dashboard/workspace/settings",
         icon: "Settings",
-        requiredPermission: "tenants.update",
+        children: [
+          {
+            id: "workspace-settings",
+            title_id: "Konfigurasi Umum",
+            title_en: "General Settings",
+            path: "/dashboard/workspace/settings",
+            icon: "Sliders",
+            requiredPermission: "tenants.update",
+          },
+        ],
       },
     ],
   },
   {
     id: "settings",
-    title_id: "Pengaturan",
-    title_en: "Settings",
+    title_id: "Pengaturan Akun",
+    title_en: "Account Settings",
     is_group: true,
     children: [
       {
-        id: "account",
-        title_id: "Profil Akun",
-        title_en: "Account Profile",
-        path: "/dashboard/account",
+        id: "account-management",
+        title_id: "Akun Saya",
+        title_en: "My Account",
         icon: "User",
-        requiredPermission: null,
+        children: [
+          {
+            id: "account",
+            title_id: "Profil Akun",
+            title_en: "Account Profile",
+            path: "/dashboard/account",
+            icon: "UserCog",
+            requiredPermission: null,
+          },
+        ],
       },
     ],
   },
@@ -103,6 +144,7 @@ export const NAVIGATION_GROUPS = [
 
 /**
  * Filter the static navigation groups according to current user's permissions.
+ * Recursively checks permissions across Groups, Menus, and Submenus.
  */
 export function getPermittedNavigation(hasPermission) {
   const result = [];
@@ -113,10 +155,29 @@ export function getPermittedNavigation(hasPermission) {
       continue;
     }
 
-    // Filter children based on requiredPermission
-    const permittedChildren = (group.children || []).filter(
-      (child) => !child.requiredPermission || hasPermission(child.requiredPermission)
-    );
+    const permittedChildren = [];
+
+    for (const child of group.children || []) {
+      if (child.requiredPermission && !hasPermission(child.requiredPermission)) {
+        continue;
+      }
+
+      // If child menu item has submenu children, filter submenus recursively
+      if (child.children && child.children.length > 0) {
+        const permittedSubChildren = child.children.filter(
+          (sub) => !sub.requiredPermission || hasPermission(sub.requiredPermission)
+        );
+
+        if (permittedSubChildren.length > 0) {
+          permittedChildren.push({
+            ...child,
+            children: permittedSubChildren,
+          });
+        }
+      } else {
+        permittedChildren.push(child);
+      }
+    }
 
     if (permittedChildren.length > 0) {
       result.push({
@@ -130,13 +191,16 @@ export function getPermittedNavigation(hasPermission) {
 }
 
 /**
- * Helper to find navigation item by route path.
+ * Helper to find navigation item by route path (searches Groups, Menus, and Submenus).
  */
 export function findNavigationItemByPath(targetPath) {
   for (const group of NAVIGATION_GROUPS) {
     if (group.path === targetPath) return group;
     for (const child of group.children || []) {
       if (child.path === targetPath) return child;
+      for (const sub of child.children || []) {
+        if (sub.path === targetPath) return sub;
+      }
     }
   }
   return null;

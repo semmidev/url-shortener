@@ -1,5 +1,6 @@
 import React, { useState, useEffect, startTransition, addTransitionType } from "react"
 import { Link, useLocation } from "react-router-dom"
+import { motion, AnimatePresence } from "motion/react"
 import {
   SidebarGroupContent,
   SidebarMenu,
@@ -148,7 +149,7 @@ function NavMainItem({ item }) {
         isActive={isActive}
         tooltip={item.title}
         onClick={() => setIsOpen((prev) => !prev)}
-        className={`w-full justify-between transition-colors duration-200 cursor-pointer ${
+        className={`w-full justify-between transition-all duration-200 cursor-pointer ${
           isActive
             ? "bg-primary/10! text-primary! font-semibold border-l-2 border-l-primary rounded-l-none pl-3!"
             : "text-muted-foreground hover:text-foreground hover:bg-muted/40"
@@ -161,56 +162,66 @@ function NavMainItem({ item }) {
           <span className="truncate">{item.title}</span>
         </div>
         <ChevronRightIcon
-          className={`size-4 shrink-0 transition-transform duration-200 text-muted-foreground ${
-            isOpen ? "rotate-90 text-foreground" : ""
+          className={`size-4 shrink-0 transition-transform duration-200 text-muted-foreground/70 ${
+            isOpen ? "rotate-90 text-primary" : ""
           }`}
         />
       </SidebarMenuButton>
 
-      {isOpen && (
-        <SidebarMenuSub className="my-1 space-y-0.5 animate-in fade-in slide-in-from-top-1 duration-150">
-          {item.items.map((subItem) => {
-            const active = isSubActive(subItem)
-            return (
-              <SidebarMenuSubItem key={subItem.title}>
-                <SidebarMenuSubButton
-                  isActive={active}
-                  render={subItem.url && subItem.url !== "#" ? <Link to={subItem.url} /> : undefined}
-                  onClick={() => {
-                    if (typeof addTransitionType === "function") {
-                      startTransition(() => {
-                        addTransitionType("nav-forward");
-                      });
-                    }
-                    if (isMobile) setOpenMobile(false);
-                  }}
-                  className={`transition-colors duration-150 cursor-pointer rounded-md ${
-                    active
-                      ? "bg-primary/10! text-primary! font-semibold"
-                      : "text-muted-foreground hover:text-foreground hover:bg-muted/30"
-                  }`}
-                >
-                  <span className="shrink-0 flex items-center justify-center">
-                    {subItem.icon || (
-                      <span
-                        className={`size-1.5 rounded-full transition-colors ${
-                          active ? "bg-primary" : "bg-muted-foreground/40"
-                        }`}
-                      />
-                    )}
-                  </span>
-                  <span className="truncate text-xs">{subItem.title}</span>
-                  {subItem.badge && (
-                    <span className="ml-auto text-[9px] font-bold px-1.5 py-0.2 rounded-full bg-primary/20 text-primary">
-                      {subItem.badge}
-                    </span>
-                  )}
-                </SidebarMenuSubButton>
-              </SidebarMenuSubItem>
-            )
-          })}
-        </SidebarMenuSub>
-      )}
+      <AnimatePresence initial={false}>
+        {isOpen && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+            className="overflow-hidden"
+          >
+            <SidebarMenuSub className="my-1 ml-4 pl-3 border-l-2 border-border/60 dark:border-border/40 hover:border-primary/40 transition-colors space-y-0.5">
+              {item.items.map((subItem) => {
+                const active = isSubActive(subItem)
+                return (
+                  <SidebarMenuSubItem key={subItem.title}>
+                    <SidebarMenuSubButton
+                      isActive={active}
+                      render={subItem.url && subItem.url !== "#" ? <Link to={subItem.url} /> : undefined}
+                      onClick={() => {
+                        if (typeof addTransitionType === "function") {
+                          startTransition(() => {
+                            addTransitionType("nav-forward");
+                          });
+                        }
+                        if (isMobile) setOpenMobile(false);
+                      }}
+                      className={`transition-all duration-150 cursor-pointer rounded-md ${
+                        active
+                          ? "bg-primary/10! text-primary! font-semibold"
+                          : "text-muted-foreground hover:text-foreground hover:bg-muted/30"
+                      }`}
+                    >
+                      <span className="shrink-0 flex items-center justify-center">
+                        {subItem.icon || (
+                          <span
+                            className={`size-1.5 rounded-full transition-colors ${
+                              active ? "bg-primary shadow-xs shadow-primary/50" : "bg-muted-foreground/40"
+                            }`}
+                          />
+                        )}
+                      </span>
+                      <span className="truncate text-xs">{subItem.title}</span>
+                      {subItem.badge && (
+                        <span className="ml-auto text-[9px] font-bold px-1.5 py-0.2 rounded-full bg-primary/20 text-primary">
+                          {subItem.badge}
+                        </span>
+                      )}
+                    </SidebarMenuSubButton>
+                  </SidebarMenuSubItem>
+                )
+              })}
+            </SidebarMenuSub>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </SidebarMenuItem>
   )
 }

@@ -1,8 +1,6 @@
 import * as React from "react"
-import { useNavigate } from "react-router-dom"
 import { useAuthStore } from "@/features/auth/store"
 import { usePermission } from "@/hooks/usePermission"
-import { useTenant } from "@/context/TenantContext"
 import { NavMain } from "@/components/nav-main"
 import { NavUser } from "@/components/nav-user"
 import { useI18n } from "@/context/I18nContext"
@@ -62,9 +60,7 @@ function menuToNavItem(menu, language) {
 
 export function AppSidebar({ ...props }) {
   const user = useAuthStore((s) => s.user)
-  const navigate = useNavigate()
   const { menus, isLoaded } = usePermission()
-  const { tenants, activeTenant, selectTenant, openJoinModal, openCreateModal } = useTenant()
   const { language, t } = useI18n()
 
   const sidebarUser = {

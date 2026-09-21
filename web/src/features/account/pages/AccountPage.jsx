@@ -211,10 +211,10 @@ export default function Account() {
       </Card>
 
       {/* Profile Form */}
-      <Card className="border-blue-500/20 bg-blue-500/5">
+      <Card className="border-border/60 shadow-xs">
         <CardHeader>
           <div className="flex items-center gap-2">
-            <UserIcon className="size-5 text-blue-500 shrink-0" />
+            <UserIcon className="size-5 text-muted-foreground shrink-0" />
             <div>
               <CardTitle className="text-base font-semibold">{t("account.personalDetails")}</CardTitle>
             </div>
@@ -251,10 +251,10 @@ export default function Account() {
       </Card>
 
       {/* Password Security */}
-      <Card className="border-amber-500/20 bg-amber-500/5">
+      <Card className="border-border/60 shadow-xs">
         <CardHeader>
           <div className="flex items-center gap-2">
-            <KeyRoundIcon className="size-5 text-amber-500 shrink-0" />
+            <KeyRoundIcon className="size-5 text-muted-foreground shrink-0" />
             <div>
               <CardTitle className="text-base font-semibold">{t("account.changePasswordTitle")}</CardTitle>
               <CardDescription className="text-xs">{t("account.changePasswordDesc")}</CardDescription>
@@ -263,7 +263,7 @@ export default function Account() {
         </CardHeader>
         <CardContent>
           {!hasPassword && (
-            <div className="mb-4 p-3 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-600 dark:text-amber-400 text-xs flex items-center gap-2">
+            <div className="mb-4 p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 text-xs flex items-center gap-2">
               <AlertCircleIcon className="size-4 shrink-0" />
               <span>
                 {t("account.noPasswordWarning")}
@@ -318,10 +318,10 @@ export default function Account() {
       </Card>
 
       {/* Google OAuth Connection */}
-      <Card className="border-emerald-500/20 bg-emerald-500/5">
+      <Card className="border-border/60 shadow-xs">
         <CardHeader>
           <div className="flex items-center gap-2">
-            <LinkIcon className="size-5 text-emerald-500 shrink-0" />
+            <LinkIcon className="size-5 text-muted-foreground shrink-0" />
             <div>
               <CardTitle className="text-base font-semibold">{t("account.googleConnectionTitle")}</CardTitle>
               <CardDescription className="text-xs">{t("account.googleConnectionDesc")}</CardDescription>
@@ -329,7 +329,7 @@ export default function Account() {
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-xl border border-border/60 bg-background/60">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-xl border border-border/60 bg-muted/30">
             <div className="flex items-center gap-3 min-w-0">
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-border/60 bg-background shadow-xs">
                 <GoogleLogo className="size-5" />
@@ -367,7 +367,7 @@ export default function Account() {
                   size="sm"
                   disabled={googleLoading}
                   onClick={handleConnectGoogle}
-                  className="text-xs border-emerald-500/40 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10 cursor-pointer h-9 gap-2 font-medium"
+                  className="text-xs cursor-pointer h-9 gap-2 font-medium"
                 >
                   {googleLoading ? <Loader2Icon className="size-3.5 animate-spin" /> : <GoogleLogo className="size-4" />}
                   {t("account.connectGoogleBtn")}
@@ -376,7 +376,7 @@ export default function Account() {
             </div>
           </div>
 
-          <div className="rounded-lg bg-background/50 border border-border/40 px-3.5 py-2.5 text-xs text-muted-foreground leading-relaxed flex items-start gap-2">
+          <div className="rounded-lg bg-muted/40 border border-border/60 px-3.5 py-2.5 text-xs text-muted-foreground leading-relaxed flex items-start gap-2">
             <span className="shrink-0 text-base">💡</span>
             <span>
               {t("account.googleTip")}

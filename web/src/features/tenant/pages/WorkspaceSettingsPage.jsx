@@ -26,7 +26,6 @@ import { toast } from 'sonner';
 import { useTenant } from '@/context/TenantContext';
 import { updateTenant, regenerateJoinCode, deleteTenant } from '../api';
 import PermissionGuard from '@/components/PermissionGuard';
-import { useNavigate } from 'react-router-dom';
 
 function FieldError({ error }) {
   if (!error) return null;
@@ -40,7 +39,6 @@ function FieldError({ error }) {
 
 export default function WorkspaceSettingsPage() {
   const { activeTenant, selectTenant, fetchTenants } = useTenant();
-  const navigate = useNavigate();
 
   const [form, setForm] = useState({ name: '', slug: '' });
   const [copiedCode, setCopiedCode] = useState(false);
@@ -175,10 +173,10 @@ export default function WorkspaceSettingsPage() {
       </Card>
 
       {/* General Settings Form */}
-      <Card className="border-blue-500/20 bg-blue-500/5 shadow-xs">
+      <Card className="border-border/60 shadow-xs">
         <CardHeader>
           <div className="flex items-center gap-2">
-            <Building2Icon className="size-5 text-blue-500 shrink-0" />
+            <Building2Icon className="size-5 text-muted-foreground shrink-0" />
             <div>
               <CardTitle className="text-base font-semibold">Informasi Umum Workspace</CardTitle>
               <CardDescription className="text-xs">
@@ -240,10 +238,10 @@ export default function WorkspaceSettingsPage() {
       </Card>
 
       {/* Join Code Management */}
-      <Card className="border-emerald-500/20 bg-emerald-500/5 shadow-xs">
+      <Card className="border-border/60 shadow-xs">
         <CardHeader>
           <div className="flex items-center gap-2">
-            <KeyIcon className="size-5 text-emerald-500 shrink-0" />
+            <KeyIcon className="size-5 text-muted-foreground shrink-0" />
             <div>
               <CardTitle className="text-base font-semibold">Kode Gabung (Join Code)</CardTitle>
               <CardDescription className="text-xs">
@@ -253,7 +251,7 @@ export default function WorkspaceSettingsPage() {
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 rounded-xl border border-border/60 bg-background/80 shadow-xs">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 rounded-xl border border-border/60 bg-muted/30 shadow-xs">
             <div className="space-y-1 text-center sm:text-left">
               <span className="text-xs text-muted-foreground block font-medium">Kode Gabung Aktif</span>
               <span className="font-mono text-3xl font-black tracking-widest text-primary select-all">
@@ -270,7 +268,7 @@ export default function WorkspaceSettingsPage() {
                   variant="outline"
                   size="sm"
                   onClick={() => setShowRegenModal(true)}
-                  className="gap-1.5 cursor-pointer text-amber-600 border-amber-500/30 hover:bg-amber-500/10 h-9"
+                  className="gap-1.5 cursor-pointer h-9"
                 >
                   <RefreshCwIcon className="size-3.5" />
                   Buat Ulang Kode
@@ -279,7 +277,7 @@ export default function WorkspaceSettingsPage() {
             </div>
           </div>
 
-          <div className="rounded-lg bg-background/60 border border-border/40 px-3.5 py-2.5 text-xs text-muted-foreground leading-relaxed flex items-start gap-2">
+          <div className="rounded-lg bg-muted/40 border border-border/60 px-3.5 py-2.5 text-xs text-muted-foreground leading-relaxed flex items-start gap-2">
             <span className="shrink-0 text-base">💡</span>
             <span>
               Anggota baru dapat bergabung dengan memasukkan kode gabung ini via menu dropdown workspace di pojok kanan atas layar.
@@ -290,7 +288,7 @@ export default function WorkspaceSettingsPage() {
 
       {/* Danger Zone for Owners */}
       {isOwner && (
-        <Card className="border-destructive/30 bg-destructive/5 shadow-xs">
+        <Card className="border-destructive/20 bg-destructive/5 shadow-xs">
           <CardHeader>
             <div className="flex items-center gap-2">
               <AlertTriangleIcon className="size-5 text-destructive shrink-0" />
@@ -303,7 +301,7 @@ export default function WorkspaceSettingsPage() {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 rounded-xl border border-destructive/20 bg-background/80">
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 rounded-xl border border-destructive/20 bg-card">
               <div>
                 <h4 className="text-sm font-bold text-foreground">Hapus Workspace Ini</h4>
                 <p className="text-xs text-muted-foreground mt-0.5">
