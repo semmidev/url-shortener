@@ -53,3 +53,11 @@ SET
     updated_at = NOW()
 WHERE id = $1
 RETURNING *;
+
+-- name: ClearUserAvatar :one
+UPDATE users
+SET
+    avatar_url = NULL,
+    updated_at = NOW()
+WHERE id = $1
+RETURNING *;

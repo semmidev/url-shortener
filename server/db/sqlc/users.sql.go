@@ -12,6 +12,32 @@ import (
 	"uuid"
 )
 
+const clearUserAvatar = `-- name: ClearUserAvatar :one
+UPDATE users
+SET
+    avatar_url = NULL,
+    updated_at = NOW()
+WHERE id = $1
+RETURNING id, email, password_hash, google_id, avatar_url, full_name, is_suspended, created_at, updated_at
+`
+
+func (q *Queries) ClearUserAvatar(ctx context.Context, id uuid.UUID) (User, error) {
+	row := q.db.QueryRow(ctx, clearUserAvatar, id)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.Email,
+		&i.PasswordHash,
+		&i.GoogleID,
+		&i.AvatarUrl,
+		&i.FullName,
+		&i.IsSuspended,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const createUser = `-- name: CreateUser :one
 INSERT INTO users (
     email,

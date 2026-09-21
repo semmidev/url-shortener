@@ -15,6 +15,7 @@ type Querier interface {
 	AddRolePermission(ctx context.Context, arg AddRolePermissionParams) error
 	AddTenantMember(ctx context.Context, arg AddTenantMemberParams) (TenantMembership, error)
 	ClearRolePermissions(ctx context.Context, roleID uuid.UUID) error
+	ClearUserAvatar(ctx context.Context, id uuid.UUID) (User, error)
 	CountAllTenantsAdmin(ctx context.Context, search pgtype.Text) (int64, error)
 	CountAllUsers(ctx context.Context, search pgtype.Text) (int64, error)
 	CountAuditLogs(ctx context.Context, search pgtype.Text) (int64, error)

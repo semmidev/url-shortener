@@ -680,18 +680,67 @@ func (s *Service) Logout(ctx context.Context, req LogoutRequest) error {
 	return nil
 }
 
+func extractS3KeyFromURL(rawURL string) string {
+	if rawURL == "" {
+		return ""
+	}
+	if idx := strings.Index(rawURL, "/avatars/"); idx != -1 {
+		return strings.TrimPrefix(rawURL[idx+1:], "/")
+	}
+	return ""
+}
+
 func (s *Service) UpdateProfile(ctx context.Context, req UpdateProfileRequest) (*UserResponse, error) {
 	if err := req.Validate(); err != nil {
 		return nil, err
 	}
 
-	updated, err := s.store.UpdateUser(ctx, db.UpdateUserParams{
-		ID:        req.UserID,
-		FullName:  pgtype.Text{String: req.FullName, Valid: strings.TrimSpace(req.FullName) != ""},
-		AvatarUrl: pgtype.Text{String: req.AvatarURL, Valid: strings.TrimSpace(req.AvatarURL) != ""},
-	})
+	existingUser, err := s.store.GetUserByID(ctx, req.UserID)
 	if err != nil {
-		return nil, apperr.MapDBError(err, "failed to update user profile", "")
+		return nil, apperr.MapDBError(err, fmt.Sprintf("user profile not found with ID: %s", req.UserID), "")
+	}
+
+	cleanAvatarURL := strings.TrimSpace(req.AvatarURL)
+
+	// If existing avatar is stored in S3 and is being removed or replaced, delete old file from S3
+	if s.storageProvider != nil && existingUser.AvatarUrl != "" {
+		oldAvatarURL := existingUser.AvatarUrl
+		if oldAvatarURL != cleanAvatarURL {
+			if oldKey := extractS3KeyFromURL(oldAvatarURL); oldKey != "" {
+				if delErr := s.storageProvider.DeleteFile(ctx, oldKey); delErr != nil {
+					s.appLogger.Warn(ctx, "failed to delete old avatar from S3", "key", oldKey, "error", delErr)
+				} else {
+					s.appLogger.Info(ctx, "successfully deleted old avatar from S3", "key", oldKey)
+				}
+			}
+		}
+	}
+
+	var updated db.User
+	if cleanAvatarURL == "" && existingUser.AvatarUrl != "" {
+		// Explicitly set avatar_url = NULL in database when cleared
+		updated, err = s.store.ClearUserAvatar(ctx, req.UserID)
+		if err != nil {
+			return nil, apperr.MapDBError(err, "failed to clear user avatar", "")
+		}
+		if strings.TrimSpace(req.FullName) != "" && req.FullName != existingUser.FullName {
+			updated, err = s.store.UpdateUser(ctx, db.UpdateUserParams{
+				ID:       req.UserID,
+				FullName: pgtype.Text{String: req.FullName, Valid: true},
+			})
+			if err != nil {
+				return nil, apperr.MapDBError(err, "failed to update user profile", "")
+			}
+		}
+	} else {
+		updated, err = s.store.UpdateUser(ctx, db.UpdateUserParams{
+			ID:        req.UserID,
+			FullName:  pgtype.Text{String: req.FullName, Valid: strings.TrimSpace(req.FullName) != ""},
+			AvatarUrl: pgtype.Text{String: cleanAvatarURL, Valid: cleanAvatarURL != ""},
+		})
+		if err != nil {
+			return nil, apperr.MapDBError(err, "failed to update user profile", "")
+		}
 	}
 
 	res := toUserResponse(updated)
