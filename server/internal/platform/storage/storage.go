@@ -53,6 +53,16 @@ func NewS3Provider(ctx context.Context, cfg config.Config) (*S3Provider, error) 
 		secretKey = "password123"
 	}
 
+	endpoint := cfg.S3Endpoint
+	if endpoint == "" {
+		endpoint = "http://127.0.0.1:9000"
+	}
+
+	cfg.S3Endpoint = endpoint
+	cfg.S3Region = region
+	cfg.S3AccessKeyID = accessKey
+	cfg.S3SecretAccessKey = secretKey
+
 	awsCfg, err := awsconfig.LoadDefaultConfig(ctx,
 		awsconfig.WithRegion(region),
 		awsconfig.WithCredentialsProvider(credentials.NewStaticCredentialsProvider(
@@ -80,24 +90,24 @@ func NewS3Provider(ctx context.Context, cfg config.Config) (*S3Provider, error) 
 		cfg:           cfg,
 	}
 
-	// Ensure bucket exists in background with timeout (RustFS / MinIO)
-	go func() { //nolint:gosec // background context for asynchronous initialization
-		ctxTimeout, cancel := context.WithTimeout(context.Background(), 2*time.Second)
-		defer cancel()
-		_ = provider.ensureBucketExists(ctxTimeout)
-	}()
+	// Synchronously ensure bucket exists, CORS, and public-read policy with timeout
+	initCtx, cancel := context.WithTimeout(ctx, 3*time.Second)
+	defer cancel()
+	_ = provider.ensureBucketExists(initCtx)
 
 	return provider, nil
 }
 
 func (p *S3Provider) ensureBucketExists(ctx context.Context) error {
+	bucket := p.cfg.S3Bucket
+
 	_, err := p.client.HeadBucket(ctx, &s3.HeadBucketInput{
-		Bucket: aws.String(p.cfg.S3Bucket),
+		Bucket: aws.String(bucket),
 	})
 	if err != nil {
 		// Attempt to create bucket
 		_, createErr := p.client.CreateBucket(ctx, &s3.CreateBucketInput{
-			Bucket: aws.String(p.cfg.S3Bucket),
+			Bucket: aws.String(bucket),
 		})
 		if createErr != nil {
 			var alreadyOwned *types.BucketAlreadyOwnedByYou
@@ -107,6 +117,43 @@ func (p *S3Provider) ensureBucketExists(ctx context.Context) error {
 			}
 		}
 	}
+
+	// 1. Setup CORS Configuration for direct browser Presigned PUT uploads
+	corsInput := &s3.PutBucketCorsInput{
+		Bucket: aws.String(bucket),
+		CORSConfiguration: &types.CORSConfiguration{
+			CORSRules: []types.CORSRule{
+				{
+					AllowedHeaders: []string{"*"},
+					AllowedMethods: []string{"GET", "PUT", "POST", "DELETE", "HEAD"},
+					AllowedOrigins: []string{"*"},
+					ExposeHeaders:  []string{"ETag"},
+					MaxAgeSeconds:  aws.Int32(3600),
+				},
+			},
+		},
+	}
+	_, _ = p.client.PutBucketCors(ctx, corsInput)
+
+	// 2. Setup Public Read Policy for accessing stored avatars/files
+	policyJSON := fmt.Sprintf(`{
+		"Version": "2012-10-17",
+		"Statement": [
+			{
+				"Sid": "PublicReadGetObject",
+				"Effect": "Allow",
+				"Principal": "*",
+				"Action": "s3:GetObject",
+				"Resource": "arn:aws:s3:::%s/*"
+			}
+		]
+	}`, bucket)
+
+	_, _ = p.client.PutBucketPolicy(ctx, &s3.PutBucketPolicyInput{
+		Bucket: aws.String(bucket),
+		Policy: aws.String(policyJSON),
+	})
+
 	return nil
 }
 
