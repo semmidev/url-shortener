@@ -57,7 +57,7 @@ RETURNING *;
 -- name: ClearUserAvatar :one
 UPDATE users
 SET
-    avatar_url = NULL,
+    avatar_url = '',
     updated_at = NOW()
 WHERE id = $1
 RETURNING *;

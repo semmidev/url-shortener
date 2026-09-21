@@ -15,7 +15,7 @@ import (
 const clearUserAvatar = `-- name: ClearUserAvatar :one
 UPDATE users
 SET
-    avatar_url = NULL,
+    avatar_url = '',
     updated_at = NOW()
 WHERE id = $1
 RETURNING id, email, password_hash, google_id, avatar_url, full_name, is_suspended, created_at, updated_at
