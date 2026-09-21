@@ -56,8 +56,8 @@ func SecureHeaders(next http.Handler) http.Handler {
 					"script-src 'self' 'unsafe-inline' 'unsafe-eval' https://static.cloudflareinsights.com https://cdn.jsdelivr.net; "+
 					"style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "+
 					"font-src 'self' data: https://fonts.gstatic.com; "+
-					"img-src 'self' data: blob: https:; "+
-					"connect-src 'self' https: wss: ws://localhost:* ws://127.0.0.1:*; "+
+					"img-src 'self' data: blob: https: http: http://localhost:* http://127.0.0.1:*; "+
+					"connect-src 'self' https: http: wss: ws://localhost:* ws://127.0.0.1:* http://localhost:* http://127.0.0.1:*; "+
 					"frame-src 'self' blob: https://www.youtube.com; "+
 					"frame-ancestors 'self'",
 			)
