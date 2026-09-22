@@ -4,7 +4,8 @@ import (
 	"errors"
 	"strings"
 	"time"
-	"uuid"
+
+	"github.com/google/uuid"
 
 	"github.com/semmidev/url-shortener/server/internal/platform/validator"
 )

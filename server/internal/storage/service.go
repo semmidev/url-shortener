@@ -8,7 +8,8 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
-	"uuid"
+
+	"github.com/google/uuid"
 
 	"github.com/semmidev/url-shortener/server/internal/platform/apperr"
 	platformStorage "github.com/semmidev/url-shortener/server/internal/platform/storage"

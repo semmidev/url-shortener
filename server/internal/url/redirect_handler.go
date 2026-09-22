@@ -7,7 +7,8 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
-	"uuid"
+
+	"github.com/google/uuid"
 
 	"github.com/destel/rill"
 	"github.com/go-chi/chi/v5"

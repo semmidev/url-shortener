@@ -5,7 +5,8 @@ import (
 	"fmt"
 	"log"
 	"time"
-	"uuid"
+
+	"github.com/google/uuid"
 
 	db "github.com/semmidev/url-shortener/server/db/sqlc"
 	"github.com/semmidev/url-shortener/server/internal/config"

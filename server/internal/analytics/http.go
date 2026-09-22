@@ -3,7 +3,8 @@ package analytics
 import (
 	"context"
 	"net/http"
-	"uuid"
+
+	"github.com/google/uuid"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/semmidev/url-shortener/server/internal/platform/apperr"

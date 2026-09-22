@@ -4,7 +4,8 @@ import (
 	"errors"
 	"fmt"
 	"time"
-	"uuid"
+
+	"github.com/google/uuid"
 
 	"github.com/golang-jwt/jwt/v5"
 )
@@ -55,7 +56,10 @@ type CustomClaims struct {
 
 // CreateToken creates a new token for a specific user and duration.
 func (maker *JWTMaker) CreateToken(userID uuid.UUID, role string, sessionID uuid.UUID, duration time.Duration) (string, *Payload, error) {
-	tokenID := uuid.NewV7()
+	tokenID, err := uuid.NewV7()
+	if err != nil {
+		return "", nil, err
+	}
 
 	now := time.Now()
 	expiredAt := now.Add(duration)

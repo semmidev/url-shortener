@@ -2,7 +2,8 @@ package notification
 
 import (
 	"net/http"
-	"uuid"
+
+	"github.com/google/uuid"
 
 	"github.com/go-chi/chi/v5"
 

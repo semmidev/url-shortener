@@ -5,7 +5,8 @@ import (
 	"fmt"
 	"strings"
 	"sync"
-	"uuid"
+
+	"github.com/google/uuid"
 
 	"github.com/casbin/casbin/v2"
 	"github.com/casbin/casbin/v2/model"

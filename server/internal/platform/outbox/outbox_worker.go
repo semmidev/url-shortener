@@ -5,7 +5,8 @@ import (
 	"encoding/json"
 	"log/slog"
 	"time"
-	"uuid"
+
+	"github.com/google/uuid"
 
 	"github.com/destel/rill"
 	db "github.com/semmidev/url-shortener/server/db/sqlc"

@@ -9,7 +9,7 @@ import (
 	"context"
 	"time"
 
-	"uuid"
+	"github.com/google/uuid"
 )
 
 const countUserShortURLs = `-- name: CountUserShortURLs :one

@@ -9,7 +9,7 @@ import (
 	"context"
 	"time"
 
-	"uuid"
+	"github.com/google/uuid"
 )
 
 const countAllUsers = `-- name: CountAllUsers :one

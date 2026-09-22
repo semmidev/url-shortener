@@ -3,7 +3,8 @@ package token
 import (
 	"testing"
 	"time"
-	"uuid"
+
+	"github.com/google/uuid"
 )
 
 func BenchmarkJWTVerify(b *testing.B) {
