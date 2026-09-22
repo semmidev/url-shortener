@@ -35,10 +35,10 @@ func (u *User) IsActive() bool {
 
 // HasPasswordSet returns true if the user has a valid local password hash.
 func (u *User) HasPasswordSet() bool {
-	return u.PasswordHash.Valid && u.PasswordHash.String != ""
+	return u.PasswordHash != nil && *u.PasswordHash != ""
 }
 
 // IsGoogleLinked returns true if the user account is connected with Google OAuth.
 func (u *User) IsGoogleLinked() bool {
-	return u.GoogleID.Valid && u.GoogleID.String != ""
+	return u.GoogleID != nil && *u.GoogleID != ""
 }

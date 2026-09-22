@@ -4,8 +4,6 @@ import (
 	"context"
 	"strings"
 
-	"github.com/jackc/pgx/v5/pgtype"
-
 	db "github.com/semmidev/url-shortener/server/db/sqlc"
 	"github.com/semmidev/url-shortener/server/internal/platform/apperr"
 	"github.com/semmidev/url-shortener/server/internal/platform/authz"
@@ -135,32 +133,32 @@ func (s *Service) GetUserDashboard(ctx context.Context, req UserDashboardRequest
 		return nil, apperr.Forbidden("anda tidak memiliki izin untuk melihat analitik (analytics.read)")
 	}
 
-	pgUserID := pgtype.UUID{Bytes: req.UserID, Valid: true}
+	userID := &req.UserID
 
-	summary, err := s.store.GetUserDashboardSummary(ctx, pgUserID)
+	summary, err := s.store.GetUserDashboardSummary(ctx, userID)
 	if err != nil {
 		return nil, apperr.MapDBError(err, "failed to fetch dashboard summary", "")
 	}
 
 	referrers, err := s.store.GetUserTopReferrers(ctx, db.GetUserTopReferrersParams{
-		UserID: pgUserID,
+		UserID: userID,
 		Limit:  10,
 	})
 	if err != nil {
 		return nil, apperr.MapDBError(err, "failed to fetch top referrers", "")
 	}
 
-	devices, err := s.store.GetUserDeviceBreakdown(ctx, pgUserID)
+	devices, err := s.store.GetUserDeviceBreakdown(ctx, userID)
 	if err != nil {
 		return nil, apperr.MapDBError(err, "failed to fetch device breakdown", "")
 	}
 
-	countries, err := s.store.GetUserCountryBreakdown(ctx, pgUserID)
+	countries, err := s.store.GetUserCountryBreakdown(ctx, userID)
 	if err != nil {
 		return nil, apperr.MapDBError(err, "failed to fetch country breakdown", "")
 	}
 
-	clicksOverTime, err := s.store.GetUserClicksOverTime(ctx, pgUserID)
+	clicksOverTime, err := s.store.GetUserClicksOverTime(ctx, userID)
 	if err != nil {
 		return nil, apperr.MapDBError(err, "failed to fetch clicks over time", "")
 	}

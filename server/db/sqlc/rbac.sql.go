@@ -8,7 +8,6 @@ package db
 import (
 	"context"
 
-	"github.com/jackc/pgx/v5/pgtype"
 	"uuid"
 )
 
@@ -45,11 +44,11 @@ RETURNING id, tenant_id, name, display_name, description, is_system, created_at,
 `
 
 type CreateRoleParams struct {
-	TenantID    pgtype.UUID `json:"tenant_id"`
-	Name        string      `json:"name"`
-	DisplayName string      `json:"display_name"`
-	Description string      `json:"description"`
-	IsSystem    bool        `json:"is_system"`
+	TenantID    *uuid.UUID `json:"tenant_id"`
+	Name        string     `json:"name"`
+	DisplayName string     `json:"display_name"`
+	Description string     `json:"description"`
+	IsSystem    bool       `json:"is_system"`
 }
 
 func (q *Queries) CreateRole(ctx context.Context, arg CreateRoleParams) (Role, error) {
@@ -163,8 +162,8 @@ ORDER BY tenant_id DESC LIMIT 1
 `
 
 type GetTenantRoleByNameParams struct {
-	Name     string      `json:"name"`
-	TenantID pgtype.UUID `json:"tenant_id"`
+	Name     string     `json:"name"`
+	TenantID *uuid.UUID `json:"tenant_id"`
 }
 
 func (q *Queries) GetTenantRoleByName(ctx context.Context, arg GetTenantRoleByNameParams) (Role, error) {
@@ -294,7 +293,7 @@ WHERE tenant_id = $1 OR tenant_id IS NULL
 ORDER BY is_system DESC, name ASC
 `
 
-func (q *Queries) ListTenantRoles(ctx context.Context, tenantID pgtype.UUID) ([]Role, error) {
+func (q *Queries) ListTenantRoles(ctx context.Context, tenantID *uuid.UUID) ([]Role, error) {
 	rows, err := q.db.Query(ctx, listTenantRoles, tenantID)
 	if err != nil {
 		return nil, err

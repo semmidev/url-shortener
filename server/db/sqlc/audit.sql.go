@@ -9,7 +9,6 @@ import (
 	"context"
 	"time"
 
-	"github.com/jackc/pgx/v5/pgtype"
 	"uuid"
 )
 
@@ -23,7 +22,7 @@ WHERE ($1::text IS NULL OR (
 ))
 `
 
-func (q *Queries) CountAuditLogs(ctx context.Context, search pgtype.Text) (int64, error) {
+func (q *Queries) CountAuditLogs(ctx context.Context, search *string) (int64, error) {
 	row := q.db.QueryRow(ctx, countAuditLogs, search)
 	var count int64
 	err := row.Scan(&count)
@@ -37,27 +36,27 @@ RETURNING id, actor_id, actor_email, action, resource, resource_id, payload, ip_
 `
 
 type CreateAuditLogParams struct {
-	ActorID    pgtype.UUID `json:"actor_id"`
-	ActorEmail string      `json:"actor_email"`
-	Action     string      `json:"action"`
-	Resource   string      `json:"resource"`
-	ResourceID string      `json:"resource_id"`
-	Payload    string      `json:"payload"`
-	IpAddress  string      `json:"ip_address"`
-	UserAgent  string      `json:"user_agent"`
+	ActorID    *uuid.UUID `json:"actor_id"`
+	ActorEmail string     `json:"actor_email"`
+	Action     string     `json:"action"`
+	Resource   string     `json:"resource"`
+	ResourceID string     `json:"resource_id"`
+	Payload    string     `json:"payload"`
+	IpAddress  string     `json:"ip_address"`
+	UserAgent  string     `json:"user_agent"`
 }
 
 type CreateAuditLogRow struct {
-	ID         uuid.UUID   `json:"id"`
-	ActorID    pgtype.UUID `json:"actor_id"`
-	ActorEmail string      `json:"actor_email"`
-	Action     string      `json:"action"`
-	Resource   string      `json:"resource"`
-	ResourceID string      `json:"resource_id"`
-	Payload    string      `json:"payload"`
-	IpAddress  string      `json:"ip_address"`
-	UserAgent  string      `json:"user_agent"`
-	CreatedAt  time.Time   `json:"created_at"`
+	ID         uuid.UUID  `json:"id"`
+	ActorID    *uuid.UUID `json:"actor_id"`
+	ActorEmail string     `json:"actor_email"`
+	Action     string     `json:"action"`
+	Resource   string     `json:"resource"`
+	ResourceID string     `json:"resource_id"`
+	Payload    string     `json:"payload"`
+	IpAddress  string     `json:"ip_address"`
+	UserAgent  string     `json:"user_agent"`
+	CreatedAt  time.Time  `json:"created_at"`
 }
 
 func (q *Queries) CreateAuditLog(ctx context.Context, arg CreateAuditLogParams) (CreateAuditLogRow, error) {
@@ -95,16 +94,16 @@ LIMIT $1
 `
 
 type GetRecentAuditLogsRow struct {
-	ID         uuid.UUID   `json:"id"`
-	ActorID    pgtype.UUID `json:"actor_id"`
-	ActorEmail string      `json:"actor_email"`
-	Action     string      `json:"action"`
-	Resource   string      `json:"resource"`
-	ResourceID string      `json:"resource_id"`
-	Payload    string      `json:"payload"`
-	IpAddress  string      `json:"ip_address"`
-	UserAgent  string      `json:"user_agent"`
-	CreatedAt  time.Time   `json:"created_at"`
+	ID         uuid.UUID  `json:"id"`
+	ActorID    *uuid.UUID `json:"actor_id"`
+	ActorEmail string     `json:"actor_email"`
+	Action     string     `json:"action"`
+	Resource   string     `json:"resource"`
+	ResourceID string     `json:"resource_id"`
+	Payload    string     `json:"payload"`
+	IpAddress  string     `json:"ip_address"`
+	UserAgent  string     `json:"user_agent"`
+	CreatedAt  time.Time  `json:"created_at"`
 }
 
 func (q *Queries) GetRecentAuditLogs(ctx context.Context, limit int32) ([]GetRecentAuditLogsRow, error) {
@@ -151,22 +150,22 @@ LIMIT $3 OFFSET $2
 `
 
 type ListAuditLogsParams struct {
-	Search    pgtype.Text `json:"search"`
-	OffsetVal int32       `json:"offset_val"`
-	LimitVal  int32       `json:"limit_val"`
+	Search    *string `json:"search"`
+	OffsetVal int32   `json:"offset_val"`
+	LimitVal  int32   `json:"limit_val"`
 }
 
 type ListAuditLogsRow struct {
-	ID         uuid.UUID   `json:"id"`
-	ActorID    pgtype.UUID `json:"actor_id"`
-	ActorEmail string      `json:"actor_email"`
-	Action     string      `json:"action"`
-	Resource   string      `json:"resource"`
-	ResourceID string      `json:"resource_id"`
-	Payload    string      `json:"payload"`
-	IpAddress  string      `json:"ip_address"`
-	UserAgent  string      `json:"user_agent"`
-	CreatedAt  time.Time   `json:"created_at"`
+	ID         uuid.UUID  `json:"id"`
+	ActorID    *uuid.UUID `json:"actor_id"`
+	ActorEmail string     `json:"actor_email"`
+	Action     string     `json:"action"`
+	Resource   string     `json:"resource"`
+	ResourceID string     `json:"resource_id"`
+	Payload    string     `json:"payload"`
+	IpAddress  string     `json:"ip_address"`
+	UserAgent  string     `json:"user_agent"`
+	CreatedAt  time.Time  `json:"created_at"`
 }
 
 func (q *Queries) ListAuditLogs(ctx context.Context, arg ListAuditLogsParams) ([]ListAuditLogsRow, error) {

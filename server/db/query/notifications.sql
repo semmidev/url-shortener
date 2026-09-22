@@ -13,7 +13,7 @@ RETURNING id, user_id, title, message, type, is_read, created_at;
 SELECT id, user_id, title, message, type, is_read, created_at
 FROM notifications
 WHERE user_id = sqlc.arg('user_id')
-  AND (sqlc.narg('unread_only')::boolean IS NULL OR (sqlc.narg('unread_only')::boolean = TRUE AND is_read = FALSE))
+  AND (sqlc.narg('unread_only')::bool IS NULL OR (sqlc.narg('unread_only')::bool = TRUE AND is_read = FALSE))
   AND (sqlc.narg('type')::text IS NULL OR type = sqlc.narg('type')::text)
   AND (sqlc.narg('search')::text IS NULL OR (
     title ILIKE '%' || sqlc.narg('search')::text || '%' OR
@@ -25,7 +25,7 @@ LIMIT sqlc.arg('limit_val') OFFSET sqlc.arg('offset_val');
 -- name: CountUserNotifications :one
 SELECT COUNT(*) FROM notifications
 WHERE user_id = sqlc.arg('user_id')
-  AND (sqlc.narg('unread_only')::boolean IS NULL OR (sqlc.narg('unread_only')::boolean = TRUE AND is_read = FALSE))
+  AND (sqlc.narg('unread_only')::bool IS NULL OR (sqlc.narg('unread_only')::bool = TRUE AND is_read = FALSE))
   AND (sqlc.narg('type')::text IS NULL OR type = sqlc.narg('type')::text)
   AND (sqlc.narg('search')::text IS NULL OR (
     title ILIKE '%' || sqlc.narg('search')::text || '%' OR

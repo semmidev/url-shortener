@@ -3,8 +3,6 @@ package notification
 import (
 	"context"
 
-	"github.com/jackc/pgx/v5/pgtype"
-
 	db "github.com/semmidev/url-shortener/server/db/sqlc"
 	"github.com/semmidev/url-shortener/server/internal/platform/apperr"
 )
@@ -49,19 +47,20 @@ func (s *Service) ListNotifications(ctx context.Context, req ListNotificationsRe
 	}
 	offset := filter.GetOffset()
 
-	var unreadParam pgtype.Bool
+	var unreadParam *bool
 	if req.UnreadOnly {
-		unreadParam = pgtype.Bool{Bool: true, Valid: true}
+		b := true
+		unreadParam = &b
 	}
 
-	var typeParam pgtype.Text
+	var typeParam *string
 	if req.Type != "" && req.Type != "all" {
-		typeParam = pgtype.Text{String: req.Type, Valid: true}
+		typeParam = &req.Type
 	}
 
-	var searchParam pgtype.Text
+	var searchParam *string
 	if filter.Search != "" {
-		searchParam = pgtype.Text{String: filter.Search, Valid: true}
+		searchParam = &filter.Search
 	}
 
 	items, err := s.q.ListUserNotifications(ctx, db.ListUserNotificationsParams{

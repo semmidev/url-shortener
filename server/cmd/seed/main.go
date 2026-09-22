@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"log"
 	"time"
+	"uuid"
 
-	"github.com/jackc/pgx/v5/pgtype"
 	db "github.com/semmidev/url-shortener/server/db/sqlc"
 	"github.com/semmidev/url-shortener/server/internal/config"
 	"github.com/semmidev/url-shortener/server/internal/platform/authz"
@@ -76,7 +76,7 @@ func seed(ctx context.Context, store db.Store) error {
 	log.Println("📦 Seeding system roles...")
 	for _, r := range roles {
 		_, _ = store.CreateRole(ctx, db.CreateRoleParams{
-			TenantID:    pgtype.UUID{Valid: false},
+			TenantID:    nil,
 			Name:        r.Name,
 			DisplayName: r.DisplayName,
 			Description: r.Description,
@@ -118,7 +118,7 @@ func seed(ctx context.Context, store db.Store) error {
 		passwordHash := hashedPassword
 		_, _ = store.CreateUser(ctx, db.CreateUserParams{
 			Email:        u.Email,
-			PasswordHash: stringToPgText(&passwordHash),
+			PasswordHash: &passwordHash,
 			FullName:     u.FullName,
 		})
 	}
@@ -143,59 +143,73 @@ func seed(ctx context.Context, store db.Store) error {
 				Slug:     t.Slug,
 				JoinCode: t.JoinCode,
 			})
+			if err != nil {
+				log.Printf("⚠️ Warning creating tenant %s: %v", t.Name, err)
+				continue
+			}
 		}
-		if err == nil {
-			createdTenants[t.Slug] = tenant
-		}
+		createdTenants[t.Slug] = tenant
 	}
 
-	// 5. Seed Tenant Memberships
-	log.Println("👥 Mapping user memberships to tenants...")
-	johnUser, _ := store.GetUserByEmail(ctx, "sammidev4@gmail.com")
-	janeUser, _ := store.GetUserByEmail(ctx, "jane@example.com")
+	// 5. Assign Users to Tenants
+	johnUser, johnErr := store.GetUserByEmail(ctx, "sammidev4@gmail.com")
+	janeUser, janeErr := store.GetUserByEmail(ctx, "jane@example.com")
+	acme, hasAcme := createdTenants["acme"]
+	stark, hasStark := createdTenants["stark"]
 
-	if acme, ok := createdTenants["acme"]; ok {
-		if johnUser.Email != "" {
-			_, _ = store.AddTenantMember(ctx, db.AddTenantMemberParams{TenantID: acme.ID, UserID: johnUser.ID, Role: "owner"})
-			_ = authorizer.AddUserRole(ctx, johnUser.ID, "owner", acme.ID.String())
-		}
-		if janeUser.Email != "" {
-			_, _ = store.AddTenantMember(ctx, db.AddTenantMemberParams{TenantID: acme.ID, UserID: janeUser.ID, Role: "member"})
-			_ = authorizer.AddUserRole(ctx, janeUser.ID, "member", acme.ID.String())
-		}
+	if johnErr == nil && hasAcme {
+		_, _ = store.AddTenantMember(ctx, db.AddTenantMemberParams{
+			TenantID: acme.ID,
+			UserID:   johnUser.ID,
+			Role:     "owner",
+		})
+		_ = authorizer.AddUserRole(ctx, johnUser.ID, "owner", acme.ID.String())
+	}
+	if janeErr == nil && hasAcme {
+		_, _ = store.AddTenantMember(ctx, db.AddTenantMemberParams{
+			TenantID: acme.ID,
+			UserID:   janeUser.ID,
+			Role:     "member",
+		})
+		_ = authorizer.AddUserRole(ctx, janeUser.ID, "member", acme.ID.String())
+	}
+	if janeErr == nil && hasStark {
+		_, _ = store.AddTenantMember(ctx, db.AddTenantMemberParams{
+			TenantID: stark.ID,
+			UserID:   janeUser.ID,
+			Role:     "owner",
+		})
+		_ = authorizer.AddUserRole(ctx, janeUser.ID, "owner", stark.ID.String())
+	}
+	if johnErr == nil && hasStark {
+		_, _ = store.AddTenantMember(ctx, db.AddTenantMemberParams{
+			TenantID: stark.ID,
+			UserID:   johnUser.ID,
+			Role:     "admin",
+		})
+		_ = authorizer.AddUserRole(ctx, johnUser.ID, "admin", stark.ID.String())
 	}
 
-	if stark, ok := createdTenants["stark"]; ok {
-		if janeUser.Email != "" {
-			_, _ = store.AddTenantMember(ctx, db.AddTenantMemberParams{TenantID: stark.ID, UserID: janeUser.ID, Role: "owner"})
-			_ = authorizer.AddUserRole(ctx, janeUser.ID, "owner", stark.ID.String())
-		}
-		if johnUser.Email != "" {
-			_, _ = store.AddTenantMember(ctx, db.AddTenantMemberParams{TenantID: stark.ID, UserID: johnUser.ID, Role: "admin"})
-			_ = authorizer.AddUserRole(ctx, johnUser.ID, "admin", stark.ID.String())
-		}
-	}
-
-	// 6. Seed Sample Short URLs per Tenant
-	if acme, ok := createdTenants["acme"]; ok && johnUser.Email != "" {
-		log.Println("🔗 Seeding sample tenant short URLs...")
+	// 6. Seed Sample Short URLs
+	if johnErr == nil && janeErr == nil && hasAcme {
+		log.Println("🔗 Seeding sample short URLs...")
 		sampleURLs := []struct {
-			UserID      pgtype.UUID
-			TenantID    pgtype.UUID
+			UserID      *uuid.UUID
+			TenantID    *uuid.UUID
 			ShortCode   string
 			OriginalURL string
 			Title       string
 		}{
 			{
-				UserID:      uuidToPgUUID(johnUser.ID),
-				TenantID:    uuidToPgUUID(acme.ID),
+				UserID:      &johnUser.ID,
+				TenantID:    &acme.ID,
 				ShortCode:   "acme-docs",
 				OriginalURL: "https://github.com/semmidev/url-shortener",
 				Title:       "Acme Documentation Link",
 			},
 			{
-				UserID:      uuidToPgUUID(janeUser.ID),
-				TenantID:    uuidToPgUUID(acme.ID),
+				UserID:      &janeUser.ID,
+				TenantID:    &acme.ID,
 				ShortCode:   "acme-portal",
 				OriginalURL: "https://go.dev/doc/",
 				Title:       "Acme Customer Portal",
@@ -242,17 +256,4 @@ func seed(ctx context.Context, store db.Store) error {
 	}
 
 	return nil
-}
-
-func uuidToPgUUID(u any) pgtype.UUID {
-	var uuidVal pgtype.UUID
-	_ = uuidVal.Scan(u)
-	return uuidVal
-}
-
-func stringToPgText(s *string) pgtype.Text {
-	if s == nil || *s == "" {
-		return pgtype.Text{Valid: false}
-	}
-	return pgtype.Text{String: *s, Valid: true}
 }

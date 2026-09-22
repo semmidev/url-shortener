@@ -8,7 +8,6 @@ import (
 	"uuid"
 
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgtype"
 
 	db "github.com/semmidev/url-shortener/server/db/sqlc"
 	"github.com/semmidev/url-shortener/server/internal/config"
@@ -52,29 +51,18 @@ func (s *Service) SetMetricsRecorder(m MetricsRecorder) {
 }
 
 func (s *Service) toResponse(u db.ShortUrl) URLResponse {
-	var expiresAt *time.Time
-	if u.ExpiresAt.Valid {
-		expiresAt = &u.ExpiresAt.Time
-	}
-
-	var userID *uuid.UUID
-	if u.UserID.Valid {
-		id := uuid.UUID(u.UserID.Bytes)
-		userID = &id
-	}
-
 	shortURL := fmt.Sprintf("%s/%s", s.cfg.AppBaseURL, u.ShortCode)
 
 	return URLResponse{
 		ID:          u.ID,
-		UserID:      userID,
+		UserID:      u.UserID,
 		ShortCode:   u.ShortCode,
 		ShortURL:    shortURL,
 		OriginalURL: u.OriginalUrl,
 		Title:       u.Title,
 		IsActive:    u.IsActive,
 		ClickCount:  u.ClickCount,
-		ExpiresAt:   expiresAt,
+		ExpiresAt:   u.ExpiresAt,
 		CreatedAt:   u.CreatedAt,
 		UpdatedAt:   u.UpdatedAt,
 	}
@@ -132,19 +120,19 @@ func (s *Service) Create(ctx context.Context, req CreateURLRequest) (*URLRespons
 		}
 	}
 
-	var tenantUUID pgtype.UUID
+	var tenantID *uuid.UUID
 	if tID, ok := web.TenantID(ctx); ok {
-		tenantUUID = toPgUUID(&tID)
+		tenantID = &tID
 	}
 
 	u, createErr := s.store.CreateShortURL(ctx, db.CreateShortURLParams{
-		UserID:      toPgUUID(req.UserID),
-		TenantID:    tenantUUID,
+		UserID:      req.UserID,
+		TenantID:    tenantID,
 		ShortCode:   shortCode,
 		OriginalUrl: req.OriginalURL,
 		Title:       req.Title,
 		IsActive:    true,
-		ExpiresAt:   toPgTimestamptz(req.ExpiresAt),
+		ExpiresAt:   req.ExpiresAt,
 	})
 	if createErr != nil {
 		err = apperr.MapDBError(createErr, "failed to save short URL", "short code is already taken")
@@ -191,7 +179,7 @@ func (s *Service) GetByCode(ctx context.Context, req GetURLByCodeRequest) (*URLR
 		return nil, err
 	}
 
-	if u.ExpiresAt.Valid && time.Now().After(u.ExpiresAt.Time) {
+	if u.ExpiresAt != nil && time.Now().After(*u.ExpiresAt) {
 		err = apperr.NotFound("short URL has expired")
 		return nil, err
 	}
@@ -220,7 +208,7 @@ func (s *Service) GetByID(ctx context.Context, req GetURLByIDRequest) (*URLRespo
 		return nil, err
 	}
 
-	if u.UserID.Valid && uuid.UUID(u.UserID.Bytes) != req.UserID {
+	if u.UserID != nil && *u.UserID != req.UserID {
 		err = apperr.Forbidden("you do not have permission to access this short URL")
 		return nil, err
 	}
@@ -235,9 +223,9 @@ func (s *Service) List(ctx context.Context, req ListUserShortURLsRequest) (*List
 	defer func() { endSpan(err) }()
 
 	filter := req.Filter
-	var userUUID pgtype.UUID
+	var userID *uuid.UUID
 	if !req.ScopeAll {
-		userUUID = toPgUUID(&req.UserID)
+		userID = &req.UserID
 	}
 
 	var searchVal *string
@@ -255,18 +243,18 @@ func (s *Service) List(ctx context.Context, req ListUserShortURLsRequest) (*List
 		isActiveVal = &b
 	}
 
-	var tenantUUID pgtype.UUID
+	var tenantID *uuid.UUID
 	if tID, ok := web.TenantID(ctx); ok {
-		tenantUUID = toPgUUID(&tID)
+		tenantID = &tID
 	}
 
 	listParams := db.ListUserShortURLsParams{
-		UserID:    userUUID,
-		TenantID:  tenantUUID,
-		Search:    toPgText(searchVal),
-		IsActive:  toPgBool(isActiveVal),
-		StartDate: toPgTimestamptz(filter.StartDate),
-		EndDate:   toPgTimestamptz(filter.EndDate),
+		UserID:    userID,
+		TenantID:  tenantID,
+		Search:    searchVal,
+		IsActive:  isActiveVal,
+		StartDate: filter.StartDate,
+		EndDate:   filter.EndDate,
 		SortBy:    filter.SortKey(),
 		LimitVal:  filter.Limit,
 		OffsetVal: filter.GetOffset(),
@@ -279,12 +267,12 @@ func (s *Service) List(ctx context.Context, req ListUserShortURLsRequest) (*List
 	}
 
 	countParams := db.CountUserShortURLsParams{
-		UserID:    userUUID,
-		TenantID:  tenantUUID,
-		Search:    toPgText(searchVal),
-		IsActive:  toPgBool(isActiveVal),
-		StartDate: toPgTimestamptz(filter.StartDate),
-		EndDate:   toPgTimestamptz(filter.EndDate),
+		UserID:    userID,
+		TenantID:  tenantID,
+		Search:    searchVal,
+		IsActive:  isActiveVal,
+		StartDate: filter.StartDate,
+		EndDate:   filter.EndDate,
 	}
 
 	total, countErr := s.store.CountUserShortURLs(ctx, countParams)
@@ -337,14 +325,14 @@ func (s *Service) Update(ctx context.Context, req UpdateURLRequest) (*URLRespons
 		return nil, err
 	}
 
-	userUUID := toPgUUID(&req.UserID)
+	userUUID := &req.UserID
 
 	u, updateErr := s.store.UpdateShortURL(ctx, db.UpdateShortURLParams{
 		ID:          req.ID,
-		Title:       toPgText(req.Title),
-		OriginalUrl: toPgText(req.OriginalURL),
-		IsActive:    toPgBool(req.IsActive),
-		ExpiresAt:   toPgTimestamptz(req.ExpiresAt),
+		Title:       req.Title,
+		OriginalUrl: req.OriginalURL,
+		IsActive:    req.IsActive,
+		ExpiresAt:   req.ExpiresAt,
 		UserID:      userUUID,
 	})
 	if updateErr != nil {
@@ -382,7 +370,7 @@ func (s *Service) Delete(ctx context.Context, req DeleteURLRequest) (*DeleteURLR
 		return nil, err
 	}
 
-	userUUID := toPgUUID(&req.UserID)
+	userUUID := &req.UserID
 
 	// Perform soft deletion within an atomic database transaction
 	txErr := s.store.ExecTx(ctx, func(q *db.Queries) error {
@@ -410,7 +398,7 @@ func (s *Service) Restore(ctx context.Context, req RestoreURLRequest) (*URLRespo
 	ctx, endSpan := telemetry.StartSpan(ctx, "url.Service.Restore", attribute.String("url.id", req.ID.String()))
 	defer func() { endSpan(err) }()
 
-	userUUID := toPgUUID(&req.UserID)
+	userUUID := &req.UserID
 
 	var u db.ShortUrl
 	txErr := s.store.ExecTx(ctx, func(q *db.Queries) error {
@@ -485,32 +473,4 @@ func (s *Service) StartExpirationCleanupWorker(ctx context.Context, interval tim
 			}
 		}
 	}()
-}
-
-func toPgUUID(id *uuid.UUID) pgtype.UUID {
-	if id == nil {
-		return pgtype.UUID{Valid: false}
-	}
-	return pgtype.UUID{Bytes: *id, Valid: true}
-}
-
-func toPgText(s *string) pgtype.Text {
-	if s == nil {
-		return pgtype.Text{Valid: false}
-	}
-	return pgtype.Text{String: *s, Valid: true}
-}
-
-func toPgBool(b *bool) pgtype.Bool {
-	if b == nil {
-		return pgtype.Bool{Valid: false}
-	}
-	return pgtype.Bool{Bool: *b, Valid: true}
-}
-
-func toPgTimestamptz(t *time.Time) pgtype.Timestamptz {
-	if t == nil {
-		return pgtype.Timestamptz{Valid: false}
-	}
-	return pgtype.Timestamptz{Time: *t, Valid: true}
 }

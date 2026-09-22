@@ -7,7 +7,6 @@ package db
 import (
 	"context"
 
-	"github.com/jackc/pgx/v5/pgtype"
 	"uuid"
 )
 
@@ -17,10 +16,10 @@ type Querier interface {
 	ClearReadNotifications(ctx context.Context, userID uuid.UUID) error
 	ClearRolePermissions(ctx context.Context, roleID uuid.UUID) error
 	ClearUserAvatar(ctx context.Context, id uuid.UUID) (User, error)
-	CountAllTenantsAdmin(ctx context.Context, search pgtype.Text) (int64, error)
-	CountAllUsers(ctx context.Context, search pgtype.Text) (int64, error)
-	CountAuditLogs(ctx context.Context, search pgtype.Text) (int64, error)
-	CountGlobalLinks(ctx context.Context, search pgtype.Text) (int64, error)
+	CountAllTenantsAdmin(ctx context.Context, search *string) (int64, error)
+	CountAllUsers(ctx context.Context, search *string) (int64, error)
+	CountAuditLogs(ctx context.Context, search *string) (int64, error)
+	CountGlobalLinks(ctx context.Context, search *string) (int64, error)
 	CountUnreadNotifications(ctx context.Context, userID uuid.UUID) (int64, error)
 	CountUserNotifications(ctx context.Context, arg CountUserNotificationsParams) (int64, error)
 	CountUserShortURLs(ctx context.Context, arg CountUserShortURLsParams) (int64, error)
@@ -56,12 +55,12 @@ type Querier interface {
 	GetURLAnalyticsSummary(ctx context.Context, urlID uuid.UUID) (GetURLAnalyticsSummaryRow, error)
 	GetURLClicksOverTime(ctx context.Context, urlID uuid.UUID) ([]GetURLClicksOverTimeRow, error)
 	GetUserByEmail(ctx context.Context, email string) (User, error)
-	GetUserByGoogleID(ctx context.Context, googleID pgtype.Text) (User, error)
+	GetUserByGoogleID(ctx context.Context, googleID *string) (User, error)
 	GetUserByID(ctx context.Context, id uuid.UUID) (User, error)
-	GetUserClicksOverTime(ctx context.Context, userID pgtype.UUID) ([]GetUserClicksOverTimeRow, error)
-	GetUserCountryBreakdown(ctx context.Context, userID pgtype.UUID) ([]GetUserCountryBreakdownRow, error)
-	GetUserDashboardSummary(ctx context.Context, userID pgtype.UUID) (GetUserDashboardSummaryRow, error)
-	GetUserDeviceBreakdown(ctx context.Context, userID pgtype.UUID) ([]GetUserDeviceBreakdownRow, error)
+	GetUserClicksOverTime(ctx context.Context, userID *uuid.UUID) ([]GetUserClicksOverTimeRow, error)
+	GetUserCountryBreakdown(ctx context.Context, userID *uuid.UUID) ([]GetUserCountryBreakdownRow, error)
+	GetUserDashboardSummary(ctx context.Context, userID *uuid.UUID) (GetUserDashboardSummaryRow, error)
+	GetUserDeviceBreakdown(ctx context.Context, userID *uuid.UUID) ([]GetUserDeviceBreakdownRow, error)
 	GetUserTenantPermissions(ctx context.Context, arg GetUserTenantPermissionsParams) ([]string, error)
 	GetUserTopReferrers(ctx context.Context, arg GetUserTopReferrersParams) ([]GetUserTopReferrersRow, error)
 	IncrementClickCount(ctx context.Context, id uuid.UUID) error
@@ -75,7 +74,7 @@ type Querier interface {
 	ListSystemConfigs(ctx context.Context) ([]SystemConfig, error)
 	ListSystemRoles(ctx context.Context) ([]Role, error)
 	ListTenantMembers(ctx context.Context, tenantID uuid.UUID) ([]ListTenantMembersRow, error)
-	ListTenantRoles(ctx context.Context, tenantID pgtype.UUID) ([]Role, error)
+	ListTenantRoles(ctx context.Context, tenantID *uuid.UUID) ([]Role, error)
 	ListUserNotifications(ctx context.Context, arg ListUserNotificationsParams) ([]Notification, error)
 	ListUserShortURLs(ctx context.Context, arg ListUserShortURLsParams) ([]ShortUrl, error)
 	ListUserTenants(ctx context.Context, userID uuid.UUID) ([]ListUserTenantsRow, error)

@@ -7,7 +7,6 @@ import (
 	"uuid"
 
 	"github.com/destel/rill"
-	"github.com/jackc/pgx/v5/pgtype"
 	db "github.com/semmidev/url-shortener/server/db/sqlc"
 	"github.com/semmidev/url-shortener/server/internal/platform/web"
 	"github.com/semmidev/url-shortener/server/internal/worker"
@@ -19,53 +18,47 @@ type Logger struct {
 	auditQueue      chan db.CreateAuditLogParams
 }
 
-func NewLogger(queries db.Querier, distributor worker.TaskDistributor) *Logger {
+func NewLogger(q db.Querier, distributor worker.TaskDistributor) *Logger {
 	l := &Logger{
-		queries:         queries,
+		queries:         q,
 		taskDistributor: distributor,
-		auditQueue:      make(chan db.CreateAuditLogParams, 10000),
+		auditQueue:      make(chan db.CreateAuditLogParams, 100),
 	}
-	// Start Rill worker pipeline for fallback async audit log processing
-	go l.startFallbackWorker()
+	l.startBackgroundWorker()
 	return l
 }
 
-func (l *Logger) startFallbackWorker() {
-	stream := rill.FromChan(l.auditQueue, nil)
-	_ = rill.ForEach(stream, 3, func(params db.CreateAuditLogParams) error {
-		bgCtx := context.Background()
-		_, _ = l.queries.CreateAuditLog(bgCtx, params)
-		return nil
-	})
+func (l *Logger) startBackgroundWorker() {
+	go func() {
+		_ = rill.ForEach(rill.FromChan(l.auditQueue, nil), 4, func(params db.CreateAuditLogParams) error {
+			ctx := context.Background()
+			_, _ = l.queries.CreateAuditLog(ctx, params)
+			return nil
+		})
+	}()
 }
 
-type AuditParams struct {
+type Params struct {
 	Action     string
 	Resource   string
 	ResourceID string
-	Payload    any
+	Payload    interface{}
 }
 
-func (l *Logger) Log(ctx context.Context, r *http.Request, params AuditParams) {
-	if l == nil || l.queries == nil {
+func (l *Logger) Log(ctx context.Context, r *http.Request, params Params) {
+	if l == nil {
 		return
 	}
 
-	userID, _ := web.UserID(ctx)
 	actorEmail := "system"
-
-	// Fetch actor email if userID is set
-	if userID != uuid.Nil() {
-		if u, err := l.queries.GetUserByID(ctx, userID); err == nil {
-			actorEmail = u.Email
-		}
+	var actorID *uuid.UUID
+	if id, ok := web.UserID(ctx); ok && id != uuid.Nil() {
+		actorID = &id
 	}
 
-	var payloadBytes json.RawMessage
+	var payloadBytes []byte
 	if params.Payload != nil {
-		if b, err := json.Marshal(params.Payload); err == nil {
-			payloadBytes = b
-		}
+		payloadBytes, _ = json.Marshal(params.Payload)
 	}
 
 	ipAddr := ""
@@ -74,15 +67,9 @@ func (l *Logger) Log(ctx context.Context, r *http.Request, params AuditParams) {
 		ipAddr = web.GetClientIP(r)
 		userAgent = r.UserAgent()
 	}
-
-	var actorUUID pgtype.UUID
-	if userID != uuid.Nil() {
-		actorUUID = pgtype.UUID{Bytes: userID, Valid: true}
-	}
-
 	if l.taskDistributor != nil {
 		err := l.taskDistributor.DistributeTaskRecordAuditLog(ctx, &worker.PayloadRecordAuditLog{
-			ActorID:    actorUUID,
+			ActorID:    actorID,
 			ActorEmail: actorEmail,
 			Action:     params.Action,
 			Resource:   params.Resource,
@@ -99,7 +86,7 @@ func (l *Logger) Log(ctx context.Context, r *http.Request, params AuditParams) {
 	// Bounded non-blocking fallback enqueue (prevents spawning unbounded goroutines under high load)
 	select {
 	case l.auditQueue <- db.CreateAuditLogParams{
-		ActorID:    actorUUID,
+		ActorID:    actorID,
 		ActorEmail: actorEmail,
 		Action:     params.Action,
 		Resource:   params.Resource,

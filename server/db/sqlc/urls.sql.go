@@ -7,8 +7,8 @@ package db
 
 import (
 	"context"
+	"time"
 
-	"github.com/jackc/pgx/v5/pgtype"
 	"uuid"
 )
 
@@ -22,18 +22,18 @@ WHERE (user_id = $1 OR $1 IS NULL)
       short_code ILIKE '%' || $3::text || '%' OR
       original_url ILIKE '%' || $3::text || '%'
   ))
-  AND ($4::boolean IS NULL OR is_active = $4::boolean)
+  AND ($4::bool IS NULL OR is_active = $4::bool)
   AND ($5::timestamptz IS NULL OR created_at >= $5::timestamptz)
   AND ($6::timestamptz IS NULL OR created_at <= $6::timestamptz)
 `
 
 type CountUserShortURLsParams struct {
-	UserID    pgtype.UUID        `json:"user_id"`
-	TenantID  pgtype.UUID        `json:"tenant_id"`
-	Search    pgtype.Text        `json:"search"`
-	IsActive  pgtype.Bool        `json:"is_active"`
-	StartDate pgtype.Timestamptz `json:"start_date"`
-	EndDate   pgtype.Timestamptz `json:"end_date"`
+	UserID    *uuid.UUID `json:"user_id"`
+	TenantID  *uuid.UUID `json:"tenant_id"`
+	Search    *string    `json:"search"`
+	IsActive  *bool      `json:"is_active"`
+	StartDate *time.Time `json:"start_date"`
+	EndDate   *time.Time `json:"end_date"`
 }
 
 func (q *Queries) CountUserShortURLs(ctx context.Context, arg CountUserShortURLsParams) (int64, error) {
@@ -66,13 +66,13 @@ RETURNING id, user_id, tenant_id, short_code, original_url, title, is_active, cl
 `
 
 type CreateShortURLParams struct {
-	UserID      pgtype.UUID        `json:"user_id"`
-	TenantID    pgtype.UUID        `json:"tenant_id"`
-	ShortCode   string             `json:"short_code"`
-	OriginalUrl string             `json:"original_url"`
-	Title       string             `json:"title"`
-	IsActive    bool               `json:"is_active"`
-	ExpiresAt   pgtype.Timestamptz `json:"expires_at"`
+	UserID      *uuid.UUID `json:"user_id"`
+	TenantID    *uuid.UUID `json:"tenant_id"`
+	ShortCode   string     `json:"short_code"`
+	OriginalUrl string     `json:"original_url"`
+	Title       string     `json:"title"`
+	IsActive    bool       `json:"is_active"`
+	ExpiresAt   *time.Time `json:"expires_at"`
 }
 
 func (q *Queries) CreateShortURL(ctx context.Context, arg CreateShortURLParams) (ShortUrl, error) {
@@ -137,8 +137,8 @@ WHERE id = $1 AND (user_id = $2 OR $2 IS NULL) AND deleted_at IS NULL
 `
 
 type DeleteShortURLParams struct {
-	ID     uuid.UUID   `json:"id"`
-	UserID pgtype.UUID `json:"user_id"`
+	ID     uuid.UUID  `json:"id"`
+	UserID *uuid.UUID `json:"user_id"`
 }
 
 func (q *Queries) DeleteShortURL(ctx context.Context, arg DeleteShortURLParams) error {
@@ -218,7 +218,7 @@ WHERE (user_id = $1 OR $1 IS NULL)
       short_code ILIKE '%' || $3::text || '%' OR
       original_url ILIKE '%' || $3::text || '%'
   ))
-  AND ($4::boolean IS NULL OR is_active = $4::boolean)
+  AND ($4::bool IS NULL OR is_active = $4::bool)
   AND ($5::timestamptz IS NULL OR created_at >= $5::timestamptz)
   AND ($6::timestamptz IS NULL OR created_at <= $6::timestamptz)
 ORDER BY
@@ -234,15 +234,15 @@ LIMIT $9 OFFSET $8
 `
 
 type ListUserShortURLsParams struct {
-	UserID    pgtype.UUID        `json:"user_id"`
-	TenantID  pgtype.UUID        `json:"tenant_id"`
-	Search    pgtype.Text        `json:"search"`
-	IsActive  pgtype.Bool        `json:"is_active"`
-	StartDate pgtype.Timestamptz `json:"start_date"`
-	EndDate   pgtype.Timestamptz `json:"end_date"`
-	SortBy    string             `json:"sort_by"`
-	OffsetVal int32              `json:"offset_val"`
-	LimitVal  int32              `json:"limit_val"`
+	UserID    *uuid.UUID `json:"user_id"`
+	TenantID  *uuid.UUID `json:"tenant_id"`
+	Search    *string    `json:"search"`
+	IsActive  *bool      `json:"is_active"`
+	StartDate *time.Time `json:"start_date"`
+	EndDate   *time.Time `json:"end_date"`
+	SortBy    string     `json:"sort_by"`
+	OffsetVal int32      `json:"offset_val"`
+	LimitVal  int32      `json:"limit_val"`
 }
 
 func (q *Queries) ListUserShortURLs(ctx context.Context, arg ListUserShortURLsParams) ([]ShortUrl, error) {
@@ -296,8 +296,8 @@ RETURNING id, user_id, tenant_id, short_code, original_url, title, is_active, cl
 `
 
 type RestoreShortURLParams struct {
-	ID     uuid.UUID   `json:"id"`
-	UserID pgtype.UUID `json:"user_id"`
+	ID     uuid.UUID  `json:"id"`
+	UserID *uuid.UUID `json:"user_id"`
 }
 
 func (q *Queries) RestoreShortURL(ctx context.Context, arg RestoreShortURLParams) (ShortUrl, error) {
@@ -325,7 +325,7 @@ UPDATE short_urls
 SET
     title = COALESCE($2, title),
     original_url = COALESCE($3, original_url),
-    is_active = COALESCE($4, is_active),
+    is_active = COALESCE($4::bool, is_active),
     expires_at = COALESCE($5, expires_at),
     updated_at = NOW()
 WHERE id = $1 AND (user_id = $6 OR $6 IS NULL) AND deleted_at IS NULL
@@ -333,12 +333,12 @@ RETURNING id, user_id, tenant_id, short_code, original_url, title, is_active, cl
 `
 
 type UpdateShortURLParams struct {
-	ID          uuid.UUID          `json:"id"`
-	Title       pgtype.Text        `json:"title"`
-	OriginalUrl pgtype.Text        `json:"original_url"`
-	IsActive    pgtype.Bool        `json:"is_active"`
-	ExpiresAt   pgtype.Timestamptz `json:"expires_at"`
-	UserID      pgtype.UUID        `json:"user_id"`
+	ID          uuid.UUID  `json:"id"`
+	Title       *string    `json:"title"`
+	OriginalUrl *string    `json:"original_url"`
+	IsActive    *bool      `json:"is_active"`
+	ExpiresAt   *time.Time `json:"expires_at"`
+	UserID      *uuid.UUID `json:"user_id"`
 }
 
 func (q *Queries) UpdateShortURL(ctx context.Context, arg UpdateShortURLParams) (ShortUrl, error) {

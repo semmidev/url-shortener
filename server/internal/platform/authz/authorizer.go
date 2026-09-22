@@ -203,8 +203,8 @@ func (ca *CasbinAuthorizer) SyncPolicies(ctx context.Context) error {
 				continue
 			}
 			dom := "*"
-			if r.TenantID.Valid {
-				dom = uuid.UUID(r.TenantID.Bytes).String()
+			if r.TenantID != nil {
+				dom = r.TenantID.String()
 			}
 			for _, permCode := range perms {
 				obj, act := ca.resolvePermCode(permCode)

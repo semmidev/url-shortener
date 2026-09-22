@@ -30,7 +30,7 @@ WHERE (user_id = sqlc.arg('user_id') OR sqlc.arg('user_id') IS NULL)
       short_code ILIKE '%' || sqlc.narg('search')::text || '%' OR
       original_url ILIKE '%' || sqlc.narg('search')::text || '%'
   ))
-  AND (sqlc.narg('is_active')::boolean IS NULL OR is_active = sqlc.narg('is_active')::boolean)
+  AND (sqlc.narg('is_active')::bool IS NULL OR is_active = sqlc.narg('is_active')::bool)
   AND (sqlc.narg('start_date')::timestamptz IS NULL OR created_at >= sqlc.narg('start_date')::timestamptz)
   AND (sqlc.narg('end_date')::timestamptz IS NULL OR created_at <= sqlc.narg('end_date')::timestamptz)
 ORDER BY
@@ -54,7 +54,7 @@ WHERE (user_id = sqlc.arg('user_id') OR sqlc.arg('user_id') IS NULL)
       short_code ILIKE '%' || sqlc.narg('search')::text || '%' OR
       original_url ILIKE '%' || sqlc.narg('search')::text || '%'
   ))
-  AND (sqlc.narg('is_active')::boolean IS NULL OR is_active = sqlc.narg('is_active')::boolean)
+  AND (sqlc.narg('is_active')::bool IS NULL OR is_active = sqlc.narg('is_active')::bool)
   AND (sqlc.narg('start_date')::timestamptz IS NULL OR created_at >= sqlc.narg('start_date')::timestamptz)
   AND (sqlc.narg('end_date')::timestamptz IS NULL OR created_at <= sqlc.narg('end_date')::timestamptz);
 
@@ -63,7 +63,7 @@ UPDATE short_urls
 SET
     title = COALESCE(sqlc.narg('title'), title),
     original_url = COALESCE(sqlc.narg('original_url'), original_url),
-    is_active = COALESCE(sqlc.narg('is_active'), is_active),
+    is_active = COALESCE(sqlc.narg('is_active')::bool, is_active),
     expires_at = COALESCE(sqlc.narg('expires_at'), expires_at),
     updated_at = NOW()
 WHERE id = $1 AND (user_id = sqlc.arg('user_id') OR sqlc.arg('user_id') IS NULL) AND deleted_at IS NULL

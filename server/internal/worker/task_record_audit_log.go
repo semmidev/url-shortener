@@ -4,16 +4,16 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"uuid"
 
 	"github.com/hibiken/asynq"
-	"github.com/jackc/pgx/v5/pgtype"
 	db "github.com/semmidev/url-shortener/server/db/sqlc"
 )
 
 const TaskRecordAuditLog = "task:record_audit_log"
 
 type PayloadRecordAuditLog struct {
-	ActorID    pgtype.UUID     `json:"actor_id"`
+	ActorID    *uuid.UUID      `json:"actor_id"`
 	ActorEmail string          `json:"actor_email"`
 	Action     string          `json:"action"`
 	Resource   string          `json:"resource"`

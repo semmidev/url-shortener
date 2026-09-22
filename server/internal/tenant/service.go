@@ -9,7 +9,6 @@ import (
 
 	"uuid"
 
-	"github.com/jackc/pgx/v5/pgtype"
 	db "github.com/semmidev/url-shortener/server/db/sqlc"
 	"github.com/semmidev/url-shortener/server/internal/notification"
 	"github.com/semmidev/url-shortener/server/internal/platform/apperr"
@@ -303,7 +302,7 @@ func (s *Service) RemoveTenantMember(ctx context.Context, tenantID uuid.UUID, ta
 }
 
 func (s *Service) ListTenantRoles(ctx context.Context, tenantID uuid.UUID) ([]TenantRoleResponse, error) {
-	roles, err := s.q.ListTenantRoles(ctx, pgtype.UUID{Bytes: tenantID, Valid: true})
+	roles, err := s.q.ListTenantRoles(ctx, &tenantID)
 	if err != nil {
 		return nil, apperr.Internal("gagal mengambil daftar peran tenant", err)
 	}
@@ -315,15 +314,9 @@ func (s *Service) ListTenantRoles(ctx context.Context, tenantID uuid.UUID) ([]Te
 			pCodes = []string{}
 		}
 
-		var tID *uuid.UUID
-		if r.TenantID.Valid {
-			u := uuid.UUID(r.TenantID.Bytes)
-			tID = &u
-		}
-
 		res[i] = TenantRoleResponse{
 			ID:          r.ID,
-			TenantID:    tID,
+			TenantID:    r.TenantID,
 			Name:        r.Name,
 			DisplayName: r.DisplayName,
 			Description: r.Description,
@@ -342,7 +335,7 @@ func (s *Service) CreateTenantRole(ctx context.Context, tenantID uuid.UUID, req 
 	}
 
 	r, err := s.q.CreateRole(ctx, db.CreateRoleParams{
-		TenantID:    pgtype.UUID{Bytes: tenantID, Valid: true},
+		TenantID:    &tenantID,
 		Name:        req.Name,
 		DisplayName: req.DisplayName,
 		Description: req.Description,
@@ -362,15 +355,10 @@ func (s *Service) CreateTenantRole(ctx context.Context, tenantID uuid.UUID, req 
 	_ = s.authorizer.SyncPolicies(ctx)
 
 	pCodes, _ := s.q.GetRolePermissions(ctx, r.ID)
-	var tID *uuid.UUID
-	if r.TenantID.Valid {
-		u := uuid.UUID(r.TenantID.Bytes)
-		tID = &u
-	}
 
 	return TenantRoleResponse{
 		ID:          r.ID,
-		TenantID:    tID,
+		TenantID:    r.TenantID,
 		Name:        r.Name,
 		DisplayName: r.DisplayName,
 		Description: r.Description,
@@ -391,7 +379,7 @@ func (s *Service) UpdateTenantRolePermissions(ctx context.Context, tenantID uuid
 		return TenantRoleResponse{}, apperr.Forbidden("peran owner selalu memiliki akses penuh dan tidak dapat diubah")
 	}
 
-	if role.TenantID.Valid && role.TenantID.Bytes != tenantID {
+	if role.TenantID != nil && *role.TenantID != tenantID {
 		return TenantRoleResponse{}, apperr.Forbidden("peran ini bukan milik tenant ini")
 	}
 
@@ -409,15 +397,10 @@ func (s *Service) UpdateTenantRolePermissions(ctx context.Context, tenantID uuid
 	_ = s.authorizer.SyncPolicies(ctx)
 
 	pCodes, _ := s.q.GetRolePermissions(ctx, role.ID)
-	var tID *uuid.UUID
-	if role.TenantID.Valid {
-		u := uuid.UUID(role.TenantID.Bytes)
-		tID = &u
-	}
 
 	return TenantRoleResponse{
 		ID:          role.ID,
-		TenantID:    tID,
+		TenantID:    role.TenantID,
 		Name:        role.Name,
 		DisplayName: role.DisplayName,
 		Description: role.Description,
@@ -438,7 +421,7 @@ func (s *Service) DeleteTenantRole(ctx context.Context, tenantID uuid.UUID, role
 		return apperr.Forbidden("peran sistem tidak dapat dihapus")
 	}
 
-	if !role.TenantID.Valid || role.TenantID.Bytes != tenantID {
+	if role.TenantID == nil || *role.TenantID != tenantID {
 		return apperr.Forbidden("peran ini bukan milik tenant ini")
 	}
 
@@ -458,10 +441,19 @@ func (s *Service) UpdateTenant(ctx context.Context, tenantID uuid.UUID, req Upda
 
 	slug := strings.ToLower(strings.TrimSpace(req.Slug))
 
+	var namePtr *string
+	if req.Name != "" {
+		namePtr = &req.Name
+	}
+	var slugPtr *string
+	if slug != "" {
+		slugPtr = &slug
+	}
+
 	t, err := s.q.UpdateTenant(ctx, db.UpdateTenantParams{
 		ID:   tenantID,
-		Name: pgtype.Text{String: req.Name, Valid: req.Name != ""},
-		Slug: pgtype.Text{String: slug, Valid: slug != ""},
+		Name: namePtr,
+		Slug: slugPtr,
 	})
 	if err != nil {
 		return TenantResponse{}, apperr.Internal("gagal memperbarui workspace: "+err.Error(), err)

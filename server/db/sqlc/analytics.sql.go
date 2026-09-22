@@ -8,7 +8,6 @@ package db
 import (
 	"context"
 
-	"github.com/jackc/pgx/v5/pgtype"
 	"uuid"
 )
 
@@ -83,7 +82,7 @@ type GetUserClicksOverTimeRow struct {
 	ClickCount int64  `json:"click_count"`
 }
 
-func (q *Queries) GetUserClicksOverTime(ctx context.Context, userID pgtype.UUID) ([]GetUserClicksOverTimeRow, error) {
+func (q *Queries) GetUserClicksOverTime(ctx context.Context, userID *uuid.UUID) ([]GetUserClicksOverTimeRow, error) {
 	rows, err := q.db.Query(ctx, getUserClicksOverTime, userID)
 	if err != nil {
 		return nil, err
@@ -119,7 +118,7 @@ type GetUserCountryBreakdownRow struct {
 	ClickCount int64  `json:"click_count"`
 }
 
-func (q *Queries) GetUserCountryBreakdown(ctx context.Context, userID pgtype.UUID) ([]GetUserCountryBreakdownRow, error) {
+func (q *Queries) GetUserCountryBreakdown(ctx context.Context, userID *uuid.UUID) ([]GetUserCountryBreakdownRow, error) {
 	rows, err := q.db.Query(ctx, getUserCountryBreakdown, userID)
 	if err != nil {
 		return nil, err
@@ -152,7 +151,7 @@ type GetUserDashboardSummaryRow struct {
 	TotalClicks int64 `json:"total_clicks"`
 }
 
-func (q *Queries) GetUserDashboardSummary(ctx context.Context, userID pgtype.UUID) (GetUserDashboardSummaryRow, error) {
+func (q *Queries) GetUserDashboardSummary(ctx context.Context, userID *uuid.UUID) (GetUserDashboardSummaryRow, error) {
 	row := q.db.QueryRow(ctx, getUserDashboardSummary, userID)
 	var i GetUserDashboardSummaryRow
 	err := row.Scan(&i.TotalUrls, &i.TotalClicks)
@@ -175,7 +174,7 @@ type GetUserDeviceBreakdownRow struct {
 	ClickCount int64  `json:"click_count"`
 }
 
-func (q *Queries) GetUserDeviceBreakdown(ctx context.Context, userID pgtype.UUID) ([]GetUserDeviceBreakdownRow, error) {
+func (q *Queries) GetUserDeviceBreakdown(ctx context.Context, userID *uuid.UUID) ([]GetUserDeviceBreakdownRow, error) {
 	rows, err := q.db.Query(ctx, getUserDeviceBreakdown, userID)
 	if err != nil {
 		return nil, err
@@ -208,8 +207,8 @@ LIMIT $2
 `
 
 type GetUserTopReferrersParams struct {
-	UserID pgtype.UUID `json:"user_id"`
-	Limit  int32       `json:"limit"`
+	UserID *uuid.UUID `json:"user_id"`
+	Limit  int32      `json:"limit"`
 }
 
 type GetUserTopReferrersRow struct {

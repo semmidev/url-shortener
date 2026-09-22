@@ -9,7 +9,6 @@ import (
 	"context"
 	"time"
 
-	"github.com/jackc/pgx/v5/pgtype"
 	"uuid"
 )
 
@@ -53,7 +52,7 @@ WHERE ($1::text IS NULL OR (
 ))
 `
 
-func (q *Queries) CountAllTenantsAdmin(ctx context.Context, search pgtype.Text) (int64, error) {
+func (q *Queries) CountAllTenantsAdmin(ctx context.Context, search *string) (int64, error) {
 	row := q.db.QueryRow(ctx, countAllTenantsAdmin, search)
 	var count int64
 	err := row.Scan(&count)
@@ -229,9 +228,9 @@ LIMIT $3 OFFSET $2
 `
 
 type ListAllTenantsAdminParams struct {
-	Search    pgtype.Text `json:"search"`
-	OffsetVal int32       `json:"offset_val"`
-	LimitVal  int32       `json:"limit_val"`
+	Search    *string `json:"search"`
+	OffsetVal int32   `json:"offset_val"`
+	LimitVal  int32   `json:"limit_val"`
 }
 
 type ListAllTenantsAdminRow struct {
@@ -406,17 +405,17 @@ func (q *Queries) RemoveTenantMember(ctx context.Context, arg RemoveTenantMember
 
 const updateTenant = `-- name: UpdateTenant :one
 UPDATE tenants
-SET name = COALESCE($2, name),
-    slug = COALESCE($3, slug),
+SET name = COALESCE($2::text, name),
+    slug = COALESCE($3::text, slug),
     updated_at = NOW()
 WHERE id = $1
 RETURNING id, name, slug, join_code, created_at, updated_at
 `
 
 type UpdateTenantParams struct {
-	ID   uuid.UUID   `json:"id"`
-	Name pgtype.Text `json:"name"`
-	Slug pgtype.Text `json:"slug"`
+	ID   uuid.UUID `json:"id"`
+	Name *string   `json:"name"`
+	Slug *string   `json:"slug"`
 }
 
 func (q *Queries) UpdateTenant(ctx context.Context, arg UpdateTenantParams) (Tenant, error) {

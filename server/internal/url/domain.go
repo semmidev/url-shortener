@@ -32,13 +32,13 @@ type ShortURL struct {
 
 // IsExpired checks whether the short URL has passed its expiration time.
 func (u *ShortURL) IsExpired() bool {
-	if !u.ExpiresAt.Valid {
+	if u.ExpiresAt == nil {
 		return false
 	}
-	return time.Now().After(u.ExpiresAt.Time)
+	return time.Now().After(*u.ExpiresAt)
 }
 
 // IsDeactivated checks whether the short URL is marked inactive or soft-deleted.
 func (u *ShortURL) IsDeactivated() bool {
-	return !u.IsActive || u.DeletedAt.Valid
+	return !u.IsActive || u.DeletedAt != nil
 }

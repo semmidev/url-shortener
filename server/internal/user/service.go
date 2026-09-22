@@ -15,7 +15,6 @@ import (
 	"uuid"
 
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgtype"
 	db "github.com/semmidev/url-shortener/server/db/sqlc"
 	"github.com/semmidev/url-shortener/server/internal/config"
 	"github.com/semmidev/url-shortener/server/internal/platform/apperr"
@@ -167,18 +166,13 @@ func (s *Service) resetEmailAttempts(ctx context.Context, email string) {
 }
 
 func toUserResponse(u db.User) UserResponse {
-	var googleID *string
-	if u.GoogleID.Valid {
-		gid := u.GoogleID.String
-		googleID = &gid
-	}
-	hasPassword := u.PasswordHash.Valid && u.PasswordHash.String != ""
+	hasPassword := u.PasswordHash != nil && *u.PasswordHash != ""
 	return UserResponse{
 		ID:          u.ID,
 		Email:       u.Email,
 		FullName:    u.FullName,
 		AvatarURL:   u.AvatarUrl,
-		GoogleID:    googleID,
+		GoogleID:    u.GoogleID,
 		HasPassword: hasPassword,
 		CreatedAt:   u.CreatedAt,
 		UpdatedAt:   u.UpdatedAt,
@@ -214,7 +208,7 @@ func (s *Service) Register(ctx context.Context, req RegisterRequest) (res *Login
 		var txErr error
 		user, txErr = q.CreateUser(ctx, db.CreateUserParams{
 			Email:        req.Email,
-			PasswordHash: pgtype.Text{String: hashedPassword, Valid: true},
+			PasswordHash: &hashedPassword,
 			FullName:     req.FullName,
 		})
 		if txErr != nil {
@@ -279,14 +273,14 @@ func (s *Service) Login(ctx context.Context, req LoginRequest) (res *LoginRespon
 		return nil, apperr.Forbidden("akun Anda ditangguhkan (suspended), silakan hubungi dukungan")
 	}
 
-	if !user.PasswordHash.Valid || user.PasswordHash.String == "" {
+	if user.PasswordHash == nil || *user.PasswordHash == "" {
 		if s.metrics != nil {
 			s.metrics.RecordAuthAttempt("login", "failure")
 		}
 		return nil, apperr.Unauthorized("this account uses Google Login. Please sign in with Google")
 	}
 
-	if err := crypto.CheckPassword(req.Password, user.PasswordHash.String); err != nil {
+	if err := crypto.CheckPassword(req.Password, *user.PasswordHash); err != nil {
 		if s.metrics != nil {
 			s.metrics.RecordAuthAttempt("login", "failure")
 		}
@@ -437,7 +431,7 @@ func (s *Service) HandleGoogleCallback(ctx context.Context, req HandleGoogleCall
 		var txErr error
 		user, txErr = q.UpsertGoogleUser(ctx, db.UpsertGoogleUserParams{
 			Email:     gUser.Email,
-			GoogleID:  pgtype.Text{String: gUser.ID, Valid: true},
+			GoogleID:  &gUser.ID,
 			AvatarUrl: avatarURL,
 			FullName:  gUser.Name,
 		})
@@ -774,19 +768,29 @@ func (s *Service) UpdateProfile(ctx context.Context, req UpdateProfileRequest) (
 			return nil, apperr.MapDBError(err, "failed to clear user avatar", "")
 		}
 		if strings.TrimSpace(req.FullName) != "" && req.FullName != existingUser.FullName {
+			fn := req.FullName
 			updated, err = s.store.UpdateUser(ctx, db.UpdateUserParams{
 				ID:       req.UserID,
-				FullName: pgtype.Text{String: req.FullName, Valid: true},
+				FullName: &fn,
 			})
 			if err != nil {
 				return nil, apperr.MapDBError(err, "failed to update user profile", "")
 			}
 		}
 	} else {
+		var fullNamePtr *string
+		if strings.TrimSpace(req.FullName) != "" {
+			fn := req.FullName
+			fullNamePtr = &fn
+		}
+		var avatarPtr *string
+		if cleanAvatarURL != "" {
+			avatarPtr = &cleanAvatarURL
+		}
 		updated, err = s.store.UpdateUser(ctx, db.UpdateUserParams{
 			ID:        req.UserID,
-			FullName:  pgtype.Text{String: req.FullName, Valid: strings.TrimSpace(req.FullName) != ""},
-			AvatarUrl: pgtype.Text{String: cleanAvatarURL, Valid: cleanAvatarURL != ""},
+			FullName:  fullNamePtr,
+			AvatarUrl: avatarPtr,
 		})
 		if err != nil {
 			return nil, apperr.MapDBError(err, "failed to update user profile", "")
@@ -809,7 +813,7 @@ func (s *Service) ChangePassword(ctx context.Context, req ChangePasswordRequest)
 
 	updated, err := s.store.UpdateUser(ctx, db.UpdateUserParams{
 		ID:           req.UserID,
-		PasswordHash: pgtype.Text{String: newHash, Valid: true},
+		PasswordHash: &newHash,
 	})
 	if err != nil {
 		return nil, apperr.MapDBError(err, "failed to update password", "")
@@ -825,8 +829,8 @@ func (s *Service) UnlinkGoogle(ctx context.Context, req UnlinkGoogleRequest) (*U
 		return nil, apperr.MapDBError(err, "user not found", "")
 	}
 
-	if !user.PasswordHash.Valid || user.PasswordHash.String == "" {
-		return nil, apperr.Invalid("Anda harus membuat password terlebih dahulu sebelum memutuskan koneksi Google agar tetap bisa login.")
+	if user.PasswordHash == nil || *user.PasswordHash == "" {
+		return nil, apperr.Invalid("cannot unlink Google account because you haven't set a local password yet. Please set a password first")
 	}
 
 	updated, err := s.store.UnlinkGoogleUser(ctx, req.UserID)

@@ -95,8 +95,8 @@ FROM tenant_memberships;
 
 -- name: UpdateTenant :one
 UPDATE tenants
-SET name = COALESCE(sqlc.narg('name'), name),
-    slug = COALESCE(sqlc.narg('slug'), slug),
+SET name = COALESCE(sqlc.narg('name')::text, name),
+    slug = COALESCE(sqlc.narg('slug')::text, slug),
     updated_at = NOW()
 WHERE id = $1
 RETURNING id, name, slug, join_code, created_at, updated_at;

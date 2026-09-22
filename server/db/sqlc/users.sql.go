@@ -8,7 +8,6 @@ package db
 import (
 	"context"
 
-	"github.com/jackc/pgx/v5/pgtype"
 	"uuid"
 )
 
@@ -50,9 +49,9 @@ RETURNING id, email, password_hash, google_id, avatar_url, full_name, is_suspend
 `
 
 type CreateUserParams struct {
-	Email        string      `json:"email"`
-	PasswordHash pgtype.Text `json:"password_hash"`
-	FullName     string      `json:"full_name"`
+	Email        string  `json:"email"`
+	PasswordHash *string `json:"password_hash"`
+	FullName     string  `json:"full_name"`
 }
 
 func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, error) {
@@ -99,7 +98,7 @@ SELECT id, email, password_hash, google_id, avatar_url, full_name, is_suspended,
 WHERE google_id = $1 LIMIT 1
 `
 
-func (q *Queries) GetUserByGoogleID(ctx context.Context, googleID pgtype.Text) (User, error) {
+func (q *Queries) GetUserByGoogleID(ctx context.Context, googleID *string) (User, error) {
 	row := q.db.QueryRow(ctx, getUserByGoogleID, googleID)
 	var i User
 	err := row.Scan(
@@ -176,10 +175,10 @@ RETURNING id, email, password_hash, google_id, avatar_url, full_name, is_suspend
 `
 
 type UpdateUserParams struct {
-	ID           uuid.UUID   `json:"id"`
-	FullName     pgtype.Text `json:"full_name"`
-	PasswordHash pgtype.Text `json:"password_hash"`
-	AvatarUrl    pgtype.Text `json:"avatar_url"`
+	ID           uuid.UUID `json:"id"`
+	FullName     *string   `json:"full_name"`
+	PasswordHash *string   `json:"password_hash"`
+	AvatarUrl    *string   `json:"avatar_url"`
 }
 
 func (q *Queries) UpdateUser(ctx context.Context, arg UpdateUserParams) (User, error) {
@@ -222,10 +221,10 @@ RETURNING id, email, password_hash, google_id, avatar_url, full_name, is_suspend
 `
 
 type UpsertGoogleUserParams struct {
-	Email     string      `json:"email"`
-	GoogleID  pgtype.Text `json:"google_id"`
-	AvatarUrl string      `json:"avatar_url"`
-	FullName  string      `json:"full_name"`
+	Email     string  `json:"email"`
+	GoogleID  *string `json:"google_id"`
+	AvatarUrl string  `json:"avatar_url"`
+	FullName  string  `json:"full_name"`
 }
 
 func (q *Queries) UpsertGoogleUser(ctx context.Context, arg UpsertGoogleUserParams) (User, error) {

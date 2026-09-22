@@ -8,7 +8,6 @@ package db
 import (
 	"context"
 
-	"github.com/jackc/pgx/v5/pgtype"
 	"uuid"
 )
 
@@ -37,7 +36,7 @@ func (q *Queries) CountUnreadNotifications(ctx context.Context, userID uuid.UUID
 const countUserNotifications = `-- name: CountUserNotifications :one
 SELECT COUNT(*) FROM notifications
 WHERE user_id = $1
-  AND ($2::boolean IS NULL OR ($2::boolean = TRUE AND is_read = FALSE))
+  AND ($2::bool IS NULL OR ($2::bool = TRUE AND is_read = FALSE))
   AND ($3::text IS NULL OR type = $3::text)
   AND ($4::text IS NULL OR (
     title ILIKE '%' || $4::text || '%' OR
@@ -46,10 +45,10 @@ WHERE user_id = $1
 `
 
 type CountUserNotificationsParams struct {
-	UserID     uuid.UUID   `json:"user_id"`
-	UnreadOnly pgtype.Bool `json:"unread_only"`
-	Type       pgtype.Text `json:"type"`
-	Search     pgtype.Text `json:"search"`
+	UserID     uuid.UUID `json:"user_id"`
+	UnreadOnly *bool     `json:"unread_only"`
+	Type       *string   `json:"type"`
+	Search     *string   `json:"search"`
 }
 
 func (q *Queries) CountUserNotifications(ctx context.Context, arg CountUserNotificationsParams) (int64, error) {
@@ -122,7 +121,7 @@ const listUserNotifications = `-- name: ListUserNotifications :many
 SELECT id, user_id, title, message, type, is_read, created_at
 FROM notifications
 WHERE user_id = $1
-  AND ($2::boolean IS NULL OR ($2::boolean = TRUE AND is_read = FALSE))
+  AND ($2::bool IS NULL OR ($2::bool = TRUE AND is_read = FALSE))
   AND ($3::text IS NULL OR type = $3::text)
   AND ($4::text IS NULL OR (
     title ILIKE '%' || $4::text || '%' OR
@@ -133,12 +132,12 @@ LIMIT $6 OFFSET $5
 `
 
 type ListUserNotificationsParams struct {
-	UserID     uuid.UUID   `json:"user_id"`
-	UnreadOnly pgtype.Bool `json:"unread_only"`
-	Type       pgtype.Text `json:"type"`
-	Search     pgtype.Text `json:"search"`
-	OffsetVal  int32       `json:"offset_val"`
-	LimitVal   int32       `json:"limit_val"`
+	UserID     uuid.UUID `json:"user_id"`
+	UnreadOnly *bool     `json:"unread_only"`
+	Type       *string   `json:"type"`
+	Search     *string   `json:"search"`
+	OffsetVal  int32     `json:"offset_val"`
+	LimitVal   int32     `json:"limit_val"`
 }
 
 func (q *Queries) ListUserNotifications(ctx context.Context, arg ListUserNotificationsParams) ([]Notification, error) {

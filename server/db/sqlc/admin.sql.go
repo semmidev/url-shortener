@@ -9,7 +9,6 @@ import (
 	"context"
 	"time"
 
-	"github.com/jackc/pgx/v5/pgtype"
 	"uuid"
 )
 
@@ -21,7 +20,7 @@ WHERE ($1::text IS NULL OR (
 ))
 `
 
-func (q *Queries) CountAllUsers(ctx context.Context, search pgtype.Text) (int64, error) {
+func (q *Queries) CountAllUsers(ctx context.Context, search *string) (int64, error) {
 	row := q.db.QueryRow(ctx, countAllUsers, search)
 	var count int64
 	err := row.Scan(&count)
@@ -40,7 +39,7 @@ WHERE s.deleted_at IS NULL AND ($1::text IS NULL OR (
 ))
 `
 
-func (q *Queries) CountGlobalLinks(ctx context.Context, search pgtype.Text) (int64, error) {
+func (q *Queries) CountGlobalLinks(ctx context.Context, search *string) (int64, error) {
 	row := q.db.QueryRow(ctx, countGlobalLinks, search)
 	var count int64
 	err := row.Scan(&count)
@@ -86,9 +85,9 @@ LIMIT $3 OFFSET $2
 `
 
 type ListAllUsersParams struct {
-	Search    pgtype.Text `json:"search"`
-	OffsetVal int32       `json:"offset_val"`
-	LimitVal  int32       `json:"limit_val"`
+	Search    *string `json:"search"`
+	OffsetVal int32   `json:"offset_val"`
+	LimitVal  int32   `json:"limit_val"`
 }
 
 type ListAllUsersRow struct {
@@ -142,23 +141,23 @@ LIMIT $3 OFFSET $2
 `
 
 type ListGlobalLinksParams struct {
-	Search    pgtype.Text `json:"search"`
-	OffsetVal int32       `json:"offset_val"`
-	LimitVal  int32       `json:"limit_val"`
+	Search    *string `json:"search"`
+	OffsetVal int32   `json:"offset_val"`
+	LimitVal  int32   `json:"limit_val"`
 }
 
 type ListGlobalLinksRow struct {
-	ID          uuid.UUID          `json:"id"`
-	UserID      pgtype.UUID        `json:"user_id"`
-	UserEmail   pgtype.Text        `json:"user_email"`
-	ShortCode   string             `json:"short_code"`
-	OriginalUrl string             `json:"original_url"`
-	Title       string             `json:"title"`
-	IsActive    bool               `json:"is_active"`
-	ClickCount  int64              `json:"click_count"`
-	ExpiresAt   pgtype.Timestamptz `json:"expires_at"`
-	CreatedAt   time.Time          `json:"created_at"`
-	UpdatedAt   time.Time          `json:"updated_at"`
+	ID          uuid.UUID  `json:"id"`
+	UserID      *uuid.UUID `json:"user_id"`
+	UserEmail   *string    `json:"user_email"`
+	ShortCode   string     `json:"short_code"`
+	OriginalUrl string     `json:"original_url"`
+	Title       string     `json:"title"`
+	IsActive    bool       `json:"is_active"`
+	ClickCount  int64      `json:"click_count"`
+	ExpiresAt   *time.Time `json:"expires_at"`
+	CreatedAt   time.Time  `json:"created_at"`
+	UpdatedAt   time.Time  `json:"updated_at"`
 }
 
 func (q *Queries) ListGlobalLinks(ctx context.Context, arg ListGlobalLinksParams) ([]ListGlobalLinksRow, error) {

@@ -7,22 +7,21 @@ package db
 import (
 	"time"
 
-	"github.com/jackc/pgx/v5/pgtype"
 	"uuid"
 )
 
 type AuditLog struct {
-	ID         uuid.UUID   `json:"id"`
-	ActorID    pgtype.UUID `json:"actor_id"`
-	TenantID   pgtype.UUID `json:"tenant_id"`
-	ActorEmail string      `json:"actor_email"`
-	Action     string      `json:"action"`
-	Resource   string      `json:"resource"`
-	ResourceID string      `json:"resource_id"`
-	Payload    string      `json:"payload"`
-	IpAddress  string      `json:"ip_address"`
-	UserAgent  string      `json:"user_agent"`
-	CreatedAt  time.Time   `json:"created_at"`
+	ID         uuid.UUID  `json:"id"`
+	ActorID    *uuid.UUID `json:"actor_id"`
+	TenantID   *uuid.UUID `json:"tenant_id"`
+	ActorEmail string     `json:"actor_email"`
+	Action     string     `json:"action"`
+	Resource   string     `json:"resource"`
+	ResourceID string     `json:"resource_id"`
+	Payload    string     `json:"payload"`
+	IpAddress  string     `json:"ip_address"`
+	UserAgent  string     `json:"user_agent"`
+	CreatedAt  time.Time  `json:"created_at"`
 }
 
 type Notification struct {
@@ -36,25 +35,25 @@ type Notification struct {
 }
 
 type OutboxEvent struct {
-	ID            uuid.UUID          `json:"id"`
-	AggregateType string             `json:"aggregate_type"`
-	AggregateID   string             `json:"aggregate_id"`
-	EventType     string             `json:"event_type"`
-	Payload       string             `json:"payload"`
-	Status        string             `json:"status"`
-	CreatedAt     time.Time          `json:"created_at"`
-	ProcessedAt   pgtype.Timestamptz `json:"processed_at"`
+	ID            uuid.UUID  `json:"id"`
+	AggregateType string     `json:"aggregate_type"`
+	AggregateID   string     `json:"aggregate_id"`
+	EventType     string     `json:"event_type"`
+	Payload       string     `json:"payload"`
+	Status        string     `json:"status"`
+	CreatedAt     time.Time  `json:"created_at"`
+	ProcessedAt   *time.Time `json:"processed_at"`
 }
 
 type Role struct {
-	ID          uuid.UUID   `json:"id"`
-	TenantID    pgtype.UUID `json:"tenant_id"`
-	Name        string      `json:"name"`
-	DisplayName string      `json:"display_name"`
-	Description string      `json:"description"`
-	IsSystem    bool        `json:"is_system"`
-	CreatedAt   time.Time   `json:"created_at"`
-	UpdatedAt   time.Time   `json:"updated_at"`
+	ID          uuid.UUID  `json:"id"`
+	TenantID    *uuid.UUID `json:"tenant_id"`
+	Name        string     `json:"name"`
+	DisplayName string     `json:"display_name"`
+	Description string     `json:"description"`
+	IsSystem    bool       `json:"is_system"`
+	CreatedAt   time.Time  `json:"created_at"`
+	UpdatedAt   time.Time  `json:"updated_at"`
 }
 
 type RolePermission struct {
@@ -74,18 +73,18 @@ type Session struct {
 }
 
 type ShortUrl struct {
-	ID          uuid.UUID          `json:"id"`
-	UserID      pgtype.UUID        `json:"user_id"`
-	TenantID    pgtype.UUID        `json:"tenant_id"`
-	ShortCode   string             `json:"short_code"`
-	OriginalUrl string             `json:"original_url"`
-	Title       string             `json:"title"`
-	IsActive    bool               `json:"is_active"`
-	ClickCount  int64              `json:"click_count"`
-	ExpiresAt   pgtype.Timestamptz `json:"expires_at"`
-	DeletedAt   pgtype.Timestamptz `json:"deleted_at"`
-	CreatedAt   time.Time          `json:"created_at"`
-	UpdatedAt   time.Time          `json:"updated_at"`
+	ID          uuid.UUID  `json:"id"`
+	UserID      *uuid.UUID `json:"user_id"`
+	TenantID    *uuid.UUID `json:"tenant_id"`
+	ShortCode   string     `json:"short_code"`
+	OriginalUrl string     `json:"original_url"`
+	Title       string     `json:"title"`
+	IsActive    bool       `json:"is_active"`
+	ClickCount  int64      `json:"click_count"`
+	ExpiresAt   *time.Time `json:"expires_at"`
+	DeletedAt   *time.Time `json:"deleted_at"`
+	CreatedAt   time.Time  `json:"created_at"`
+	UpdatedAt   time.Time  `json:"updated_at"`
 }
 
 type SystemConfig struct {
@@ -123,13 +122,13 @@ type UrlAnalytic struct {
 }
 
 type User struct {
-	ID           uuid.UUID   `json:"id"`
-	Email        string      `json:"email"`
-	PasswordHash pgtype.Text `json:"password_hash"`
-	GoogleID     pgtype.Text `json:"google_id"`
-	AvatarUrl    string      `json:"avatar_url"`
-	FullName     string      `json:"full_name"`
-	IsSuspended  bool        `json:"is_suspended"`
-	CreatedAt    time.Time   `json:"created_at"`
-	UpdatedAt    time.Time   `json:"updated_at"`
+	ID           uuid.UUID `json:"id"`
+	Email        string    `json:"email"`
+	PasswordHash *string   `json:"password_hash"`
+	GoogleID     *string   `json:"google_id"`
+	AvatarUrl    string    `json:"avatar_url"`
+	FullName     string    `json:"full_name"`
+	IsSuspended  bool      `json:"is_suspended"`
+	CreatedAt    time.Time `json:"created_at"`
+	UpdatedAt    time.Time `json:"updated_at"`
 }
