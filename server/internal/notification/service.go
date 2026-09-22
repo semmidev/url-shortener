@@ -2,7 +2,6 @@ package notification
 
 import (
 	"context"
-	"uuid"
 
 	"github.com/jackc/pgx/v5/pgtype"
 
@@ -18,9 +17,9 @@ func NewService(q db.Querier) *Service {
 	return &Service{q: q}
 }
 
-func (s *Service) CreateNotification(ctx context.Context, req CreateNotificationRequest) (NotificationResponse, error) {
+func (s *Service) CreateNotification(ctx context.Context, req CreateNotificationRequest) (*NotificationResponse, error) {
 	if req.Title == "" || req.Message == "" {
-		return NotificationResponse{}, apperr.Invalid("title and message are required")
+		return nil, apperr.Invalid("title and message are required")
 	}
 	if req.Type == "" {
 		req.Type = "system"
@@ -33,50 +32,52 @@ func (s *Service) CreateNotification(ctx context.Context, req CreateNotification
 		Type:    req.Type,
 	})
 	if err != nil {
-		return NotificationResponse{}, apperr.Internal("failed to create notification", err)
+		return nil, apperr.Internal("failed to create notification", err)
 	}
 
-	return ToNotificationResponse(n), nil
+	res := ToNotificationResponse(n)
+	return &res, nil
 }
 
-func (s *Service) ListNotifications(ctx context.Context, userID uuid.UUID, page, limit int32, unreadOnly bool, nType, search string) (ListNotificationsResponse, error) {
-	if page < 1 {
-		page = 1
+func (s *Service) ListNotifications(ctx context.Context, req ListNotificationsRequest) (*ListNotificationsResponse, error) {
+	filter := req.Filter
+	if filter.Page < 1 {
+		filter.Page = 1
 	}
-	if limit < 1 || limit > 100 {
-		limit = 20
+	if filter.Limit < 1 || filter.Limit > 100 {
+		filter.Limit = 20
 	}
-	offset := (page - 1) * limit
+	offset := filter.GetOffset()
 
 	var unreadParam pgtype.Bool
-	if unreadOnly {
+	if req.UnreadOnly {
 		unreadParam = pgtype.Bool{Bool: true, Valid: true}
 	}
 
 	var typeParam pgtype.Text
-	if nType != "" && nType != "all" {
-		typeParam = pgtype.Text{String: nType, Valid: true}
+	if req.Type != "" && req.Type != "all" {
+		typeParam = pgtype.Text{String: req.Type, Valid: true}
 	}
 
 	var searchParam pgtype.Text
-	if search != "" {
-		searchParam = pgtype.Text{String: search, Valid: true}
+	if filter.Search != "" {
+		searchParam = pgtype.Text{String: filter.Search, Valid: true}
 	}
 
 	items, err := s.q.ListUserNotifications(ctx, db.ListUserNotificationsParams{
-		UserID:     userID,
+		UserID:     req.UserID,
 		UnreadOnly: unreadParam,
 		Type:       typeParam,
 		Search:     searchParam,
 		OffsetVal:  offset,
-		LimitVal:   limit,
+		LimitVal:   filter.Limit,
 	})
 	if err != nil {
-		return ListNotificationsResponse{}, apperr.Internal("failed to list notifications", err)
+		return nil, apperr.Internal("failed to list notifications", err)
 	}
 
 	total, err := s.q.CountUserNotifications(ctx, db.CountUserNotificationsParams{
-		UserID:     userID,
+		UserID:     req.UserID,
 		UnreadOnly: unreadParam,
 		Type:       typeParam,
 		Search:     searchParam,
@@ -85,7 +86,7 @@ func (s *Service) ListNotifications(ctx context.Context, userID uuid.UUID, page,
 		total = int64(len(items))
 	}
 
-	unreadCount, err := s.q.CountUnreadNotifications(ctx, userID)
+	unreadCount, err := s.q.CountUnreadNotifications(ctx, req.UserID)
 	if err != nil {
 		unreadCount = 0
 	}
@@ -95,45 +96,46 @@ func (s *Service) ListNotifications(ctx context.Context, userID uuid.UUID, page,
 		resItems[i] = ToNotificationResponse(item)
 	}
 
-	return ListNotificationsResponse{
+	return &ListNotificationsResponse{
 		Items:       resItems,
 		Total:       total,
-		Page:        page,
-		Limit:       limit,
+		Page:        filter.Page,
+		Limit:       filter.Limit,
 		UnreadCount: unreadCount,
 	}, nil
 }
 
-func (s *Service) GetUnreadCount(ctx context.Context, userID uuid.UUID) (UnreadCountResponse, error) {
-	count, err := s.q.CountUnreadNotifications(ctx, userID)
+func (s *Service) GetUnreadCount(ctx context.Context, req GetUnreadCountRequest) (*UnreadCountResponse, error) {
+	count, err := s.q.CountUnreadNotifications(ctx, req.UserID)
 	if err != nil {
-		return UnreadCountResponse{}, apperr.Internal("failed to count unread notifications", err)
+		return nil, apperr.Internal("failed to count unread notifications", err)
 	}
-	return UnreadCountResponse{UnreadCount: count}, nil
+	return &UnreadCountResponse{UnreadCount: count}, nil
 }
 
-func (s *Service) MarkAsRead(ctx context.Context, userID, notificationID uuid.UUID) (NotificationResponse, error) {
+func (s *Service) MarkAsRead(ctx context.Context, req MarkAsReadRequest) (*NotificationResponse, error) {
 	n, err := s.q.MarkNotificationAsRead(ctx, db.MarkNotificationAsReadParams{
-		ID:     notificationID,
-		UserID: userID,
+		ID:     req.NotificationID,
+		UserID: req.UserID,
 	})
 	if err != nil {
-		return NotificationResponse{}, apperr.NotFound("notification not found")
+		return nil, apperr.NotFound("notification not found")
 	}
-	return ToNotificationResponse(n), nil
+	res := ToNotificationResponse(n)
+	return &res, nil
 }
 
-func (s *Service) MarkAllAsRead(ctx context.Context, userID uuid.UUID) error {
-	return s.q.MarkAllNotificationsAsRead(ctx, userID)
+func (s *Service) MarkAllAsRead(ctx context.Context, req MarkAllAsReadRequest) error {
+	return s.q.MarkAllNotificationsAsRead(ctx, req.UserID)
 }
 
-func (s *Service) DeleteNotification(ctx context.Context, userID, notificationID uuid.UUID) error {
+func (s *Service) DeleteNotification(ctx context.Context, req DeleteNotificationRequest) error {
 	return s.q.DeleteNotification(ctx, db.DeleteNotificationParams{
-		ID:     notificationID,
-		UserID: userID,
+		ID:     req.NotificationID,
+		UserID: req.UserID,
 	})
 }
 
-func (s *Service) ClearRead(ctx context.Context, userID uuid.UUID) error {
-	return s.q.ClearReadNotifications(ctx, userID)
+func (s *Service) ClearRead(ctx context.Context, req ClearReadRequest) error {
+	return s.q.ClearReadNotifications(ctx, req.UserID)
 }

@@ -5,6 +5,7 @@ import (
 	"uuid"
 
 	db "github.com/semmidev/url-shortener/server/db/sqlc"
+	"github.com/semmidev/url-shortener/server/internal/platform/web"
 )
 
 type NotificationResponse struct {
@@ -46,4 +47,33 @@ type CreateNotificationRequest struct {
 	Title   string    `json:"title"`
 	Message string    `json:"message"`
 	Type    string    `json:"type"`
+}
+
+type ListNotificationsRequest struct {
+	UserID     uuid.UUID  `json:"-"`
+	Filter     web.Filter `json:"filter"`
+	UnreadOnly bool       `json:"unread_only"`
+	Type       string     `json:"type"`
+}
+
+type GetUnreadCountRequest struct {
+	UserID uuid.UUID `json:"user_id"`
+}
+
+type MarkAsReadRequest struct {
+	UserID         uuid.UUID `json:"user_id"`
+	NotificationID uuid.UUID `json:"notification_id"`
+}
+
+type MarkAllAsReadRequest struct {
+	UserID uuid.UUID `json:"user_id"`
+}
+
+type DeleteNotificationRequest struct {
+	UserID         uuid.UUID `json:"user_id"`
+	NotificationID uuid.UUID `json:"notification_id"`
+}
+
+type ClearReadRequest struct {
+	UserID uuid.UUID `json:"user_id"`
 }

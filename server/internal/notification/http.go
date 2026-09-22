@@ -2,7 +2,6 @@ package notification
 
 import (
 	"net/http"
-	"strconv"
 	"uuid"
 
 	"github.com/go-chi/chi/v5"
@@ -38,21 +37,17 @@ func (h *Handler) listNotifications(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	filter := web.NewFilterFromRequest(r)
 	q := r.URL.Query()
-	var pageVal int32 = 1
-	if p, err := strconv.ParseInt(q.Get("page"), 10, 32); err == nil && p > 0 {
-		pageVal = int32(p)
-	}
-	var limitVal int32 = 20
-	if l, err := strconv.ParseInt(q.Get("limit"), 10, 32); err == nil && l > 0 && l <= 100 {
-		limitVal = int32(l)
-	}
-
 	unreadOnly := q.Get("unread_only") == "true" || q.Get("filter") == "unread"
 	nType := q.Get("type")
-	search := q.Get("search")
 
-	res, err := h.svc.ListNotifications(r.Context(), userID, pageVal, limitVal, unreadOnly, nType, search)
+	res, err := h.svc.ListNotifications(r.Context(), ListNotificationsRequest{
+		UserID:     userID,
+		Filter:     filter,
+		UnreadOnly: unreadOnly,
+		Type:       nType,
+	})
 	if err != nil {
 		web.Error(w, r, err)
 		return
@@ -68,7 +63,9 @@ func (h *Handler) getUnreadCount(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	res, err := h.svc.GetUnreadCount(r.Context(), userID)
+	res, err := h.svc.GetUnreadCount(r.Context(), GetUnreadCountRequest{
+		UserID: userID,
+	})
 	if err != nil {
 		web.Error(w, r, err)
 		return
@@ -91,7 +88,10 @@ func (h *Handler) markAsRead(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	res, err := h.svc.MarkAsRead(r.Context(), userID, notifID)
+	res, err := h.svc.MarkAsRead(r.Context(), MarkAsReadRequest{
+		UserID:         userID,
+		NotificationID: notifID,
+	})
 	if err != nil {
 		web.Error(w, r, err)
 		return
@@ -107,7 +107,7 @@ func (h *Handler) markAllAsRead(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.svc.MarkAllAsRead(r.Context(), userID); err != nil {
+	if err := h.svc.MarkAllAsRead(r.Context(), MarkAllAsReadRequest{UserID: userID}); err != nil {
 		web.Error(w, r, err)
 		return
 	}
@@ -129,7 +129,7 @@ func (h *Handler) deleteNotification(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.svc.DeleteNotification(r.Context(), userID, notifID); err != nil {
+	if err := h.svc.DeleteNotification(r.Context(), DeleteNotificationRequest{UserID: userID, NotificationID: notifID}); err != nil {
 		web.Error(w, r, err)
 		return
 	}
@@ -144,7 +144,7 @@ func (h *Handler) clearRead(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.svc.ClearRead(r.Context(), userID); err != nil {
+	if err := h.svc.ClearRead(r.Context(), ClearReadRequest{UserID: userID}); err != nil {
 		web.Error(w, r, err)
 		return
 	}
