@@ -78,7 +78,7 @@ func (s *Service) Create(ctx context.Context, req CreateURLRequest) (*URLRespons
 		return nil, err
 	}
 
-	if req.UserID != nil {
+	if s.authorizer != nil && req.UserID != nil {
 		var domain string
 		if tID, ok := web.TenantID(ctx); ok {
 			domain = tID.String()
@@ -206,6 +206,18 @@ func (s *Service) GetByID(ctx context.Context, req GetURLByIDRequest) (*URLRespo
 	ctx, endSpan := telemetry.StartSpan(ctx, "url.Service.GetByID", attribute.String("url.id", req.ID.String()))
 	defer func() { endSpan(err) }()
 
+	if s.authorizer != nil {
+		var domain string
+		if tID, ok := web.TenantID(ctx); ok {
+			domain = tID.String()
+		}
+		can, _ := s.authorizer.Can(ctx, req.UserID, domain, permission.UrlsRead)
+		if !can {
+			err = apperr.Forbidden("anda tidak memiliki izin untuk melihat link singkat (urls.read)")
+			return nil, err
+		}
+	}
+
 	u, dbErr := s.store.GetShortURLByID(ctx, req.ID)
 	if dbErr != nil {
 		err = apperr.MapDBError(dbErr, "short URL not found", "")
@@ -225,6 +237,18 @@ func (s *Service) List(ctx context.Context, req ListUserShortURLsRequest) (*List
 	var err error
 	ctx, endSpan := telemetry.StartSpan(ctx, "url.Service.List")
 	defer func() { endSpan(err) }()
+
+	if s.authorizer != nil {
+		var domain string
+		if tID, ok := web.TenantID(ctx); ok {
+			domain = tID.String()
+		}
+		can, _ := s.authorizer.Can(ctx, req.UserID, domain, permission.UrlsRead)
+		if !can {
+			err = apperr.Forbidden("anda tidak memiliki izin untuk melihat daftar link singkat (urls.read)")
+			return nil, err
+		}
+	}
 
 	filter := req.Filter
 	var userID *uuid.UUID
@@ -312,14 +336,16 @@ func (s *Service) Update(ctx context.Context, req UpdateURLRequest) (*URLRespons
 		return nil, err
 	}
 
-	var domain string
-	if tID, ok := web.TenantID(ctx); ok {
-		domain = tID.String()
-	}
-	can, _ := s.authorizer.Can(ctx, req.UserID, domain, permission.UrlsUpdate)
-	if !can {
-		err = apperr.Forbidden("anda tidak memiliki izin untuk mengedit link singkat (urls.update)")
-		return nil, err
+	if s.authorizer != nil {
+		var domain string
+		if tID, ok := web.TenantID(ctx); ok {
+			domain = tID.String()
+		}
+		can, _ := s.authorizer.Can(ctx, req.UserID, domain, permission.UrlsUpdate)
+		if !can {
+			err = apperr.Forbidden("anda tidak memiliki izin untuk mengedit link singkat (urls.update)")
+			return nil, err
+		}
 	}
 
 	// Verify ownership first
@@ -357,14 +383,16 @@ func (s *Service) Delete(ctx context.Context, req DeleteURLRequest) (*DeleteURLR
 	ctx, endSpan := telemetry.StartSpan(ctx, "url.Service.Delete", attribute.String("url.id", req.ID.String()))
 	defer func() { endSpan(err) }()
 
-	var domainDelete string
-	if tID, ok := web.TenantID(ctx); ok {
-		domainDelete = tID.String()
-	}
-	canDelete, _ := s.authorizer.Can(ctx, req.UserID, domainDelete, permission.UrlsDelete)
-	if !canDelete {
-		err = apperr.Forbidden("anda tidak memiliki izin untuk menghapus link singkat (urls.delete)")
-		return nil, err
+	if s.authorizer != nil {
+		var domainDelete string
+		if tID, ok := web.TenantID(ctx); ok {
+			domainDelete = tID.String()
+		}
+		canDelete, _ := s.authorizer.Can(ctx, req.UserID, domainDelete, permission.UrlsDelete)
+		if !canDelete {
+			err = apperr.Forbidden("anda tidak memiliki izin untuk menghapus link singkat (urls.delete)")
+			return nil, err
+		}
 	}
 
 	// Verify ownership first
@@ -401,6 +429,18 @@ func (s *Service) Restore(ctx context.Context, req RestoreURLRequest) (*URLRespo
 	var err error
 	ctx, endSpan := telemetry.StartSpan(ctx, "url.Service.Restore", attribute.String("url.id", req.ID.String()))
 	defer func() { endSpan(err) }()
+
+	if s.authorizer != nil {
+		var domain string
+		if tID, ok := web.TenantID(ctx); ok {
+			domain = tID.String()
+		}
+		can, _ := s.authorizer.Can(ctx, req.UserID, domain, permission.UrlsUpdate)
+		if !can {
+			err = apperr.Forbidden("anda tidak memiliki izin untuk memulihkan link singkat (urls.update)")
+			return nil, err
+		}
+	}
 
 	userUUID := &req.UserID
 

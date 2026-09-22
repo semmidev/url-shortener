@@ -13,7 +13,9 @@ import (
 	"github.com/semmidev/url-shortener/server/internal/notification"
 	"github.com/semmidev/url-shortener/server/internal/platform/apperr"
 	"github.com/semmidev/url-shortener/server/internal/platform/authz"
+	"github.com/semmidev/url-shortener/server/internal/platform/permission"
 	"github.com/semmidev/url-shortener/server/internal/platform/telemetry"
+	"github.com/semmidev/url-shortener/server/internal/platform/web"
 	"go.opentelemetry.io/otel/attribute"
 )
 
@@ -69,6 +71,13 @@ func (s *Service) CreateTenant(ctx context.Context, userID uuid.UUID, req Create
 	defer func() { endSpan(err) }()
 	if err := req.Validate(); err != nil {
 		return TenantResponse{}, err
+	}
+
+	if s.authorizer != nil {
+		can, _ := s.authorizer.Can(ctx, userID, authz.DefaultDomain, permission.TenantsCreate)
+		if !can {
+			return TenantResponse{}, apperr.Forbidden("anda tidak memiliki izin untuk membuat workspace (tenants.create)")
+		}
 	}
 
 	slug := strings.ToLower(strings.TrimSpace(req.Slug))
@@ -166,6 +175,15 @@ func (s *Service) JoinTenant(ctx context.Context, userID uuid.UUID, req JoinTena
 }
 
 func (s *Service) ListTenantMembers(ctx context.Context, tenantID uuid.UUID) ([]TenantMemberResponse, error) {
+	if s.authorizer != nil {
+		if userID, ok := web.UserID(ctx); ok {
+			can, _ := s.authorizer.Can(ctx, userID, tenantID.String(), permission.TenantsRead)
+			if !can {
+				return nil, apperr.Forbidden("anda tidak memiliki izin untuk melihat anggota workspace (tenants.read)")
+			}
+		}
+	}
+
 	members, err := s.q.ListTenantMembers(ctx, tenantID)
 	if err != nil {
 		return nil, apperr.Internal("failed to list tenant members", err)
@@ -188,6 +206,13 @@ func (s *Service) ListTenantMembers(ctx context.Context, tenantID uuid.UUID) ([]
 func (s *Service) AddTenantMember(ctx context.Context, tenantID uuid.UUID, req AddTenantMemberRequest, actorID uuid.UUID) (TenantMemberResponse, error) {
 	if err := req.Validate(); err != nil {
 		return TenantMemberResponse{}, err
+	}
+
+	if s.authorizer != nil {
+		can, _ := s.authorizer.Can(ctx, actorID, tenantID.String(), permission.TenantsMembersManage)
+		if !can {
+			return TenantMemberResponse{}, apperr.Forbidden("anda tidak memiliki izin untuk mengelola anggota workspace (tenants.members.manage)")
+		}
 	}
 
 	user, err := s.q.GetUserByEmail(ctx, req.Email)
@@ -241,6 +266,15 @@ func (s *Service) UpdateTenantMemberRole(ctx context.Context, tenantID uuid.UUID
 		return TenantMemberResponse{}, err
 	}
 
+	if s.authorizer != nil {
+		if actorID, ok := web.UserID(ctx); ok {
+			can, _ := s.authorizer.Can(ctx, actorID, tenantID.String(), permission.TenantsMembersManage)
+			if !can {
+				return TenantMemberResponse{}, apperr.Forbidden("anda tidak memiliki izin untuk mengelola anggota workspace (tenants.members.manage)")
+			}
+		}
+	}
+
 	m, err := s.q.UpdateTenantMemberRole(ctx, db.UpdateTenantMemberRoleParams{
 		TenantID: tenantID,
 		UserID:   targetUserID,
@@ -269,6 +303,15 @@ func (s *Service) UpdateTenantMemberRole(ctx context.Context, tenantID uuid.UUID
 }
 
 func (s *Service) RemoveTenantMember(ctx context.Context, tenantID uuid.UUID, targetUserID uuid.UUID) error {
+	if s.authorizer != nil {
+		if actorID, ok := web.UserID(ctx); ok {
+			can, _ := s.authorizer.Can(ctx, actorID, tenantID.String(), permission.TenantsMembersManage)
+			if !can {
+				return apperr.Forbidden("anda tidak memiliki izin untuk mengelola anggota workspace (tenants.members.manage)")
+			}
+		}
+	}
+
 	t, tErr := s.q.GetTenantByID(ctx, tenantID)
 	targetUser, uErr := s.q.GetUserByID(ctx, targetUserID)
 	members, mErr := s.q.ListTenantMembers(ctx, tenantID)
@@ -302,6 +345,15 @@ func (s *Service) RemoveTenantMember(ctx context.Context, tenantID uuid.UUID, ta
 }
 
 func (s *Service) ListTenantRoles(ctx context.Context, tenantID uuid.UUID) ([]TenantRoleResponse, error) {
+	if s.authorizer != nil {
+		if userID, ok := web.UserID(ctx); ok {
+			can, _ := s.authorizer.Can(ctx, userID, tenantID.String(), permission.RolesRead)
+			if !can {
+				return nil, apperr.Forbidden("anda tidak memiliki izin untuk melihat peran workspace (roles.read)")
+			}
+		}
+	}
+
 	roles, err := s.q.ListTenantRoles(ctx, &tenantID)
 	if err != nil {
 		return nil, apperr.Internal("gagal mengambil daftar peran tenant", err)
@@ -332,6 +384,15 @@ func (s *Service) ListTenantRoles(ctx context.Context, tenantID uuid.UUID) ([]Te
 func (s *Service) CreateTenantRole(ctx context.Context, tenantID uuid.UUID, req CreateTenantRoleRequest) (TenantRoleResponse, error) {
 	if err := req.Validate(); err != nil {
 		return TenantRoleResponse{}, err
+	}
+
+	if s.authorizer != nil {
+		if userID, ok := web.UserID(ctx); ok {
+			can, _ := s.authorizer.Can(ctx, userID, tenantID.String(), permission.RolesCreate)
+			if !can {
+				return TenantRoleResponse{}, apperr.Forbidden("anda tidak memiliki izin untuk membuat peran custom (roles.create)")
+			}
+		}
 	}
 
 	r, err := s.q.CreateRole(ctx, db.CreateRoleParams{
@@ -370,6 +431,15 @@ func (s *Service) CreateTenantRole(ctx context.Context, tenantID uuid.UUID, req 
 }
 
 func (s *Service) UpdateTenantRolePermissions(ctx context.Context, tenantID uuid.UUID, roleID uuid.UUID, req UpdateTenantRolePermissionsRequest) (TenantRoleResponse, error) {
+	if s.authorizer != nil {
+		if userID, ok := web.UserID(ctx); ok {
+			can, _ := s.authorizer.Can(ctx, userID, tenantID.String(), permission.RolesPermissionsUpdate)
+			if !can {
+				return TenantRoleResponse{}, apperr.Forbidden("anda tidak memiliki izin untuk memperbarui izin peran (roles.permissions.update)")
+			}
+		}
+	}
+
 	role, err := s.q.GetRoleByID(ctx, roleID)
 	if err != nil {
 		return TenantRoleResponse{}, apperr.NotFound("peran tidak ditemukan")
@@ -412,6 +482,15 @@ func (s *Service) UpdateTenantRolePermissions(ctx context.Context, tenantID uuid
 }
 
 func (s *Service) DeleteTenantRole(ctx context.Context, tenantID uuid.UUID, roleID uuid.UUID) error {
+	if s.authorizer != nil {
+		if userID, ok := web.UserID(ctx); ok {
+			can, _ := s.authorizer.Can(ctx, userID, tenantID.String(), permission.RolesPermissionsUpdate)
+			if !can {
+				return apperr.Forbidden("anda tidak memiliki izin untuk menghapus peran (roles.permissions.update)")
+			}
+		}
+	}
+
 	role, err := s.q.GetRoleByID(ctx, roleID)
 	if err != nil {
 		return apperr.NotFound("peran tidak ditemukan")
@@ -437,6 +516,15 @@ func (s *Service) DeleteTenantRole(ctx context.Context, tenantID uuid.UUID, role
 func (s *Service) UpdateTenant(ctx context.Context, tenantID uuid.UUID, req UpdateTenantRequest) (TenantResponse, error) {
 	if err := req.Validate(); err != nil {
 		return TenantResponse{}, err
+	}
+
+	if s.authorizer != nil {
+		if userID, ok := web.UserID(ctx); ok {
+			can, _ := s.authorizer.Can(ctx, userID, tenantID.String(), permission.TenantsUpdate)
+			if !can {
+				return TenantResponse{}, apperr.Forbidden("anda tidak memiliki izin untuk memperbarui workspace (tenants.update)")
+			}
+		}
 	}
 
 	slug := strings.ToLower(strings.TrimSpace(req.Slug))
@@ -470,6 +558,15 @@ func (s *Service) UpdateTenant(ctx context.Context, tenantID uuid.UUID, req Upda
 }
 
 func (s *Service) RegenerateJoinCode(ctx context.Context, tenantID uuid.UUID) (TenantResponse, error) {
+	if s.authorizer != nil {
+		if userID, ok := web.UserID(ctx); ok {
+			can, _ := s.authorizer.Can(ctx, userID, tenantID.String(), permission.TenantsUpdate)
+			if !can {
+				return TenantResponse{}, apperr.Forbidden("anda tidak memiliki izin untuk memperbarui workspace (tenants.update)")
+			}
+		}
+	}
+
 	newCode := GenerateJoinCode()
 	t, err := s.q.RegenerateTenantJoinCode(ctx, db.RegenerateTenantJoinCodeParams{
 		ID:       tenantID,
@@ -490,6 +587,15 @@ func (s *Service) RegenerateJoinCode(ctx context.Context, tenantID uuid.UUID) (T
 }
 
 func (s *Service) DeleteTenant(ctx context.Context, tenantID uuid.UUID) error {
+	if s.authorizer != nil {
+		if userID, ok := web.UserID(ctx); ok {
+			can, _ := s.authorizer.Can(ctx, userID, tenantID.String(), permission.TenantsDelete)
+			if !can {
+				return apperr.Forbidden("anda tidak memiliki izin untuk menghapus workspace (tenants.delete)")
+			}
+		}
+	}
+
 	if err := s.q.DeleteTenantAdmin(ctx, tenantID); err != nil {
 		return apperr.Internal("gagal menghapus workspace", err)
 	}
