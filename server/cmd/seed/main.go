@@ -9,6 +9,7 @@ import (
 	"uuid"
 
 	db "github.com/semmidev/url-shortener/server/db/sqlc"
+	"github.com/semmidev/url-shortener/server/internal/app"
 	"github.com/semmidev/url-shortener/server/internal/config"
 	"github.com/semmidev/url-shortener/server/internal/platform/authz"
 	"github.com/semmidev/url-shortener/server/internal/platform/crypto"
@@ -22,6 +23,14 @@ func main() {
 	cfg, err := config.LoadConfig(".")
 	if err != nil {
 		log.Fatalf("❌ Failed to load configuration: %v", err)
+	}
+
+	migrationURL := cfg.MigrationURL
+	if migrationURL == "" {
+		migrationURL = "file://db/migration"
+	}
+	if err := app.RunDBMigration(migrationURL, cfg.DBSource); err != nil {
+		log.Printf("⚠️ Warning during database migration: %v", err)
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
@@ -47,7 +56,7 @@ func main() {
 }
 
 func seed(ctx context.Context, store db.Store) error {
-	// 1. Seed System Roles
+	// 1. Seed System Roles (System provides ONLY 1 default role: Owner)
 	roles := []struct {
 		ID          string
 		Name        string
@@ -59,18 +68,6 @@ func seed(ctx context.Context, store db.Store) error {
 			Name:        "owner",
 			DisplayName: "Owner",
 			Description: "Pemilik workspace dengan hak akses penuh",
-		},
-		{
-			ID:          "00000000-0000-0000-0000-000000000002",
-			Name:        "admin",
-			DisplayName: "Administrator",
-			Description: "Pengelola workspace",
-		},
-		{
-			ID:          "00000000-0000-0000-0000-000000000003",
-			Name:        "member",
-			DisplayName: "Member",
-			Description: "Anggota standar workspace",
 		},
 	}
 
@@ -85,14 +82,14 @@ func seed(ctx context.Context, store db.Store) error {
 		})
 	}
 
-	// 2. Map Code-Defined Permissions to System Roles
+	// 2. Map Code-Defined Permissions to System Owner Role
 	log.Println("🔑 Mapping code-defined permissions to system roles...")
 	if err := permission.SyncPermissions(ctx, store); err != nil {
 		log.Printf("⚠️ Warning during permission sync: %v", err)
 	}
 
-	// Initialize Casbin Authorizer
-	authorizer, _ := authz.NewCasbinAuthorizer(store)
+	// Initialize Spatie Authorizer
+	authorizer, _ := authz.NewSpatieAuthorizer(store)
 
 	// 3. Seed Default User Accounts
 	hashedPassword, err := crypto.HashPassword("password")
@@ -152,44 +149,85 @@ func seed(ctx context.Context, store db.Store) error {
 		createdTenants[t.Slug] = tenant
 	}
 
-	// 5. Assign Users to Tenants
+	// 5. Assign Users & Tenant Custom Roles
 	johnUser, johnErr := store.GetUserByEmail(ctx, "sammidev4@gmail.com")
 	janeUser, janeErr := store.GetUserByEmail(ctx, "jane@example.com")
 	acme, hasAcme := createdTenants["acme"]
 	stark, hasStark := createdTenants["stark"]
 
+	// Acme Corporation Memberships & Tenant Roles
 	if johnErr == nil && hasAcme {
 		_, _ = store.AddTenantMember(ctx, db.AddTenantMemberParams{
 			TenantID: acme.ID,
 			UserID:   johnUser.ID,
 			Role:     "owner",
 		})
-		_ = authorizer.AddUserRole(ctx, johnUser.ID, "owner", acme.ID.String())
 	}
 	if janeErr == nil && hasAcme {
+		// Create custom tenant role "member" for Acme
+		acmeMemberRole, err := store.CreateRole(ctx, db.CreateRoleParams{
+			TenantID:    &acme.ID,
+			Name:        "member",
+			DisplayName: "Member",
+			Description: "Anggota standar workspace Acme",
+			IsSystem:    false,
+		})
+		if err == nil {
+			for _, permCode := range []string{permission.UrlsRead, permission.UrlsCreate, permission.AnalyticsRead} {
+				_ = store.AddRolePermission(ctx, db.AddRolePermissionParams{
+					RoleID:         acmeMemberRole.ID,
+					PermissionCode: permCode,
+				})
+			}
+		}
 		_, _ = store.AddTenantMember(ctx, db.AddTenantMemberParams{
 			TenantID: acme.ID,
 			UserID:   janeUser.ID,
 			Role:     "member",
 		})
-		_ = authorizer.AddUserRole(ctx, janeUser.ID, "member", acme.ID.String())
 	}
+
+	// Stark Industries Memberships & Tenant Roles
 	if janeErr == nil && hasStark {
 		_, _ = store.AddTenantMember(ctx, db.AddTenantMemberParams{
 			TenantID: stark.ID,
 			UserID:   janeUser.ID,
 			Role:     "owner",
 		})
-		_ = authorizer.AddUserRole(ctx, janeUser.ID, "owner", stark.ID.String())
 	}
 	if johnErr == nil && hasStark {
+		// Create custom tenant role "admin" for Stark
+		starkAdminRole, err := store.CreateRole(ctx, db.CreateRoleParams{
+			TenantID:    &stark.ID,
+			Name:        "admin",
+			DisplayName: "Administrator",
+			Description: "Pengelola workspace Stark",
+			IsSystem:    false,
+		})
+		if err == nil {
+			for _, permCode := range []string{
+				permission.UrlsRead,
+				permission.UrlsCreate,
+				permission.UrlsUpdate,
+				permission.UrlsDelete,
+				permission.AnalyticsRead,
+				permission.TenantsMembersManage,
+			} {
+				_ = store.AddRolePermission(ctx, db.AddRolePermissionParams{
+					RoleID:         starkAdminRole.ID,
+					PermissionCode: permCode,
+				})
+			}
+		}
 		_, _ = store.AddTenantMember(ctx, db.AddTenantMemberParams{
 			TenantID: stark.ID,
 			UserID:   johnUser.ID,
 			Role:     "admin",
 		})
-		_ = authorizer.AddUserRole(ctx, johnUser.ID, "admin", stark.ID.String())
 	}
+
+	// Sync Spatie authorizer policy cache
+	_ = authorizer.SyncPolicies(ctx)
 
 	// 6. Seed Sample Short URLs
 	if johnErr == nil && janeErr == nil && hasAcme {

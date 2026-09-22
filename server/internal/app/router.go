@@ -83,15 +83,15 @@ func BuildRouter(cfg config.Config, pool *pgxpool.Pool, appLogger *logger.Logger
 		}, appLogger)
 	}
 
-	// Initialize Casbin Decision Engine Authorizer
-	authorizer, err := authz.NewCasbinAuthorizer(store)
+	// Initialize Spatie RBAC/ABAC Authorizer
+	authorizer, err := authz.NewSpatieAuthorizer(store)
 	if err != nil {
-		return nil, fmt.Errorf("failed to initialize casbin authorizer: %w", err)
+		return nil, fmt.Errorf("failed to initialize spatie authorizer: %w", err)
 	}
 	if err := authorizer.SyncPolicies(context.Background()); err != nil {
-		appLogger.Warn(context.Background(), "casbin initial policy sync warning", "error", err)
+		appLogger.Warn(context.Background(), "spatie rbac initial policy sync warning", "error", err)
 	} else {
-		appLogger.Info(context.Background(), "casbin decision engine initialized and synced successfully")
+		appLogger.Info(context.Background(), "spatie rbac authorizer initialized and synced successfully")
 	}
 
 	// Initialize Storage Provider (S3 / RustFS)

@@ -458,11 +458,18 @@ export default function WorkspaceMembersPage() {
                     onChange={(e) => setAddForm({ ...addForm, role: e.target.value })}
                     className="w-full px-3 py-2 rounded-lg bg-background border border-border text-sm focus:outline-hidden focus:ring-2 focus:ring-primary/30 cursor-pointer"
                   >
-                    <option value="member">Member</option>
-                    <option value="admin">Admin</option>
-                    {roles.filter(r => !r.is_system).map(r => (
-                      <option key={r.id} value={r.name}>{r.display_name || r.name}</option>
-                    ))}
+                    {roles.length > 0 ? (
+                      roles.map((r) => (
+                        <option key={r.id} value={r.name}>
+                          {r.display_name || r.name}
+                        </option>
+                      ))
+                    ) : (
+                      <>
+                        <option value="owner">Owner</option>
+                        <option value="member">Member</option>
+                      </>
+                    )}
                   </select>
                 </div>
 
@@ -502,11 +509,18 @@ export default function WorkspaceMembersPage() {
                   onChange={(e) => setNewRole(e.target.value)}
                   className="w-full px-3 py-2 rounded-lg bg-background border border-border text-sm focus:outline-hidden focus:ring-2 focus:ring-primary/30 cursor-pointer"
                 >
-                  <option value="member">Member</option>
-                  <option value="admin">Admin</option>
-                  {roles.filter(r => !r.is_system).map(r => (
-                    <option key={r.id} value={r.name}>{r.display_name || r.name}</option>
-                  ))}
+                  {roles.length > 0 ? (
+                    roles.map((r) => (
+                      <option key={r.id} value={r.name}>
+                        {r.display_name || r.name}
+                      </option>
+                    ))
+                  ) : (
+                    <>
+                      <option value="owner">Owner</option>
+                      <option value="member">Member</option>
+                    </>
+                  )}
                 </select>
               </div>
 

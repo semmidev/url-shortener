@@ -199,13 +199,10 @@ var UserDefaultPermissions = []string{
 	AnalyticsRead,
 }
 
-// SyncPermissions ensures system default tenant roles hold their designated permissions.
+// SyncPermissions ensures the system default tenant role (owner) holds all permissions.
 func SyncPermissions(ctx context.Context, q db.Querier) error {
-	for _, roleName := range []string{"owner", "admin"} {
-		role, err := q.GetRoleByName(ctx, roleName)
-		if err != nil {
-			continue
-		}
+	role, err := q.GetRoleByName(ctx, "owner")
+	if err == nil {
 		for _, perm := range AllPermissions {
 			_ = q.AddRolePermission(ctx, db.AddRolePermissionParams{
 				RoleID:         role.ID,
@@ -213,16 +210,5 @@ func SyncPermissions(ctx context.Context, q db.Querier) error {
 			})
 		}
 	}
-
-	memberRole, err := q.GetRoleByName(ctx, "member")
-	if err == nil {
-		for _, code := range UserDefaultPermissions {
-			_ = q.AddRolePermission(ctx, db.AddRolePermissionParams{
-				RoleID:         memberRole.ID,
-				PermissionCode: code,
-			})
-		}
-	}
-
 	return nil
 }
