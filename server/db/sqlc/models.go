@@ -7,7 +7,7 @@ package db
 import (
 	"time"
 
-	"github.com/google/uuid"
+	"uuid"
 )
 
 type AuditLog struct {

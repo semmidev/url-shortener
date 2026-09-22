@@ -3,7 +3,7 @@ package url
 import (
 	"net/http"
 
-	"github.com/google/uuid"
+	"uuid"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/semmidev/url-shortener/server/internal/platform/apperr"

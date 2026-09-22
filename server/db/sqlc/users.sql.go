@@ -8,7 +8,7 @@ package db
 import (
 	"context"
 
-	"github.com/google/uuid"
+	"uuid"
 )
 
 const clearUserAvatar = `-- name: ClearUserAvatar :one

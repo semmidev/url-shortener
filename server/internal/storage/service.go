@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/google/uuid"
+	"uuid"
 
 	"github.com/semmidev/url-shortener/server/internal/platform/apperr"
 	platformStorage "github.com/semmidev/url-shortener/server/internal/platform/storage"

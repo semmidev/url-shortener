@@ -8,7 +8,7 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/google/uuid"
+	"uuid"
 
 	"github.com/destel/rill"
 	"github.com/go-chi/chi/v5"

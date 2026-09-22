@@ -13,7 +13,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/google/uuid"
+	"uuid"
 
 	"github.com/jackc/pgx/v5"
 	db "github.com/semmidev/url-shortener/server/db/sqlc"
@@ -584,11 +584,7 @@ func (s *Service) ensureDefaultWorkspace(ctx context.Context, q db.Querier, user
 func (s *Service) createSessionAndTokensWithQuerier(ctx context.Context, q db.Querier, user db.User, userAgent, clientIP string) (*LoginResponse, error) {
 	_ = s.ensureDefaultWorkspace(ctx, q, user)
 
-	sessionID, err := uuid.NewV7()
-	if err != nil {
-		return nil, apperr.Internal("failed to generate session ID", err)
-	}
-
+	sessionID := uuid.NewV7()
 	refreshTokenStr, refreshPayload, err := s.tokenMaker.CreateToken(
 		user.ID,
 		"",

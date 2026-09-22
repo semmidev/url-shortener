@@ -3,7 +3,7 @@ package notification
 import (
 	"time"
 
-	"github.com/google/uuid"
+	"uuid"
 
 	db "github.com/semmidev/url-shortener/server/db/sqlc"
 	"github.com/semmidev/url-shortener/server/internal/platform/web"

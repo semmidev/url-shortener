@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/google/uuid"
+	"uuid"
 
 	"github.com/hibiken/asynq"
 	db "github.com/semmidev/url-shortener/server/db/sqlc"

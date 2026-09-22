@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/google/uuid"
+	"uuid"
 
 	"github.com/destel/rill"
 	db "github.com/semmidev/url-shortener/server/db/sqlc"
@@ -53,8 +53,12 @@ func (l *Logger) Log(ctx context.Context, r *http.Request, params Params) {
 
 	actorEmail := "system"
 	var actorID *uuid.UUID
-	if id, ok := web.UserID(ctx); ok && id != uuid.Nil {
-		actorID = &id
+
+	id, ok := web.UserID(ctx)
+	if ok {
+		if id, err := uuid.Parse(id.String()); err == nil {
+			actorID = &id
+		}
 	}
 
 	var payloadBytes []byte

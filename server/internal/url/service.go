@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/google/uuid"
+	"uuid"
 
 	"github.com/jackc/pgx/v5"
 

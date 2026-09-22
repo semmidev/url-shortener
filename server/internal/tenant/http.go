@@ -3,7 +3,7 @@ package tenant
 import (
 	"net/http"
 
-	"github.com/google/uuid"
+	"uuid"
 
 	"github.com/go-chi/chi/v5"
 
