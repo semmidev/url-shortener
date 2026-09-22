@@ -34,6 +34,9 @@ type RedisTaskDistributor struct {
 
 // NewRedisTaskDistributor creates a new RedisTaskDistributor instance.
 func NewRedisTaskDistributor(redisOpt asynq.RedisClientOpt, appLogger *logger.Logger) TaskDistributor {
+	if redisOpt.Addr == "" {
+		return nil
+	}
 	client := asynq.NewClient(redisOpt)
 	return &RedisTaskDistributor{
 		client: client,

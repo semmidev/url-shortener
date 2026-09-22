@@ -44,6 +44,9 @@ func (r *RedisCache) SetMetrics(m MetricsRecorder) {
 
 // NewRedisCache creates a new RedisCache client connection.
 func NewRedisCache(addr, password string, db int) (*RedisCache, error) {
+	if addr == "" {
+		return nil, errors.New("redis address is empty")
+	}
 	client := redis.NewClient(&redis.Options{
 		Addr:         addr,
 		Password:     password,

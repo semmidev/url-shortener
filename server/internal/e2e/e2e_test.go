@@ -279,6 +279,7 @@ func TestE2E_FullApplicationFlow(t *testing.T) {
 			expectedStatus: http.StatusTemporaryRedirect,
 			verify: func(t *testing.T, resp *http.Response, apiResp APIResponse) {
 				assert.Equal(t, "https://example.com/updated-page", resp.Header.Get("Location"))
+				time.Sleep(150 * time.Millisecond) // wait for async click logging fallback worker
 			},
 		},
 		{
@@ -290,7 +291,6 @@ func TestE2E_FullApplicationFlow(t *testing.T) {
 			body:           func() any { return nil },
 			expectedStatus: http.StatusOK,
 			verify: func(t *testing.T, resp *http.Response, apiResp APIResponse) {
-				time.Sleep(100 * time.Millisecond) // wait for async click logging
 				var summary analytics.AnalyticsSummaryResponse
 				_ = json.Unmarshal(apiResp.Data, &summary)
 				assert.GreaterOrEqual(t, summary.TotalClicks, int64(1))

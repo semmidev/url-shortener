@@ -54,7 +54,9 @@ func TestAnalyticsFlow(t *testing.T) {
 		OriginalURL: "https://example.com/analytics-target",
 		CustomCode:  customCode,
 	}
-	_, createApiResp := executeRequestWithTenant(t, http.MethodPost, ts.URL+"/api/v1/urls", token, tenantID, createReq)
+	resp, createApiResp := executeRequestWithTenant(t, http.MethodPost, ts.URL+"/api/v1/urls", token, tenantID, createReq)
+	require.Equal(t, http.StatusCreated, resp.StatusCode)
+
 	var createdURL url.URLResponse
 	err = json.Unmarshal(createApiResp.Data, &createdURL)
 	require.NoError(t, err)
@@ -64,7 +66,7 @@ func TestAnalyticsFlow(t *testing.T) {
 	resp, _ = executeRequest(t, http.MethodGet, ts.URL+"/"+customCode, "", nil)
 	assert.Equal(t, http.StatusTemporaryRedirect, resp.StatusCode)
 
-	// Sleep briefly for async click logging
+	// Sleep briefly for async click logging fallback worker
 	time.Sleep(150 * time.Millisecond)
 
 	// 5. Fetch Analytics Summary within Tenant Context

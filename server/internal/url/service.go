@@ -141,6 +141,9 @@ func (s *Service) Create(ctx context.Context, req CreateURLRequest) (*URLRespons
 	}
 
 	res := s.toResponse(u)
+	if s.cache != nil {
+		_ = s.cache.Delete(ctx, fmt.Sprintf("url:code:%s", shortCode))
+	}
 	if s.metrics != nil {
 		s.metrics.RecordShortURLCreated("success")
 	}
