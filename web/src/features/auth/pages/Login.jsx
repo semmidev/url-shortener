@@ -8,6 +8,7 @@ import { useI18n } from '@/context/I18nContext';
 import { LanguageToggle } from '@/components/LanguageToggle';
 import { ThemePresetPicker } from '@/components/ThemePresetPicker';
 import client from '@/lib/client';
+import { toast } from 'sonner';
 
 function FloatingOrb({ className, size, delay }) {
   return (
@@ -49,11 +50,23 @@ export default function Login() {
     e.preventDefault();
     setErrors({});
     setServerError('');
-    if (!values.email) { setErrors({ email: 'Email is required' }); return; }
-    if (!values.password) { setErrors({ password: 'Password is required' }); return; }
+    if (!values.email) {
+      setErrors({ email: 'Email is required' });
+      toast.error('Email is required');
+      return;
+    }
+    if (!values.password) {
+      setErrors({ password: 'Password is required' });
+      toast.error('Password is required');
+      return;
+    }
 
     const res = await login(values.email, values.password);
-    if (res.success) { navigate('/dashboard', { replace: true }); return; }
+    if (res.success) {
+      toast.success('Login successful!');
+      navigate('/dashboard', { replace: true });
+      return;
+    }
 
     if (res.errors) {
       const mappedErrors = {};
@@ -63,7 +76,9 @@ export default function Login() {
       });
       setErrors(mappedErrors);
     } else {
-      setServerError(res.error || 'Login failed. Please check your credentials.');
+      const errMsg = res.error || 'Login failed. Please check your credentials.';
+      setServerError(errMsg);
+      toast.error(errMsg);
     }
   }
 

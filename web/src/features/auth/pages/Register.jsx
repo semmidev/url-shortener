@@ -8,6 +8,7 @@ import { useI18n } from '@/context/I18nContext';
 import { LanguageToggle } from '@/components/LanguageToggle';
 import { ThemePresetPicker } from '@/components/ThemePresetPicker';
 import client from '@/lib/client';
+import { toast } from 'sonner';
 
 function FloatingOrb({ className, size, delay }) {
   return (
@@ -75,13 +76,14 @@ export default function Register() {
     setServerError('');
 
     const newErrors = {};
-    if (!values.fullName.trim()) newErrors.fullName = 'Full name is required';
-    if (!values.email.trim()) newErrors.email = 'Email is required';
-    if (!values.password) newErrors.password = 'Password is required';
-    if (values.password !== values.confirmPassword) newErrors.confirmPassword = 'Passwords do not match';
+    if (!values.fullName.trim()) newErrors.fullName = 'Nama lengkap wajib diisi';
+    if (!values.email.trim()) newErrors.email = 'Email wajib diisi';
+    if (!values.password) newErrors.password = 'Password wajib diisi';
+    if (values.password !== values.confirmPassword) newErrors.confirmPassword = 'Konfirmasi password tidak cocok';
 
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
+      toast.error('Mohon lengkapi formulir pendaftaran');
       return;
     }
 
@@ -92,17 +94,21 @@ export default function Register() {
     });
 
     if (res.success) {
+      toast.success('Pendaftaran akun berhasil!');
       navigate('/dashboard');
-    } else if (res.errors) {
-      const mappedErrors = {};
-      res.errors.forEach((err) => {
-        if (err.field === 'full_name') mappedErrors.fullName = err.message;
-        if (err.field === 'email') mappedErrors.email = err.message;
-        if (err.field === 'password') mappedErrors.password = err.message;
-      });
-      setErrors(mappedErrors);
     } else {
-      setServerError(res.error || 'Registration failed. Please try again.');
+      if (res.errors && typeof res.errors === 'object') {
+        const mappedErrors = {};
+        Object.entries(res.errors).forEach(([k, v]) => {
+          if (k === 'full_name' || k === 'fullName') mappedErrors.fullName = v;
+          if (k === 'email') mappedErrors.email = v;
+          if (k === 'password') mappedErrors.password = v;
+        });
+        setErrors(mappedErrors);
+      }
+      const errMsg = res.error || 'Pendaftaran gagal. Silakan coba lagi.';
+      setServerError(errMsg);
+      toast.error(errMsg);
     }
   }
 

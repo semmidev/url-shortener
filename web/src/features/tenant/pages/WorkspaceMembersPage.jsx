@@ -28,6 +28,7 @@ import {
   getTenantRoles
 } from '../api';
 import PermissionGuard from '@/components/PermissionGuard';
+import { handleApiError } from '@/lib/errorUtils';
 
 export default function WorkspaceMembersPage() {
   const { activeTenant } = useTenant();
@@ -93,18 +94,29 @@ export default function WorkspaceMembersPage() {
     setPage(1);
   };
 
+  const [addErrors, setAddErrors] = useState({});
+
   const handleAddMember = async (e) => {
     e.preventDefault();
-    if (!addForm.email.trim()) return;
+    setAddErrors({});
+    if (!addForm.email.trim()) {
+      setAddErrors({ email: 'Email wajib diisi' });
+      toast.error('Email wajib diisi');
+      return;
+    }
     setActionLoading(true);
     try {
       await addTenantMember(activeTenant.id, addForm.email.trim(), addForm.role);
       toast.success(t('workspace.memberAddedSuccess', { email: addForm.email }));
       setAddForm({ email: '', role: 'member' });
+      setAddErrors({});
       setIsAddModalOpen(false);
       fetchMembersAndRoles();
     } catch (err) {
-      toast.error(err.response?.data?.message || t('common.error'));
+      const parsed = handleApiError(err, 'Gagal menambahkan anggota');
+      if (parsed.errors && Object.keys(parsed.errors).length > 0) {
+        setAddErrors(parsed.errors);
+      }
     } finally {
       setActionLoading(false);
     }
@@ -120,7 +132,7 @@ export default function WorkspaceMembersPage() {
       setSelectedMember(null);
       fetchMembersAndRoles();
     } catch (err) {
-      toast.error(err.response?.data?.message || t('common.error'));
+      handleApiError(err, t('common.error'));
     } finally {
       setActionLoading(false);
     }
@@ -136,7 +148,7 @@ export default function WorkspaceMembersPage() {
       setSelectedMember(null);
       fetchMembersAndRoles();
     } catch (err) {
-      toast.error(err.response?.data?.message || t('common.error'));
+      handleApiError(err, t('common.error'));
     } finally {
       setActionLoading(false);
     }
@@ -438,25 +450,34 @@ export default function WorkspaceMembersPage() {
                 </div>
               </div>
 
-              <form onSubmit={handleAddMember} className="space-y-4 pt-2">
+              <form onSubmit={handleAddMember} className="space-y-4 pt-2" noValidate>
                 <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-foreground">{t('workspace.userEmail')}</label>
+                  <label className="text-xs font-semibold text-foreground">{t('workspace.userEmail')} *</label>
                   <input
                     type="email"
                     required
                     placeholder="nama@domain.com"
                     value={addForm.email}
-                    onChange={(e) => setAddForm({ ...addForm, email: e.target.value })}
-                    className="w-full px-3 py-2 rounded-lg bg-background border border-border text-sm focus:outline-hidden focus:ring-2 focus:ring-primary/30"
+                    onChange={(e) => {
+                      setAddForm({ ...addForm, email: e.target.value });
+                      if (addErrors.email) setAddErrors((prev) => ({ ...prev, email: '' }));
+                    }}
+                    className={`w-full px-3 py-2 rounded-lg bg-background border ${addErrors.email ? 'border-destructive' : 'border-border'} text-sm focus:outline-hidden focus:ring-2 focus:ring-primary/30`}
                   />
+                  {addErrors.email && (
+                    <p className="text-xs text-destructive font-medium mt-1">{addErrors.email}</p>
+                  )}
                 </div>
 
                 <div className="space-y-1.5">
                   <label className="text-xs font-semibold text-foreground">{t('workspace.roleLabel')}</label>
                   <select
                     value={addForm.role}
-                    onChange={(e) => setAddForm({ ...addForm, role: e.target.value })}
-                    className="w-full px-3 py-2 rounded-lg bg-background border border-border text-sm focus:outline-hidden focus:ring-2 focus:ring-primary/30 cursor-pointer"
+                    onChange={(e) => {
+                      setAddForm({ ...addForm, role: e.target.value });
+                      if (addErrors.role) setAddErrors((prev) => ({ ...prev, role: '' }));
+                    }}
+                    className={`w-full px-3 py-2 rounded-lg bg-background border ${addErrors.role ? 'border-destructive' : 'border-border'} text-sm focus:outline-hidden focus:ring-2 focus:ring-primary/30 cursor-pointer`}
                   >
                     {roles.length > 0 ? (
                       roles.map((r) => (

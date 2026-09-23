@@ -18,6 +18,7 @@ import {
   deleteTenantRole
 } from '../api';
 import PermissionGuard from '@/components/PermissionGuard';
+import { handleApiError } from '@/lib/errorUtils';
 
 const AVAILABLE_PERMISSIONS = [
   { code: 'urls.read', label: 'Melihat Link (URLs)', description: 'Melihat daftar dan rincian link singkat yang ada', module: 'urls' },
@@ -338,23 +339,41 @@ export default function WorkspaceRolesPage() {
     fetchRoles();
   }, [activeTenant?.id]);
 
+  const [createRoleErrors, setCreateRoleErrors] = useState({});
+
   const handleCreateRole = async (e) => {
     e.preventDefault();
-    if (!createForm.name.trim() || !createForm.display_name.trim()) return;
+    setCreateRoleErrors({});
+
+    const newErrors = {};
+    if (!createForm.display_name.trim()) {
+      newErrors.displayName = 'Nama tampilan peran wajib diisi';
+      newErrors.display_name = 'Nama tampilan peran wajib diisi';
+    }
+    if (Object.keys(newErrors).length > 0) {
+      setCreateRoleErrors(newErrors);
+      toast.error('Mohon isi nama tampilan peran');
+      return;
+    }
+
     setActionLoading(true);
     try {
       await createTenantRole(activeTenant.id, {
-        name: createForm.name.trim().toLowerCase().replace(/\s+/g, '-'),
+        name: (createForm.name.trim() || createForm.display_name.trim()).toLowerCase().replace(/\s+/g, '-'),
         display_name: createForm.display_name.trim(),
         description: createForm.description.trim(),
         permissions: createForm.permissions,
       });
       toast.success(t('workspace.roleCreatedSuccess', { name: createForm.display_name }));
       setCreateForm({ name: '', display_name: '', description: '', permissions: [] });
+      setCreateRoleErrors({});
       setIsCreateModalOpen(false);
       fetchRoles();
     } catch (err) {
-      toast.error(err.response?.data?.message || t('common.error'));
+      const parsed = handleApiError(err, 'Gagal membuat peran custom');
+      if (parsed.errors && Object.keys(parsed.errors).length > 0) {
+        setCreateRoleErrors(parsed.errors);
+      }
     } finally {
       setActionLoading(false);
     }
@@ -370,7 +389,7 @@ export default function WorkspaceRolesPage() {
       setSelectedRole(null);
       fetchRoles();
     } catch (err) {
-      toast.error(err.response?.data?.message || t('common.error'));
+      handleApiError(err, t('common.error'));
     } finally {
       setActionLoading(false);
     }
@@ -383,7 +402,7 @@ export default function WorkspaceRolesPage() {
       toast.success(t('workspace.roleDeletedSuccess'));
       fetchRoles();
     } catch (err) {
-      toast.error(err.response?.data?.message || t('common.error'));
+      handleApiError(err, t('common.error'));
     }
   };
 
@@ -512,25 +531,33 @@ export default function WorkspaceRolesPage() {
                 </button>
               </div>
 
-              <form onSubmit={handleCreateRole} className="flex flex-col flex-1 min-h-0">
+              <form onSubmit={handleCreateRole} className="flex flex-col flex-1 min-h-0" noValidate>
                 <div className="p-6 space-y-4 flex-1 min-h-0 overflow-y-auto">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-1.5">
-                      <label className="text-xs font-semibold text-foreground">{t('workspace.displayNameLabel')}</label>
+                      <label className="text-xs font-semibold text-foreground">{t('workspace.displayNameLabel')} *</label>
                       <input
                         type="text"
                         required
                         placeholder="Display Name"
                         value={createForm.display_name}
-                        onChange={(e) =>
+                        onChange={(e) => {
                           setCreateForm({
                             ...createForm,
                             display_name: e.target.value,
                             name: e.target.value.toLowerCase().replace(/\s+/g, '-'),
-                          })
-                        }
-                        className="w-full px-3 py-2 rounded-lg bg-background border border-border text-sm focus:outline-hidden focus:ring-2 focus:ring-primary/30"
+                          });
+                          if (createRoleErrors.display_name || createRoleErrors.displayName) {
+                            setCreateRoleErrors({});
+                          }
+                        }}
+                        className={`w-full px-3 py-2 rounded-lg bg-background border ${createRoleErrors.display_name || createRoleErrors.displayName ? 'border-destructive' : 'border-border'} text-sm focus:outline-hidden focus:ring-2 focus:ring-primary/30`}
                       />
+                      {(createRoleErrors.display_name || createRoleErrors.displayName) && (
+                        <p className="text-xs text-destructive font-medium mt-1">
+                          {createRoleErrors.display_name || createRoleErrors.displayName}
+                        </p>
+                      )}
                     </div>
 
                     <div className="space-y-1.5">

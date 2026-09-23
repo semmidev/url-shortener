@@ -64,9 +64,15 @@ export function TenantProvider({ children, user }) {
     window.location.reload();
   }, []);
 
+  // Modal Field Errors
+  const [joinErrors, setJoinErrors] = useState({});
+  const [createErrors, setCreateErrors] = useState({});
+
   const handleJoinTenant = async (e) => {
     e?.preventDefault();
+    setJoinErrors({});
     if (!joinCodeInput.trim()) {
+      setJoinErrors({ join_code: 'Kode gabung wajib diisi', joinCode: 'Kode gabung wajib diisi' });
       toast.error('Kode gabung wajib diisi');
       return;
     }
@@ -76,11 +82,15 @@ export function TenantProvider({ children, user }) {
       const newTenant = res.data?.data || res.data;
       toast.success(`Berhasil bergabung dengan workspace "${newTenant.name}"!`);
       setJoinCodeInput('');
+      setJoinErrors({});
       setIsJoinModalOpen(false);
       await fetchTenants();
       selectTenant(newTenant);
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Kode gabung tidak valid atau telah expired');
+      const parsed = handleApiError(err, 'Kode gabung tidak valid atau telah expired');
+      if (parsed.errors && Object.keys(parsed.errors).length > 0) {
+        setJoinErrors(parsed.errors);
+      }
     } finally {
       setSubmitting(false);
     }
@@ -88,7 +98,9 @@ export function TenantProvider({ children, user }) {
 
   const handleCreateTenant = async (e) => {
     e?.preventDefault();
+    setCreateErrors({});
     if (!createForm.name.trim()) {
+      setCreateErrors({ name: 'Nama workspace wajib diisi' });
       toast.error('Nama workspace wajib diisi');
       return;
     }
@@ -98,11 +110,15 @@ export function TenantProvider({ children, user }) {
       const newTenant = res.data?.data || res.data;
       toast.success(`Workspace "${newTenant.name}" berhasil dibuat!`);
       setCreateForm({ name: '', slug: '' });
+      setCreateErrors({});
       setIsCreateModalOpen(false);
       await fetchTenants();
       selectTenant(newTenant);
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Gagal membuat workspace');
+      const parsed = handleApiError(err, 'Gagal membuat workspace');
+      if (parsed.errors && Object.keys(parsed.errors).length > 0) {
+        setCreateErrors(parsed.errors);
+      }
     } finally {
       setSubmitting(false);
     }
@@ -117,8 +133,8 @@ export function TenantProvider({ children, user }) {
         fetchTenants,
         refreshTenants: fetchTenants,
         loading,
-        openJoinModal: () => setIsJoinModalOpen(true),
-        openCreateModal: () => setIsCreateModalOpen(true),
+        openJoinModal: () => { setJoinErrors({}); setIsJoinModalOpen(true); },
+        openCreateModal: () => { setCreateErrors({}); setIsCreateModalOpen(true); },
       }}
     >
       {children}
@@ -146,11 +162,11 @@ export function TenantProvider({ children, user }) {
                 </div>
                 <div>
                   <h3 className="text-lg font-bold text-foreground">Gabung Workspace</h3>
-                  <p className="text-xs text-muted-foreground">Masukkan 6 karakter kode gabung dari admin workspace</p>
+                  <p className="text-xs text-muted-foreground">Masukkan kode gabung dari admin workspace</p>
                 </div>
               </div>
 
-              <form onSubmit={handleJoinTenant} className="space-y-4 pt-2">
+              <form onSubmit={handleJoinTenant} className="space-y-4 pt-2" noValidate>
                 <div className="space-y-1.5">
                   <label className="text-xs font-semibold text-foreground">Kode Gabung (Join Code)</label>
                   <input
@@ -159,9 +175,19 @@ export function TenantProvider({ children, user }) {
                     maxLength={10}
                     placeholder="Contoh: ACME01"
                     value={joinCodeInput}
-                    onChange={(e) => setJoinCodeInput(e.target.value.toUpperCase())}
-                    className="w-full px-3 py-2.5 rounded-lg bg-background border border-border text-center font-mono font-bold text-lg tracking-widest uppercase focus:outline-hidden focus:ring-2 focus:ring-primary/30"
+                    onChange={(e) => {
+                      setJoinCodeInput(e.target.value.toUpperCase());
+                      if (joinErrors.join_code || joinErrors.joinCode) {
+                        setJoinErrors({});
+                      }
+                    }}
+                    className={`w-full px-3 py-2.5 rounded-lg bg-background border ${joinErrors.join_code || joinErrors.joinCode ? 'border-destructive' : 'border-border'} text-center font-mono font-bold text-lg tracking-widest uppercase focus:outline-hidden focus:ring-2 focus:ring-primary/30`}
                   />
+                  {(joinErrors.join_code || joinErrors.joinCode) && (
+                    <p className="text-xs text-destructive font-medium mt-1">
+                      {joinErrors.join_code || joinErrors.joinCode}
+                    </p>
+                  )}
                 </div>
 
                 <div className="flex justify-end gap-3 pt-2">
@@ -213,17 +239,23 @@ export function TenantProvider({ children, user }) {
                 </div>
               </div>
 
-              <form onSubmit={handleCreateTenant} className="space-y-4 pt-2">
+              <form onSubmit={handleCreateTenant} className="space-y-4 pt-2" noValidate>
                 <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-foreground">Nama Workspace</label>
+                  <label className="text-xs font-semibold text-foreground">Nama Workspace *</label>
                   <input
                     type="text"
                     required
                     placeholder="Contoh: Tim Engineering 2026"
                     value={createForm.name}
-                    onChange={(e) => setCreateForm({ ...createForm, name: e.target.value })}
-                    className="w-full px-3 py-2 rounded-lg bg-background border border-border text-sm focus:outline-hidden focus:ring-2 focus:ring-primary/30"
+                    onChange={(e) => {
+                      setCreateForm({ ...createForm, name: e.target.value });
+                      if (createErrors.name) setCreateErrors(prev => ({ ...prev, name: '' }));
+                    }}
+                    className={`w-full px-3 py-2 rounded-lg bg-background border ${createErrors.name ? 'border-destructive' : 'border-border'} text-sm focus:outline-hidden focus:ring-2 focus:ring-primary/30`}
                   />
+                  {createErrors.name && (
+                    <p className="text-xs text-destructive font-medium mt-1">{createErrors.name}</p>
+                  )}
                 </div>
 
                 <div className="space-y-1.5">
@@ -232,9 +264,15 @@ export function TenantProvider({ children, user }) {
                     type="text"
                     placeholder="web-dev-2026"
                     value={createForm.slug}
-                    onChange={(e) => setCreateForm({ ...createForm, slug: e.target.value })}
-                    className="w-full px-3 py-2 rounded-lg bg-background border border-border text-sm focus:outline-hidden focus:ring-2 focus:ring-primary/30"
+                    onChange={(e) => {
+                      setCreateForm({ ...createForm, slug: e.target.value });
+                      if (createErrors.slug) setCreateErrors(prev => ({ ...prev, slug: '' }));
+                    }}
+                    className={`w-full px-3 py-2 rounded-lg bg-background border ${createErrors.slug ? 'border-destructive' : 'border-border'} text-sm focus:outline-hidden focus:ring-2 focus:ring-primary/30`}
                   />
+                  {createErrors.slug && (
+                    <p className="text-xs text-destructive font-medium mt-1">{createErrors.slug}</p>
+                  )}
                 </div>
 
                 <div className="flex justify-end gap-3 pt-2">

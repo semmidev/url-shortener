@@ -3,6 +3,7 @@ import { X, Edit3, Link2, Calendar, CheckSquare, Square } from 'lucide-react';
 import client from '../lib/client';
 import { toast } from 'sonner';
 import { useI18n } from '@/context/I18nContext';
+import { handleApiError } from '@/lib/errorUtils';
 
 export default function EditURLModal({ isOpen, onClose, item, onSuccess }) {
   const { t } = useI18n();
@@ -10,6 +11,7 @@ export default function EditURLModal({ isOpen, onClose, item, onSuccess }) {
   const [originalUrl, setOriginalUrl] = useState('');
   const [isActive, setIsActive] = useState(true);
   const [expiresAt, setExpiresAt] = useState('');
+  const [fieldErrors, setFieldErrors] = useState({});
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -17,8 +19,8 @@ export default function EditURLModal({ isOpen, onClose, item, onSuccess }) {
       setTitle(item.title || '');
       setOriginalUrl(item.original_url || '');
       setIsActive(item.is_active ?? true);
+      setFieldErrors({});
       if (item.expires_at) {
-        // Format ISO date string to datetime-local string
         const date = new Date(item.expires_at);
         const formatted = new Date(date.getTime() - date.getTimezoneOffset() * 60000)
           .toISOString()
@@ -34,11 +36,23 @@ export default function EditURLModal({ isOpen, onClose, item, onSuccess }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setFieldErrors({});
+
+    const newErrors = {};
+    if (!originalUrl.trim()) {
+      newErrors.originalUrl = 'URL tujuan wajib diisi';
+    }
+    if (Object.keys(newErrors).length > 0) {
+      setFieldErrors(newErrors);
+      toast.error('Mohon lengkapi formulir dengan benar');
+      return;
+    }
+
     setLoading(true);
     try {
       const payload = {
-        title: title || undefined,
-        original_url: originalUrl || undefined,
+        title: title.trim() || undefined,
+        original_url: originalUrl.trim() || undefined,
         is_active: isActive,
         expires_at: expiresAt ? new Date(expiresAt).toISOString() : null,
       };
@@ -48,8 +62,10 @@ export default function EditURLModal({ isOpen, onClose, item, onSuccess }) {
       if (onSuccess) onSuccess();
       onClose();
     } catch (err) {
-      const msg = err.response?.data?.message || t('common.error');
-      toast.error(msg);
+      const parsed = handleApiError(err, 'Gagal memperbarui URL');
+      if (parsed.errors && Object.keys(parsed.errors).length > 0) {
+        setFieldErrors(parsed.errors);
+      }
     } finally {
       setLoading(false);
     }
@@ -61,7 +77,7 @@ export default function EditURLModal({ isOpen, onClose, item, onSuccess }) {
         <button
           onClick={onClose}
           aria-label="Close modal"
-          className="absolute top-4 right-4 p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition"
+          className="absolute top-4 right-4 p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition cursor-pointer"
         >
           <X className="w-5 h-5" />
         </button>
@@ -76,7 +92,7 @@ export default function EditURLModal({ isOpen, onClose, item, onSuccess }) {
           </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4" noValidate>
           <div>
             <label htmlFor="edit-title" className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5 cursor-pointer">
               {t('modals.titleLabel')}
@@ -85,24 +101,40 @@ export default function EditURLModal({ isOpen, onClose, item, onSuccess }) {
               id="edit-title"
               type="text"
               value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              className="w-full px-4 py-2.5 bg-slate-900/80 border border-slate-700/80 focus:border-indigo-500 focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:outline-none rounded-xl text-sm text-slate-100 placeholder-slate-500 transition"
+              onChange={(e) => {
+                setTitle(e.target.value);
+                if (fieldErrors.title) setFieldErrors((prev) => ({ ...prev, title: '' }));
+              }}
+              className={`w-full px-4 py-2.5 bg-slate-900/80 border ${fieldErrors.title ? 'border-rose-500' : 'border-slate-700/80'} focus:border-indigo-500 focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:outline-none rounded-xl text-sm text-slate-100 placeholder-slate-500 transition`}
             />
+            {fieldErrors.title && (
+              <p className="text-xs text-rose-400 font-medium mt-1">{fieldErrors.title}</p>
+            )}
           </div>
 
           <div>
             <label htmlFor="edit-original-url" className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5 flex items-center gap-1.5 cursor-pointer">
               <Link2 className="w-3.5 h-3.5 text-indigo-400" />
-              {t('modals.originalUrlLabel')}
+              {t('modals.originalUrlLabel')} *
             </label>
             <input
               id="edit-original-url"
               type="url"
               required
               value={originalUrl}
-              onChange={(e) => setOriginalUrl(e.target.value)}
-              className="w-full px-4 py-2.5 bg-slate-900/80 border border-slate-700/80 focus:border-indigo-500 focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:outline-none rounded-xl text-sm text-slate-100 placeholder-slate-500 transition"
+              onChange={(e) => {
+                setOriginalUrl(e.target.value);
+                if (fieldErrors.originalUrl || fieldErrors.original_url) {
+                  setFieldErrors((prev) => ({ ...prev, originalUrl: '', original_url: '' }));
+                }
+              }}
+              className={`w-full px-4 py-2.5 bg-slate-900/80 border ${fieldErrors.originalUrl || fieldErrors.original_url ? 'border-rose-500' : 'border-slate-700/80'} focus:border-indigo-500 focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:outline-none rounded-xl text-sm text-slate-100 placeholder-slate-500 transition`}
             />
+            {(fieldErrors.originalUrl || fieldErrors.original_url) && (
+              <p className="text-xs text-rose-400 font-medium mt-1">
+                {fieldErrors.originalUrl || fieldErrors.original_url}
+              </p>
+            )}
           </div>
 
           <div>
@@ -114,9 +146,19 @@ export default function EditURLModal({ isOpen, onClose, item, onSuccess }) {
               id="edit-expires-at"
               type="datetime-local"
               value={expiresAt}
-              onChange={(e) => setExpiresAt(e.target.value)}
-              className="w-full px-4 py-2.5 bg-slate-900/80 border border-slate-700/80 focus:border-indigo-500 focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:outline-none rounded-xl text-sm text-slate-100 transition"
+              onChange={(e) => {
+                setExpiresAt(e.target.value);
+                if (fieldErrors.expiresAt || fieldErrors.expires_at) {
+                  setFieldErrors((prev) => ({ ...prev, expiresAt: '', expires_at: '' }));
+                }
+              }}
+              className={`w-full px-4 py-2.5 bg-slate-900/80 border ${fieldErrors.expiresAt || fieldErrors.expires_at ? 'border-rose-500' : 'border-slate-700/80'} focus:border-indigo-500 focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:outline-none rounded-xl text-sm text-slate-100 transition`}
             />
+            {(fieldErrors.expiresAt || fieldErrors.expires_at) && (
+              <p className="text-xs text-rose-400 font-medium mt-1">
+                {fieldErrors.expiresAt || fieldErrors.expires_at}
+              </p>
+            )}
           </div>
 
           <div className="pt-2">

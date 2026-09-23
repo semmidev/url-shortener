@@ -23,6 +23,7 @@ import { useTenant } from '@/context/TenantContext';
 import { useAuthStore } from '@/features/auth/store';
 import { usePermission } from '@/hooks/usePermission';
 import { getTenant, getTenantMembers, getTenantRoles, updateTenant, deleteTenant, leaveTenant, regenerateJoinCode } from '../api';
+import { handleApiError } from '@/lib/errorUtils';
 
 export default function WorkspaceDetailPage() {
   const { id } = useParams();
@@ -94,18 +95,30 @@ export default function WorkspaceDetailPage() {
     }
   };
 
+  const [editFieldError, setEditFieldError] = useState('');
+
   const handleSaveEditName = async (e) => {
     e.preventDefault();
-    if (!editName.trim() || !workspace?.id) return;
+    setEditFieldError('');
+    if (!editName.trim()) {
+      setEditFieldError('Nama workspace tidak boleh kosong');
+      toast.error('Nama workspace tidak boleh kosong');
+      return;
+    }
+    if (!workspace?.id) return;
     setActionLoading(true);
     try {
       const updated = await updateTenant(workspace.id, { name: editName.trim() });
       setWorkspace((prev) => ({ ...prev, name: updated.name || editName.trim() }));
       toast.success("Nama workspace berhasil diperbarui");
+      setEditFieldError('');
       setIsEditModalOpen(false);
       refreshTenants();
     } catch (err) {
-      toast.error(err.response?.data?.message || "Gagal memperbarui nama workspace");
+      const parsed = handleApiError(err, "Gagal memperbarui nama workspace");
+      if (parsed.errors?.name) {
+        setEditFieldError(parsed.errors.name);
+      }
     } finally {
       setActionLoading(false);
     }
@@ -439,15 +452,22 @@ export default function WorkspaceDetailPage() {
             <DialogTitle>Edit Nama Workspace</DialogTitle>
             <DialogDescription>Masukkan nama tampilan baru untuk workspace ini.</DialogDescription>
           </DialogHeader>
-          <form onSubmit={handleSaveEditName} className="space-y-4 py-2">
+          <form onSubmit={handleSaveEditName} className="space-y-4 py-2" noValidate>
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-foreground">Nama Workspace</label>
+              <label className="text-xs font-semibold text-foreground">Nama Workspace *</label>
               <Input
                 value={editName}
-                onChange={(e) => setEditName(e.target.value)}
+                onChange={(e) => {
+                  setEditName(e.target.value);
+                  if (editFieldError) setEditFieldError('');
+                }}
                 placeholder="Nama workspace baru..."
+                className={editFieldError ? 'border-destructive' : ''}
                 required
               />
+              {editFieldError && (
+                <p className="text-xs text-destructive font-medium mt-1">{editFieldError}</p>
+              )}
             </div>
             <DialogFooter className="pt-2">
               <Button type="button" variant="outline" onClick={() => setIsEditModalOpen(false)} disabled={actionLoading}>

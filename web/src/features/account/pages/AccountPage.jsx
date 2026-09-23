@@ -108,6 +108,7 @@ export default function Account() {
     e.preventDefault();
     if (!profileForm.fullName.trim()) {
       setProfileErrors({ fullName: 'Nama lengkap tidak boleh kosong' });
+      toast.error('Nama lengkap tidak boleh kosong');
       return;
     }
     setProfileErrors({});
@@ -140,6 +141,7 @@ export default function Account() {
 
     if (Object.keys(errs).length > 0) {
       setPasswordErrors(errs);
+      toast.error('Mohon periksa kembali isian password');
       return;
     }
 

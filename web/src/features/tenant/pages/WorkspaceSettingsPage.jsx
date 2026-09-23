@@ -27,6 +27,7 @@ import { useTenant } from '@/context/TenantContext';
 import { useI18n } from '@/context/I18nContext';
 import { updateTenant, regenerateJoinCode, deleteTenant } from '../api';
 import PermissionGuard from '@/components/PermissionGuard';
+import { handleApiError } from '@/lib/errorUtils';
 
 function FieldError({ error }) {
   if (!error) return null;
@@ -75,7 +76,8 @@ export default function WorkspaceSettingsPage() {
     e.preventDefault();
     if (!activeTenant?.id) return;
     if (!form.name.trim()) {
-      setErrors({ name: t('common.error') });
+      setErrors({ name: 'Nama workspace wajib diisi' });
+      toast.error('Nama workspace wajib diisi');
       return;
     }
     setErrors({});
@@ -89,7 +91,10 @@ export default function WorkspaceSettingsPage() {
       await fetchTenants();
       selectTenant(updated);
     } catch (err) {
-      toast.error(err.response?.data?.message || t('common.error'));
+      const parsed = handleApiError(err, t('common.error'));
+      if (parsed.errors && Object.keys(parsed.errors).length > 0) {
+        setErrors(parsed.errors);
+      }
     } finally {
       setIsSaving(false);
     }
@@ -105,7 +110,7 @@ export default function WorkspaceSettingsPage() {
       await fetchTenants();
       selectTenant(updated);
     } catch (err) {
-      toast.error(err.response?.data?.message || t('common.error'));
+      handleApiError(err, t('common.error'));
     } finally {
       setIsRegenerating(false);
     }
@@ -114,7 +119,7 @@ export default function WorkspaceSettingsPage() {
   const handleDeleteWorkspace = async () => {
     if (!activeTenant?.id) return;
     if (confirmDeleteInput.trim() !== activeTenant.name.trim()) {
-      toast.error(t('common.error'));
+      toast.error('Nama workspace konfirmasi tidak sesuai');
       return;
     }
     setIsDeleting(true);
@@ -126,7 +131,7 @@ export default function WorkspaceSettingsPage() {
       await fetchTenants();
       window.location.href = '/dashboard';
     } catch (err) {
-      toast.error(err.response?.data?.message || t('common.error'));
+      handleApiError(err, t('common.error'));
     } finally {
       setIsDeleting(false);
     }
