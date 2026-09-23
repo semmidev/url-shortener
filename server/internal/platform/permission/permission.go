@@ -199,15 +199,61 @@ var UserDefaultPermissions = []string{
 	AnalyticsRead,
 }
 
-// SyncPermissions ensures the system default tenant role (owner) holds all permissions.
+// SyncPermissions ensures system default tenant roles (owner, admin, member) exist and hold their respective permissions.
 func SyncPermissions(ctx context.Context, q db.Querier) error {
-	role, err := q.GetRoleByName(ctx, "owner")
-	if err == nil {
-		for _, perm := range AllPermissions {
-			_ = q.AddRolePermission(ctx, db.AddRolePermissionParams{
-				RoleID:         role.ID,
-				PermissionCode: perm.Code,
+	allCodes := make([]string, len(AllPermissions))
+	for i, p := range AllPermissions {
+		allCodes[i] = p.Code
+	}
+
+	systemRoles := []struct {
+		Name        string
+		DisplayName string
+		Description string
+		Permissions []string
+	}{
+		{
+			Name:        "owner",
+			DisplayName: "Owner",
+			Description: "Pemilik workspace dengan hak akses penuh",
+			Permissions: allCodes,
+		},
+		{
+			Name:        "admin",
+			DisplayName: "Admin",
+			Description: "Administrator workspace dengan izin pengelola",
+			Permissions: []string{UrlsRead, UrlsCreate, UrlsUpdate, UrlsDelete, AnalyticsRead, RolesRead, TenantsRead, TenantsUpdate, TenantsMembersManage},
+		},
+		{
+			Name:        "member",
+			DisplayName: "Member",
+			Description: "Anggota workspace dengan izin standar",
+			Permissions: UserDefaultPermissions,
+		},
+	}
+
+	for _, sr := range systemRoles {
+		role, err := q.GetRoleByName(ctx, sr.Name)
+		if err != nil {
+			roleRes, errCreate := q.CreateRole(ctx, db.CreateRoleParams{
+				TenantID:    nil,
+				Name:        sr.Name,
+				DisplayName: sr.DisplayName,
+				Description: sr.Description,
+				IsSystem:    true,
 			})
+			if errCreate == nil {
+				role = db.GetRoleByNameRow(roleRes)
+			}
+		}
+
+		if role.ID != (db.GetRoleByNameRow{}).ID {
+			for _, pCode := range sr.Permissions {
+				_ = q.AddRolePermission(ctx, db.AddRolePermissionParams{
+					RoleID:         role.ID,
+					PermissionCode: pCode,
+				})
+			}
 		}
 	}
 	return nil
