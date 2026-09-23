@@ -62,5 +62,11 @@ func (processor *RedisTaskProcessor) ProcessTaskRecordAuditLog(ctx context.Conte
 		return fmt.Errorf("failed to create audit log in worker: %w", err)
 	}
 
+	processor.logger.Info(ctx, "processed audit log task",
+		"action", payload.Action,
+		"resource", payload.Resource,
+		"resource_id", payload.ResourceID,
+	)
+
 	return nil
 }

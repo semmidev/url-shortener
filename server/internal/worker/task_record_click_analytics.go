@@ -58,5 +58,10 @@ func (processor *RedisTaskProcessor) ProcessTaskRecordClickAnalytics(ctx context
 		return fmt.Errorf("failed to record click analytics in worker: %w", err)
 	}
 
+	processor.logger.Info(ctx, "processed click analytics task",
+		"url_id", payload.URLID,
+		"ip", payload.IP,
+	)
+
 	return nil
 }
