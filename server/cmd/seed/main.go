@@ -132,33 +132,35 @@ func seed(ctx context.Context, store db.Store) error {
 		{Name: "Stark Industries", Slug: "stark", JoinCode: "STRK01"},
 	}
 
-	createdTenants := make(map[string]db.Tenant)
+	createdTenants := make(map[string]uuid.UUID)
 	for _, t := range tenantsData {
 		tenant, err := store.GetTenantBySlug(ctx, t.Slug)
 		if err != nil {
-			tenant, err = store.CreateTenant(ctx, db.CreateTenantParams{
+			newT, createErr := store.CreateTenant(ctx, db.CreateTenantParams{
 				Name:     t.Name,
 				Slug:     t.Slug,
 				JoinCode: t.JoinCode,
 			})
-			if err != nil {
-				log.Printf("⚠️ Warning creating tenant %s: %v", t.Name, err)
+			if createErr != nil {
+				log.Printf("⚠️ Warning creating tenant %s: %v", t.Name, createErr)
 				continue
 			}
+			createdTenants[t.Slug] = newT.ID
+		} else {
+			createdTenants[t.Slug] = tenant.ID
 		}
-		createdTenants[t.Slug] = tenant
 	}
 
 	// 5. Assign Users & Tenant Custom Roles
 	johnUser, johnErr := store.GetUserByEmail(ctx, "sammidev4@gmail.com")
 	janeUser, janeErr := store.GetUserByEmail(ctx, "jane@example.com")
-	acme, hasAcme := createdTenants["acme"]
-	stark, hasStark := createdTenants["stark"]
+	acmeID, hasAcme := createdTenants["acme"]
+	starkID, hasStark := createdTenants["stark"]
 
 	// Acme Corporation Memberships & Tenant Roles
 	if johnErr == nil && hasAcme {
 		_, _ = store.AddTenantMember(ctx, db.AddTenantMemberParams{
-			TenantID: acme.ID,
+			TenantID: acmeID,
 			UserID:   johnUser.ID,
 			Role:     "owner",
 		})
@@ -166,7 +168,7 @@ func seed(ctx context.Context, store db.Store) error {
 	if janeErr == nil && hasAcme {
 		// Create custom tenant role "member" for Acme
 		acmeMemberRole, err := store.CreateRole(ctx, db.CreateRoleParams{
-			TenantID:    &acme.ID,
+			TenantID:    &acmeID,
 			Name:        "member",
 			DisplayName: "Member",
 			Description: "Anggota standar workspace Acme",
@@ -181,7 +183,7 @@ func seed(ctx context.Context, store db.Store) error {
 			}
 		}
 		_, _ = store.AddTenantMember(ctx, db.AddTenantMemberParams{
-			TenantID: acme.ID,
+			TenantID: acmeID,
 			UserID:   janeUser.ID,
 			Role:     "member",
 		})
@@ -190,7 +192,7 @@ func seed(ctx context.Context, store db.Store) error {
 	// Stark Industries Memberships & Tenant Roles
 	if janeErr == nil && hasStark {
 		_, _ = store.AddTenantMember(ctx, db.AddTenantMemberParams{
-			TenantID: stark.ID,
+			TenantID: starkID,
 			UserID:   janeUser.ID,
 			Role:     "owner",
 		})
@@ -198,7 +200,7 @@ func seed(ctx context.Context, store db.Store) error {
 	if johnErr == nil && hasStark {
 		// Create custom tenant role "admin" for Stark
 		starkAdminRole, err := store.CreateRole(ctx, db.CreateRoleParams{
-			TenantID:    &stark.ID,
+			TenantID:    &starkID,
 			Name:        "admin",
 			DisplayName: "Administrator",
 			Description: "Pengelola workspace Stark",
@@ -220,7 +222,7 @@ func seed(ctx context.Context, store db.Store) error {
 			}
 		}
 		_, _ = store.AddTenantMember(ctx, db.AddTenantMemberParams{
-			TenantID: stark.ID,
+			TenantID: starkID,
 			UserID:   johnUser.ID,
 			Role:     "admin",
 		})
@@ -241,14 +243,14 @@ func seed(ctx context.Context, store db.Store) error {
 		}{
 			{
 				UserID:      &johnUser.ID,
-				TenantID:    &acme.ID,
+				TenantID:    &acmeID,
 				ShortCode:   "acme-docs",
 				OriginalURL: "https://github.com/semmidev/url-shortener",
 				Title:       "Acme Documentation Link",
 			},
 			{
 				UserID:      &janeUser.ID,
-				TenantID:    &acme.ID,
+				TenantID:    &acmeID,
 				ShortCode:   "acme-portal",
 				OriginalURL: "https://go.dev/doc/",
 				Title:       "Acme Customer Portal",

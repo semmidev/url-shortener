@@ -89,7 +89,7 @@ func Run(cfg config.Config) error {
 	}
 
 	// Build Application Router
-	r, err := BuildRouter(cfg, pool, appLogger)
+	r, err := BuildRouter(ctx, cfg, pool, appLogger)
 	if err != nil {
 		return err
 	}

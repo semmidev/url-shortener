@@ -81,6 +81,17 @@ client.interceptors.response.use(
     const originalRequest = error.config;
     const status = error.response?.status;
 
+    if (status === 403) {
+      const skipUrls = ['/auth/login', '/auth/register'];
+      const requestUrl = originalRequest?.url || '';
+      if (!skipUrls.some((u) => requestUrl.includes(u))) {
+        if (window.location.pathname !== '/forbidden' && window.location.pathname !== '/403') {
+          window.location.href = '/forbidden';
+        }
+      }
+      return Promise.reject(error);
+    }
+
     if (status !== 401 || originalRequest._retry) {
       return Promise.reject(error);
     }

@@ -66,8 +66,8 @@ func TestAnalyticsFlow(t *testing.T) {
 	resp, _ = executeRequest(t, http.MethodGet, ts.URL+"/"+customCode, "", nil)
 	assert.Equal(t, http.StatusTemporaryRedirect, resp.StatusCode)
 
-	// Sleep briefly for async click logging fallback worker
-	time.Sleep(150 * time.Millisecond)
+	// Sleep briefly for async click logging worker/fallback worker
+	time.Sleep(500 * time.Millisecond)
 
 	// 5. Fetch Analytics Summary within Tenant Context
 	resp, apiResp = executeRequestWithTenant(t, http.MethodGet, fmt.Sprintf("%s/api/v1/urls/%s/analytics", ts.URL, urlID), token, tenantID, nil)

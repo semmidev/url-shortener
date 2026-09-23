@@ -28,6 +28,7 @@ func (h *Handler) Mount(r chi.Router, authMw func(http.Handler) http.Handler) {
 		r.Post("/join", h.joinTenant)
 
 		r.Route("/{id}", func(r chi.Router) {
+			r.Get("/", h.getTenant)
 			r.Put("/", h.updateTenant)
 			r.Delete("/", h.deleteTenant)
 			r.Post("/join-code/regenerate", h.regenerateJoinCode)
@@ -52,13 +53,26 @@ func (h *Handler) listUserTenants(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tenants, err := h.svc.ListUserTenants(r.Context(), userID)
+	if r.URL.Query().Get("all") == "true" {
+		tenants, err := h.svc.ListUserTenants(r.Context(), userID)
+		if err != nil {
+			web.Error(w, r, err)
+			return
+		}
+		web.JSON(w, http.StatusOK, tenants)
+		return
+	}
+
+	filter := web.NewFilterFromRequest(r)
+	role := r.URL.Query().Get("role")
+
+	res, err := h.svc.ListUserTenantsPaginated(r.Context(), userID, filter, role)
 	if err != nil {
 		web.Error(w, r, err)
 		return
 	}
 
-	web.JSON(w, http.StatusOK, tenants)
+	web.JSON(w, http.StatusOK, res)
 }
 
 func (h *Handler) createTenant(w http.ResponseWriter, r *http.Request) {
@@ -290,6 +304,29 @@ func (h *Handler) deleteTenantRole(w http.ResponseWriter, r *http.Request) {
 	}
 
 	web.JSON(w, http.StatusOK, map[string]string{"message": "tenant custom role deleted successfully"})
+}
+
+func (h *Handler) getTenant(w http.ResponseWriter, r *http.Request) {
+	userID, ok := web.UserID(r.Context())
+	if !ok {
+		web.Error(w, r, apperr.Unauthorized("authentication required"))
+		return
+	}
+
+	idStr := chi.URLParam(r, "id")
+	tenantID, err := uuid.Parse(idStr)
+	if err != nil {
+		web.Error(w, r, apperr.Invalid("invalid tenant ID"))
+		return
+	}
+
+	tenant, err := h.svc.GetTenantByID(r.Context(), tenantID, userID)
+	if err != nil {
+		web.Error(w, r, err)
+		return
+	}
+
+	web.JSON(w, http.StatusOK, tenant)
 }
 
 func (h *Handler) updateTenant(w http.ResponseWriter, r *http.Request) {

@@ -58,6 +58,7 @@ func (s *Service) ListUserTenants(ctx context.Context, userID uuid.UUID) (res []
 			Name:      t.Name,
 			Slug:      t.Slug,
 			JoinCode:  t.JoinCode,
+			IsDefault: t.IsDefault,
 			Role:      t.Role,
 			CreatedAt: t.CreatedAt,
 			UpdatedAt: t.UpdatedAt,
@@ -66,18 +67,117 @@ func (s *Service) ListUserTenants(ctx context.Context, userID uuid.UUID) (res []
 	return r, nil
 }
 
+func (s *Service) ListUserTenantsPaginated(ctx context.Context, userID uuid.UUID, filter web.Filter, role string) (res ListUserTenantsResponse, err error) {
+	ctx, endSpan := telemetry.StartSpan(ctx, "tenant.Service.ListUserTenantsPaginated", attribute.String("user.id", userID.String()))
+	defer func() { endSpan(err) }()
+
+	var searchPtr *string
+	if filter.Search != "" {
+		sStr := filter.Search
+		searchPtr = &sStr
+	}
+
+	var rolePtr *string
+	if role != "" && role != "all" {
+		rStr := role
+		rolePtr = &rStr
+	}
+
+	sortKey := "created_at_desc"
+	if filter.SortBy != "" {
+		sb := strings.ToLower(filter.SortBy)
+		dir := strings.ToLower(filter.SortDirection)
+		if dir != "asc" && dir != "desc" {
+			dir = "desc"
+		}
+		switch sb {
+		case "name":
+			sortKey = "name_" + dir
+		case "role":
+			sortKey = "role_" + dir
+		case "created_at":
+			sortKey = "created_at_" + dir
+		default:
+			sortKey = "created_at_" + dir
+		}
+	}
+
+	tenants, err := s.q.ListUserTenantsPaginated(ctx, db.ListUserTenantsPaginatedParams{
+		UserID:    userID,
+		Search:    searchPtr,
+		Role:      rolePtr,
+		SortBy:    sortKey,
+		OffsetVal: filter.GetOffset(),
+		LimitVal:  filter.Limit,
+	})
+	if err != nil {
+		return ListUserTenantsResponse{}, apperr.Internal("failed to list user tenants", err)
+	}
+
+	total, err := s.q.CountUserTenantsPaginated(ctx, db.CountUserTenantsPaginatedParams{
+		UserID: userID,
+		Search: searchPtr,
+		Role:   rolePtr,
+	})
+	if err != nil {
+		return ListUserTenantsResponse{}, apperr.Internal("failed to count user tenants", err)
+	}
+
+	items := make([]TenantResponse, len(tenants))
+	for i, t := range tenants {
+		items[i] = TenantResponse{
+			ID:        t.ID,
+			Name:      t.Name,
+			Slug:      t.Slug,
+			JoinCode:  t.JoinCode,
+			IsDefault: t.IsDefault,
+			Role:      t.Role,
+			CreatedAt: t.CreatedAt,
+			UpdatedAt: t.UpdatedAt,
+		}
+	}
+
+	return ListUserTenantsResponse{
+		Items: items,
+		Meta:  web.CalculateMeta(total, filter.Page, filter.Limit),
+	}, nil
+}
+
+func (s *Service) GetTenantByID(ctx context.Context, tenantID uuid.UUID, userID uuid.UUID) (res TenantResponse, err error) {
+	ctx, endSpan := telemetry.StartSpan(ctx, "tenant.Service.GetTenantByID", attribute.String("tenant.id", tenantID.String()))
+	defer func() { endSpan(err) }()
+
+	t, err := s.q.GetTenantByID(ctx, tenantID)
+	if err != nil {
+		return TenantResponse{}, apperr.NotFound("workspace not found")
+	}
+
+	m, err := s.q.GetTenantMembership(ctx, db.GetTenantMembershipParams{
+		TenantID: tenantID,
+		UserID:   userID,
+	})
+	userRole := "member"
+	if err == nil {
+		userRole = m.Role
+	}
+
+	return TenantResponse{
+		ID:        t.ID,
+		Name:      t.Name,
+		Slug:      t.Slug,
+		JoinCode:  t.JoinCode,
+		IsDefault: t.IsDefault,
+		Role:      userRole,
+		CreatedAt: t.CreatedAt,
+		UpdatedAt: t.UpdatedAt,
+	}, nil
+}
+
 func (s *Service) CreateTenant(ctx context.Context, userID uuid.UUID, req CreateTenantRequest) (res TenantResponse, err error) {
 	ctx, endSpan := telemetry.StartSpan(ctx, "tenant.Service.CreateTenant", attribute.String("user.id", userID.String()), attribute.String("tenant.name", req.Name))
 	defer func() { endSpan(err) }()
 	if err := req.Validate(); err != nil {
 		return TenantResponse{}, err
-	}
-
-	if s.authorizer != nil {
-		can, _ := s.authorizer.Can(ctx, userID, authz.DefaultDomain, permission.TenantsCreate)
-		if !can {
-			return TenantResponse{}, apperr.Forbidden("anda tidak memiliki izin untuk membuat workspace (tenants.create)")
-		}
 	}
 
 	slug := strings.ToLower(strings.TrimSpace(req.Slug))
@@ -114,6 +214,7 @@ func (s *Service) CreateTenant(ctx context.Context, userID uuid.UUID, req Create
 		Name:      t.Name,
 		Slug:      t.Slug,
 		JoinCode:  t.JoinCode,
+		IsDefault: t.IsDefault,
 		Role:      m.Role,
 		CreatedAt: t.CreatedAt,
 		UpdatedAt: t.UpdatedAt,
@@ -303,8 +404,20 @@ func (s *Service) UpdateTenantMemberRole(ctx context.Context, tenantID uuid.UUID
 }
 
 func (s *Service) RemoveTenantMember(ctx context.Context, tenantID uuid.UUID, targetUserID uuid.UUID) error {
+	t, tErr := s.q.GetTenantByID(ctx, tenantID)
+
+	if actorID, ok := web.UserID(ctx); ok && actorID == targetUserID {
+		if tErr == nil && t.IsDefault {
+			return apperr.Forbidden("workspace bawaan (default) tidak dapat ditinggalkan")
+		}
+		userTenants, err := s.q.ListUserTenants(ctx, targetUserID)
+		if err == nil && len(userTenants) <= 1 {
+			return apperr.Forbidden("anda harus memiliki setidaknya satu workspace dan tidak dapat keluar dari workspace terakhir anda")
+		}
+	}
+
 	if s.authorizer != nil {
-		if actorID, ok := web.UserID(ctx); ok {
+		if actorID, ok := web.UserID(ctx); ok && actorID != targetUserID {
 			can, _ := s.authorizer.Can(ctx, actorID, tenantID.String(), permission.TenantsMembersManage)
 			if !can {
 				return apperr.Forbidden("anda tidak memiliki izin untuk mengelola anggota workspace (tenants.members.manage)")
@@ -312,7 +425,6 @@ func (s *Service) RemoveTenantMember(ctx context.Context, tenantID uuid.UUID, ta
 		}
 	}
 
-	t, tErr := s.q.GetTenantByID(ctx, tenantID)
 	targetUser, uErr := s.q.GetUserByID(ctx, targetUserID)
 	members, mErr := s.q.ListTenantMembers(ctx, tenantID)
 
@@ -587,6 +699,18 @@ func (s *Service) RegenerateJoinCode(ctx context.Context, tenantID uuid.UUID) (T
 }
 
 func (s *Service) DeleteTenant(ctx context.Context, tenantID uuid.UUID) error {
+	t, err := s.q.GetTenantByID(ctx, tenantID)
+	if err == nil && t.IsDefault {
+		return apperr.Forbidden("workspace bawaan (default) tidak dapat dihapus")
+	}
+
+	if userID, ok := web.UserID(ctx); ok {
+		userTenants, err := s.q.ListUserTenants(ctx, userID)
+		if err == nil && len(userTenants) <= 1 {
+			return apperr.Forbidden("anda harus memiliki setidaknya satu workspace dan tidak dapat menghapus workspace terakhir anda")
+		}
+	}
+
 	if s.authorizer != nil {
 		if userID, ok := web.UserID(ctx); ok {
 			can, _ := s.authorizer.Can(ctx, userID, tenantID.String(), permission.TenantsDelete)

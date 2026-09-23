@@ -9,6 +9,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/jackc/pgx/v5/pgtype"
 	"uuid"
 )
 
@@ -59,31 +60,74 @@ func (q *Queries) CountAllTenantsAdmin(ctx context.Context, search *string) (int
 	return count, err
 }
 
+const countUserTenantsPaginated = `-- name: CountUserTenantsPaginated :one
+SELECT COUNT(*) FROM tenants t
+JOIN tenant_memberships tm ON t.id = tm.tenant_id
+WHERE tm.user_id = $1
+  AND ($2::text IS NULL OR (
+      t.name ILIKE '%' || $2::text || '%' OR
+      t.slug ILIKE '%' || $2::text || '%' OR
+      t.join_code ILIKE '%' || $2::text || '%'
+  ))
+  AND ($3::text IS NULL OR LOWER(tm.role) = LOWER($3::text))
+`
+
+type CountUserTenantsPaginatedParams struct {
+	UserID uuid.UUID `json:"user_id"`
+	Search *string   `json:"search"`
+	Role   *string   `json:"role"`
+}
+
+func (q *Queries) CountUserTenantsPaginated(ctx context.Context, arg CountUserTenantsPaginatedParams) (int64, error) {
+	row := q.db.QueryRow(ctx, countUserTenantsPaginated, arg.UserID, arg.Search, arg.Role)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const createTenant = `-- name: CreateTenant :one
 INSERT INTO tenants (
     name,
     slug,
-    join_code
+    join_code,
+    is_default
 ) VALUES (
-    $1, $2, $3
+    $1, $2, $3, COALESCE($4::boolean, FALSE)
 )
-RETURNING id, name, slug, join_code, created_at, updated_at
+RETURNING id, name, slug, join_code, is_default, created_at, updated_at
 `
 
 type CreateTenantParams struct {
-	Name     string `json:"name"`
-	Slug     string `json:"slug"`
-	JoinCode string `json:"join_code"`
+	Name      string      `json:"name"`
+	Slug      string      `json:"slug"`
+	JoinCode  string      `json:"join_code"`
+	IsDefault pgtype.Bool `json:"is_default"`
 }
 
-func (q *Queries) CreateTenant(ctx context.Context, arg CreateTenantParams) (Tenant, error) {
-	row := q.db.QueryRow(ctx, createTenant, arg.Name, arg.Slug, arg.JoinCode)
-	var i Tenant
+type CreateTenantRow struct {
+	ID        uuid.UUID `json:"id"`
+	Name      string    `json:"name"`
+	Slug      string    `json:"slug"`
+	JoinCode  string    `json:"join_code"`
+	IsDefault bool      `json:"is_default"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
+func (q *Queries) CreateTenant(ctx context.Context, arg CreateTenantParams) (CreateTenantRow, error) {
+	row := q.db.QueryRow(ctx, createTenant,
+		arg.Name,
+		arg.Slug,
+		arg.JoinCode,
+		arg.IsDefault,
+	)
+	var i CreateTenantRow
 	err := row.Scan(
 		&i.ID,
 		&i.Name,
 		&i.Slug,
 		&i.JoinCode,
+		&i.IsDefault,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -100,19 +144,30 @@ func (q *Queries) DeleteTenantAdmin(ctx context.Context, id uuid.UUID) error {
 }
 
 const getTenantByID = `-- name: GetTenantByID :one
-SELECT id, name, slug, join_code, created_at, updated_at
+SELECT id, name, slug, join_code, is_default, created_at, updated_at
 FROM tenants
 WHERE id = $1 LIMIT 1
 `
 
-func (q *Queries) GetTenantByID(ctx context.Context, id uuid.UUID) (Tenant, error) {
+type GetTenantByIDRow struct {
+	ID        uuid.UUID `json:"id"`
+	Name      string    `json:"name"`
+	Slug      string    `json:"slug"`
+	JoinCode  string    `json:"join_code"`
+	IsDefault bool      `json:"is_default"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
+func (q *Queries) GetTenantByID(ctx context.Context, id uuid.UUID) (GetTenantByIDRow, error) {
 	row := q.db.QueryRow(ctx, getTenantByID, id)
-	var i Tenant
+	var i GetTenantByIDRow
 	err := row.Scan(
 		&i.ID,
 		&i.Name,
 		&i.Slug,
 		&i.JoinCode,
+		&i.IsDefault,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -120,19 +175,30 @@ func (q *Queries) GetTenantByID(ctx context.Context, id uuid.UUID) (Tenant, erro
 }
 
 const getTenantByJoinCode = `-- name: GetTenantByJoinCode :one
-SELECT id, name, slug, join_code, created_at, updated_at
+SELECT id, name, slug, join_code, is_default, created_at, updated_at
 FROM tenants
 WHERE join_code = $1 LIMIT 1
 `
 
-func (q *Queries) GetTenantByJoinCode(ctx context.Context, joinCode string) (Tenant, error) {
+type GetTenantByJoinCodeRow struct {
+	ID        uuid.UUID `json:"id"`
+	Name      string    `json:"name"`
+	Slug      string    `json:"slug"`
+	JoinCode  string    `json:"join_code"`
+	IsDefault bool      `json:"is_default"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
+func (q *Queries) GetTenantByJoinCode(ctx context.Context, joinCode string) (GetTenantByJoinCodeRow, error) {
 	row := q.db.QueryRow(ctx, getTenantByJoinCode, joinCode)
-	var i Tenant
+	var i GetTenantByJoinCodeRow
 	err := row.Scan(
 		&i.ID,
 		&i.Name,
 		&i.Slug,
 		&i.JoinCode,
+		&i.IsDefault,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -140,19 +206,30 @@ func (q *Queries) GetTenantByJoinCode(ctx context.Context, joinCode string) (Ten
 }
 
 const getTenantBySlug = `-- name: GetTenantBySlug :one
-SELECT id, name, slug, join_code, created_at, updated_at
+SELECT id, name, slug, join_code, is_default, created_at, updated_at
 FROM tenants
 WHERE slug = $1 LIMIT 1
 `
 
-func (q *Queries) GetTenantBySlug(ctx context.Context, slug string) (Tenant, error) {
+type GetTenantBySlugRow struct {
+	ID        uuid.UUID `json:"id"`
+	Name      string    `json:"name"`
+	Slug      string    `json:"slug"`
+	JoinCode  string    `json:"join_code"`
+	IsDefault bool      `json:"is_default"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
+func (q *Queries) GetTenantBySlug(ctx context.Context, slug string) (GetTenantBySlugRow, error) {
 	row := q.db.QueryRow(ctx, getTenantBySlug, slug)
-	var i Tenant
+	var i GetTenantBySlugRow
 	err := row.Scan(
 		&i.ID,
 		&i.Name,
 		&i.Slug,
 		&i.JoinCode,
+		&i.IsDefault,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -316,7 +393,7 @@ func (q *Queries) ListTenantMembers(ctx context.Context, tenantID uuid.UUID) ([]
 }
 
 const listUserTenants = `-- name: ListUserTenants :many
-SELECT t.id, t.name, t.slug, t.join_code, tm.role, t.created_at, t.updated_at
+SELECT t.id, t.name, t.slug, t.join_code, t.is_default, tm.role, t.created_at, t.updated_at
 FROM tenants t
 JOIN tenant_memberships tm ON t.id = tm.tenant_id
 WHERE tm.user_id = $1
@@ -328,6 +405,7 @@ type ListUserTenantsRow struct {
 	Name      string    `json:"name"`
 	Slug      string    `json:"slug"`
 	JoinCode  string    `json:"join_code"`
+	IsDefault bool      `json:"is_default"`
 	Role      string    `json:"role"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
@@ -347,6 +425,84 @@ func (q *Queries) ListUserTenants(ctx context.Context, userID uuid.UUID) ([]List
 			&i.Name,
 			&i.Slug,
 			&i.JoinCode,
+			&i.IsDefault,
+			&i.Role,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listUserTenantsPaginated = `-- name: ListUserTenantsPaginated :many
+SELECT t.id, t.name, t.slug, t.join_code, t.is_default, tm.role, t.created_at, t.updated_at
+FROM tenants t
+JOIN tenant_memberships tm ON t.id = tm.tenant_id
+WHERE tm.user_id = $1
+  AND ($2::text IS NULL OR (
+      t.name ILIKE '%' || $2::text || '%' OR
+      t.slug ILIKE '%' || $2::text || '%' OR
+      t.join_code ILIKE '%' || $2::text || '%'
+  ))
+  AND ($3::text IS NULL OR LOWER(tm.role) = LOWER($3::text))
+ORDER BY
+  CASE WHEN $4::text = 'name_asc' THEN t.name END ASC,
+  CASE WHEN $4::text = 'name_desc' THEN t.name END DESC,
+  CASE WHEN $4::text = 'role_asc' THEN tm.role END ASC,
+  CASE WHEN $4::text = 'role_desc' THEN tm.role END DESC,
+  CASE WHEN $4::text = 'created_at_asc' THEN t.created_at END ASC,
+  CASE WHEN $4::text = 'created_at_desc' OR $4::text IS NULL OR $4::text = '' THEN t.created_at END DESC
+LIMIT $6 OFFSET $5
+`
+
+type ListUserTenantsPaginatedParams struct {
+	UserID    uuid.UUID `json:"user_id"`
+	Search    *string   `json:"search"`
+	Role      *string   `json:"role"`
+	SortBy    string    `json:"sort_by"`
+	OffsetVal int32     `json:"offset_val"`
+	LimitVal  int32     `json:"limit_val"`
+}
+
+type ListUserTenantsPaginatedRow struct {
+	ID        uuid.UUID `json:"id"`
+	Name      string    `json:"name"`
+	Slug      string    `json:"slug"`
+	JoinCode  string    `json:"join_code"`
+	IsDefault bool      `json:"is_default"`
+	Role      string    `json:"role"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
+func (q *Queries) ListUserTenantsPaginated(ctx context.Context, arg ListUserTenantsPaginatedParams) ([]ListUserTenantsPaginatedRow, error) {
+	rows, err := q.db.Query(ctx, listUserTenantsPaginated,
+		arg.UserID,
+		arg.Search,
+		arg.Role,
+		arg.SortBy,
+		arg.OffsetVal,
+		arg.LimitVal,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListUserTenantsPaginatedRow{}
+	for rows.Next() {
+		var i ListUserTenantsPaginatedRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.Slug,
+			&i.JoinCode,
+			&i.IsDefault,
 			&i.Role,
 			&i.CreatedAt,
 			&i.UpdatedAt,
@@ -366,7 +522,7 @@ UPDATE tenants
 SET join_code = $2,
     updated_at = NOW()
 WHERE id = $1
-RETURNING id, name, slug, join_code, created_at, updated_at
+RETURNING id, name, slug, join_code, is_default, created_at, updated_at
 `
 
 type RegenerateTenantJoinCodeParams struct {
@@ -374,14 +530,25 @@ type RegenerateTenantJoinCodeParams struct {
 	JoinCode string    `json:"join_code"`
 }
 
-func (q *Queries) RegenerateTenantJoinCode(ctx context.Context, arg RegenerateTenantJoinCodeParams) (Tenant, error) {
+type RegenerateTenantJoinCodeRow struct {
+	ID        uuid.UUID `json:"id"`
+	Name      string    `json:"name"`
+	Slug      string    `json:"slug"`
+	JoinCode  string    `json:"join_code"`
+	IsDefault bool      `json:"is_default"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
+func (q *Queries) RegenerateTenantJoinCode(ctx context.Context, arg RegenerateTenantJoinCodeParams) (RegenerateTenantJoinCodeRow, error) {
 	row := q.db.QueryRow(ctx, regenerateTenantJoinCode, arg.ID, arg.JoinCode)
-	var i Tenant
+	var i RegenerateTenantJoinCodeRow
 	err := row.Scan(
 		&i.ID,
 		&i.Name,
 		&i.Slug,
 		&i.JoinCode,
+		&i.IsDefault,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -409,7 +576,7 @@ SET name = COALESCE($2::text, name),
     slug = COALESCE($3::text, slug),
     updated_at = NOW()
 WHERE id = $1
-RETURNING id, name, slug, join_code, created_at, updated_at
+RETURNING id, name, slug, join_code, is_default, created_at, updated_at
 `
 
 type UpdateTenantParams struct {
@@ -418,14 +585,25 @@ type UpdateTenantParams struct {
 	Slug *string   `json:"slug"`
 }
 
-func (q *Queries) UpdateTenant(ctx context.Context, arg UpdateTenantParams) (Tenant, error) {
+type UpdateTenantRow struct {
+	ID        uuid.UUID `json:"id"`
+	Name      string    `json:"name"`
+	Slug      string    `json:"slug"`
+	JoinCode  string    `json:"join_code"`
+	IsDefault bool      `json:"is_default"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
+func (q *Queries) UpdateTenant(ctx context.Context, arg UpdateTenantParams) (UpdateTenantRow, error) {
 	row := q.db.QueryRow(ctx, updateTenant, arg.ID, arg.Name, arg.Slug)
-	var i Tenant
+	var i UpdateTenantRow
 	err := row.Scan(
 		&i.ID,
 		&i.Name,
 		&i.Slug,
 		&i.JoinCode,
+		&i.IsDefault,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)

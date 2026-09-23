@@ -23,7 +23,7 @@ function menuToNavItem(menu, language) {
   const icon = resolveIcon(menu.icon, { className: "size-4" })
   const subIcon = resolveIcon(menu.icon, { className: "size-3.5" })
 
-  const isExactRoute = menu.path === "/dashboard"
+  const isExactRoute = menu.path === "/dashboard" || menu.path === "/dashboard/account"
   const title = language === 'id'
     ? (menu.title_id || menu.title)
     : (menu.title_en || menu.title)
@@ -49,7 +49,7 @@ function menuToNavItem(menu, language) {
           url: child.path,
           icon: resolveIcon(child.icon, { className: "size-3.5" }) || subIcon,
           badge: child.badge_text || undefined,
-          exact: child.path === "/dashboard",
+          exact: child.path === "/dashboard" || child.path === "/dashboard/account",
         }
       }),
     }

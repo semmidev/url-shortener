@@ -49,7 +49,7 @@ func TestMultiTenantSaaS_FullFlow(t *testing.T) {
 	tenantID := createdTenant.ID.String()
 
 	// 3. User 1 Lists User Tenants
-	resp, apiResp = executeRequest(t, http.MethodGet, ts.URL+"/api/v1/tenants", ownerToken, nil)
+	resp, apiResp = executeRequest(t, http.MethodGet, ts.URL+"/api/v1/tenants?all=true", ownerToken, nil)
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 	var userTenants []tenant.TenantResponse
 	_ = json.Unmarshal(apiResp.Data, &userTenants)

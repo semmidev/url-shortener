@@ -6,6 +6,7 @@ import (
 	"uuid"
 
 	"github.com/semmidev/url-shortener/server/internal/platform/validator"
+	"github.com/semmidev/url-shortener/server/internal/platform/web"
 )
 
 type TenantResponse struct {
@@ -14,8 +15,14 @@ type TenantResponse struct {
 	Slug      string    `json:"slug"`
 	JoinCode  string    `json:"join_code"`
 	Role      string    `json:"role,omitempty"`
+	IsDefault bool      `json:"is_default"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
+}
+
+type ListUserTenantsResponse struct {
+	Items []TenantResponse `json:"items"`
+	Meta  web.Meta         `json:"meta"`
 }
 
 type CreateTenantRequest struct {

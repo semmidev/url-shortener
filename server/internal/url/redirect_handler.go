@@ -274,7 +274,7 @@ func (h *RedirectHandler) QRCode(w http.ResponseWriter, r *http.Request) {
 
 func isFrontendRoute(code string) bool {
 	switch code {
-	case "login", "register", "dashboard", "auth", "invalid-url":
+	case "login", "register", "dashboard", "auth", "invalid-url", "forbidden", "403":
 		return true
 	}
 	return false

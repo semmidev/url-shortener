@@ -28,7 +28,7 @@ export function TenantProvider({ children, user }) {
 
     try {
       setLoading(true);
-      const res = await client.get('/tenants');
+      const res = await client.get('/tenants?all=true');
       const items = Array.isArray(res.data?.items) ? res.data.items : (Array.isArray(res.data) ? res.data : []);
       setTenants(items);
 
@@ -41,8 +41,10 @@ export function TenantProvider({ children, user }) {
         setActiveTenant(null);
         localStorage.removeItem('active_tenant_id');
       }
+      return items;
     } catch (err) {
       console.error('Failed to fetch tenants:', err);
+      return [];
     } finally {
       setLoading(false);
     }
@@ -113,6 +115,7 @@ export function TenantProvider({ children, user }) {
         activeTenant,
         selectTenant,
         fetchTenants,
+        refreshTenants: fetchTenants,
         loading,
         openJoinModal: () => setIsJoinModalOpen(true),
         openCreateModal: () => setIsCreateModalOpen(true),

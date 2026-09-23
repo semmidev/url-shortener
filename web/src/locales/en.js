@@ -296,6 +296,16 @@ export const en = {
     createLink: "Create a Short Link",
   },
 
+  // 403 Forbidden Page
+  forbiddenPage: {
+    badge: "403 - Forbidden",
+    title: "Access Denied",
+    subtitle: "You do not have permission to access this resource or action.",
+    detail: "Please contact your workspace administrator or organization owner to request appropriate access rights.",
+    backToDashboard: "Back to Dashboard",
+    goBack: "Go Back",
+  },
+
   // File Uploader Component
   uploader: {
     selectPhoto: "Select Photo",

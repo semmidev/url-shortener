@@ -32,6 +32,9 @@ import {
   AlertTriangle as AlertTriangleIcon,
   Info as InfoIcon,
   CheckCircle as CheckCircleIcon,
+  Building2 as Building2Icon,
+  Building as BuildingIcon,
+  UserCheck as UserCheckIcon,
 } from 'lucide-react';
 
 const iconMap = {
@@ -56,10 +59,13 @@ const iconMap = {
   Lock: LockIcon,
   KeyRound: KeyRoundIcon,
 
-  // Users
+  // Users & Workspaces
   Users: UsersIcon,
   User: UserIcon,
   UserCog: UserCogIcon,
+  UserCheck: UserCheckIcon,
+  Building2: Building2Icon,
+  Building: BuildingIcon,
 
   // Navigation / Menus
   Menu: MenuIcon,

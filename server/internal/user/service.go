@@ -16,6 +16,7 @@ import (
 	"uuid"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 	db "github.com/semmidev/url-shortener/server/db/sqlc"
 	"github.com/semmidev/url-shortener/server/internal/config"
 	"github.com/semmidev/url-shortener/server/internal/platform/apperr"
@@ -557,9 +558,10 @@ func (s *Service) ensureDefaultWorkspace(ctx context.Context, q db.Querier, user
 	joinCode := string(b)
 
 	t, err := q.CreateTenant(ctx, db.CreateTenantParams{
-		Name:     wsName,
-		Slug:     slug,
-		JoinCode: joinCode,
+		Name:      wsName,
+		Slug:      slug,
+		JoinCode:  joinCode,
+		IsDefault: pgtype.Bool{Bool: true, Valid: true},
 	})
 	if err != nil {
 		return err

@@ -296,6 +296,16 @@ export const id = {
     createLink: "Buat Link Singkat",
   },
 
+  // 403 Forbidden Page
+  forbiddenPage: {
+    badge: "403 - Akses Ditolak",
+    title: "Akses Ditolak",
+    subtitle: "Anda tidak memiliki izin untuk mengakses sumber daya atau tindakan ini.",
+    detail: "Silakan hubungi administrator workspace atau pemilik organisasi Anda untuk mendapatkan hak akses yang sesuai.",
+    backToDashboard: "Kembali ke Dasbor",
+    goBack: "Kembali ke Halaman Sebelumnya",
+  },
+
   // File Uploader Component
   uploader: {
     selectPhoto: "Pilih Foto",

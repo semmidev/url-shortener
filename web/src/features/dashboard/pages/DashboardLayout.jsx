@@ -15,11 +15,12 @@ import { Button } from "@/components/ui/button"
 import { NotificationDropdown } from "@/components/NotificationDropdown"
 
 const PAGE_TITLE_KEYS = {
-  "/dashboard":               "nav.dashboard",
-  "/dashboard/urls":          "nav.shortUrls",
-  "/dashboard/analytics":     "nav.analytics",
-  "/dashboard/account":       "nav.accountProfile",
-  "/dashboard/notifications": "Pusat Notifikasi",
+  "/dashboard":                    "nav.dashboard",
+  "/dashboard/urls":               "nav.shortUrls",
+  "/dashboard/analytics":          "nav.analytics",
+  "/dashboard/account":            "nav.accountProfile",
+  "/dashboard/account/workspaces": "Workspace Saya",
+  "/dashboard/notifications":      "Pusat Notifikasi",
 }
 
 export default function DashboardLayout() {
@@ -28,9 +29,10 @@ export default function DashboardLayout() {
   const { t } = useI18n()
 
   // Resolve page title
-  let pageTitle = PAGE_TITLE_KEYS[pathname] ? t(PAGE_TITLE_KEYS[pathname]) : null
+  let pageTitle = PAGE_TITLE_KEYS[pathname] ? (PAGE_TITLE_KEYS[pathname].startsWith("nav.") ? t(PAGE_TITLE_KEYS[pathname]) : PAGE_TITLE_KEYS[pathname]) : null
   if (!pageTitle) {
     if (pathname.startsWith("/dashboard/urls/")) pageTitle = t("nav.urlDetails")
+    else if (pathname.startsWith("/dashboard/account/workspaces/")) pageTitle = "Detail Workspace"
     else pageTitle = t("nav.dashboard")
   }
 

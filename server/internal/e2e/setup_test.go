@@ -13,14 +13,19 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hibiken/asynq"
 	"github.com/jackc/pgx/v5/pgxpool"
+	db "github.com/semmidev/url-shortener/server/db/sqlc"
 	"github.com/semmidev/url-shortener/server/internal/app"
 	"github.com/semmidev/url-shortener/server/internal/config"
+	"github.com/semmidev/url-shortener/server/internal/platform/cache"
 	"github.com/semmidev/url-shortener/server/internal/platform/logger"
 	"github.com/semmidev/url-shortener/server/internal/platform/postgres"
+	"github.com/semmidev/url-shortener/server/internal/worker"
 	"github.com/stretchr/testify/require"
 	"github.com/testcontainers/testcontainers-go"
 	tcpostgres "github.com/testcontainers/testcontainers-go/modules/postgres"
+	tcredis "github.com/testcontainers/testcontainers-go/modules/redis"
 	"github.com/testcontainers/testcontainers-go/wait"
 )
 
@@ -42,7 +47,7 @@ func setupTestServer(t *testing.T) (*httptest.Server, *pgxpool.Pool) {
 		_ = os.Setenv("TESTCONTAINERS_RYUK_DISABLED", "true")
 	}
 
-	// Spin up PostgreSQL Testcontainer using postgres:18-alpine
+	// 1. Spin up PostgreSQL Testcontainer using postgres:18-alpine
 	pgContainer, err := tcpostgres.Run(ctx, "postgres:18-alpine",
 		tcpostgres.WithDatabase("test_urlshortener"),
 		tcpostgres.WithUsername("postgres"),
@@ -62,17 +67,31 @@ func setupTestServer(t *testing.T) (*httptest.Server, *pgxpool.Pool) {
 	connStr, err := pgContainer.ConnectionString(ctx, "sslmode=disable")
 	require.NoError(t, err)
 
-	// 1. Run DB Migration directly via app.RunDBMigration (golang-migrate)
+	// 2. Spin up Redis Testcontainer using redis:7-alpine
+	redisContainer, err := tcredis.Run(ctx, "redis:7-alpine")
+	if err != nil {
+		t.Skipf("skipping integration test: redis container failed: %v", err)
+		return nil, nil
+	}
+	t.Cleanup(func() { _ = redisContainer.Terminate(ctx) })
+
+	redisHost, err := redisContainer.Host(ctx)
+	require.NoError(t, err)
+	redisPort, err := redisContainer.MappedPort(ctx, "6379/tcp")
+	require.NoError(t, err)
+	redisAddr := redisHost + ":" + redisPort.Port()
+
+	// 3. Run DB Migration directly via app.RunDBMigration
 	migrationURL := "file://../../db/migration"
 	err = app.RunDBMigration(migrationURL, connStr)
 	require.NoError(t, err)
 
-	// 2. Connect PostgreSQL pool
+	// 4. Connect PostgreSQL pool
 	pool, err := postgres.NewPool(ctx, postgres.Config{Source: connStr})
 	require.NoError(t, err)
 	t.Cleanup(pool.Close)
 
-	// 3. Bootstrap Router directly using app.BuildRouter
+	// 5. Bootstrap Router & Services with Redis configuration
 	cfg := config.Config{
 		Environment:          "testing",
 		AppBaseURL:           "http://localhost:8080",
@@ -80,6 +99,8 @@ func setupTestServer(t *testing.T) (*httptest.Server, *pgxpool.Pool) {
 		JWTSecret:            "test-secret-key-that-is-at-least-32-bytes!",
 		AccessTokenDuration:  15 * time.Minute,
 		RefreshTokenDuration: 24 * time.Hour,
+		RedisAddress:         redisAddr,
+		WorkerConcurrency:    10,
 
 		RateLimitAuthRequests:   100,
 		RateLimitAuthWindow:     1 * time.Minute,
@@ -90,8 +111,21 @@ func setupTestServer(t *testing.T) (*httptest.Server, *pgxpool.Pool) {
 	}
 
 	appLogger := logger.New(cfg.Environment, io.Discard)
-	r, err := app.BuildRouter(cfg, pool, appLogger)
+	testCtx, cancelTestCtx := context.WithCancel(context.Background())
+	t.Cleanup(cancelTestCtx)
+
+	r, err := app.BuildRouter(testCtx, cfg, pool, appLogger)
 	require.NoError(t, err)
+
+	// 6. Start Redis Asynq Worker Task Processor for background tasks
+	store := db.NewStore(pool)
+	rc, _ := cache.NewRedisCache(redisAddr, "", 0)
+	taskProcessor := worker.NewRedisTaskProcessor(asynq.RedisClientOpt{Addr: redisAddr}, store, appLogger, rc, 10)
+	err = taskProcessor.Start()
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		taskProcessor.Shutdown()
+	})
 
 	ts := httptest.NewServer(r)
 	t.Cleanup(ts.Close)

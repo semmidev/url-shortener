@@ -2,33 +2,65 @@
 INSERT INTO tenants (
     name,
     slug,
-    join_code
+    join_code,
+    is_default
 ) VALUES (
-    $1, $2, $3
+    $1, $2, $3, COALESCE(sqlc.narg('is_default')::boolean, FALSE)
 )
-RETURNING id, name, slug, join_code, created_at, updated_at;
+RETURNING id, name, slug, join_code, is_default, created_at, updated_at;
 
 -- name: GetTenantByID :one
-SELECT id, name, slug, join_code, created_at, updated_at
+SELECT id, name, slug, join_code, is_default, created_at, updated_at
 FROM tenants
 WHERE id = $1 LIMIT 1;
 
 -- name: GetTenantBySlug :one
-SELECT id, name, slug, join_code, created_at, updated_at
+SELECT id, name, slug, join_code, is_default, created_at, updated_at
 FROM tenants
 WHERE slug = $1 LIMIT 1;
 
 -- name: GetTenantByJoinCode :one
-SELECT id, name, slug, join_code, created_at, updated_at
+SELECT id, name, slug, join_code, is_default, created_at, updated_at
 FROM tenants
 WHERE join_code = $1 LIMIT 1;
 
 -- name: ListUserTenants :many
-SELECT t.id, t.name, t.slug, t.join_code, tm.role, t.created_at, t.updated_at
+SELECT t.id, t.name, t.slug, t.join_code, t.is_default, tm.role, t.created_at, t.updated_at
 FROM tenants t
 JOIN tenant_memberships tm ON t.id = tm.tenant_id
 WHERE tm.user_id = $1
 ORDER BY t.created_at ASC;
+
+-- name: ListUserTenantsPaginated :many
+SELECT t.id, t.name, t.slug, t.join_code, t.is_default, tm.role, t.created_at, t.updated_at
+FROM tenants t
+JOIN tenant_memberships tm ON t.id = tm.tenant_id
+WHERE tm.user_id = sqlc.arg('user_id')
+  AND (sqlc.narg('search')::text IS NULL OR (
+      t.name ILIKE '%' || sqlc.narg('search')::text || '%' OR
+      t.slug ILIKE '%' || sqlc.narg('search')::text || '%' OR
+      t.join_code ILIKE '%' || sqlc.narg('search')::text || '%'
+  ))
+  AND (sqlc.narg('role')::text IS NULL OR LOWER(tm.role) = LOWER(sqlc.narg('role')::text))
+ORDER BY
+  CASE WHEN sqlc.arg('sort_by')::text = 'name_asc' THEN t.name END ASC,
+  CASE WHEN sqlc.arg('sort_by')::text = 'name_desc' THEN t.name END DESC,
+  CASE WHEN sqlc.arg('sort_by')::text = 'role_asc' THEN tm.role END ASC,
+  CASE WHEN sqlc.arg('sort_by')::text = 'role_desc' THEN tm.role END DESC,
+  CASE WHEN sqlc.arg('sort_by')::text = 'created_at_asc' THEN t.created_at END ASC,
+  CASE WHEN sqlc.arg('sort_by')::text = 'created_at_desc' OR sqlc.arg('sort_by')::text IS NULL OR sqlc.arg('sort_by')::text = '' THEN t.created_at END DESC
+LIMIT sqlc.arg('limit_val') OFFSET sqlc.arg('offset_val');
+
+-- name: CountUserTenantsPaginated :one
+SELECT COUNT(*) FROM tenants t
+JOIN tenant_memberships tm ON t.id = tm.tenant_id
+WHERE tm.user_id = sqlc.arg('user_id')
+  AND (sqlc.narg('search')::text IS NULL OR (
+      t.name ILIKE '%' || sqlc.narg('search')::text || '%' OR
+      t.slug ILIKE '%' || sqlc.narg('search')::text || '%' OR
+      t.join_code ILIKE '%' || sqlc.narg('search')::text || '%'
+  ))
+  AND (sqlc.narg('role')::text IS NULL OR LOWER(tm.role) = LOWER(sqlc.narg('role')::text));
 
 -- name: AddTenantMember :one
 INSERT INTO tenant_memberships (
@@ -99,11 +131,11 @@ SET name = COALESCE(sqlc.narg('name')::text, name),
     slug = COALESCE(sqlc.narg('slug')::text, slug),
     updated_at = NOW()
 WHERE id = $1
-RETURNING id, name, slug, join_code, created_at, updated_at;
+RETURNING id, name, slug, join_code, is_default, created_at, updated_at;
 
 -- name: RegenerateTenantJoinCode :one
 UPDATE tenants
 SET join_code = $2,
     updated_at = NOW()
 WHERE id = $1
-RETURNING id, name, slug, join_code, created_at, updated_at;
+RETURNING id, name, slug, join_code, is_default, created_at, updated_at;

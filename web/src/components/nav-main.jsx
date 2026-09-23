@@ -31,11 +31,22 @@ function NavMainItem({ item }) {
 
   // Check matching active status
   const isSubActive = (sub) => {
-    if (!sub.url || sub.url === "#") return false
-    return sub.exact
-      ? pathname === sub.url
-      : pathname === sub.url || pathname.startsWith(sub.url + "/")
-  }
+    if (!sub.url || sub.url === "#") return false;
+    if (sub.exact) return pathname === sub.url;
+    if (pathname === sub.url) return true;
+
+    // Prevent parent/shorter path (e.g. /dashboard/account) from matching when a more specific sibling (e.g. /dashboard/account/workspaces) matches
+    const hasMoreSpecificSibling = item.items?.some((other) =>
+      other !== sub &&
+      other.url &&
+      other.url !== "#" &&
+      (pathname === other.url || pathname.startsWith(other.url + "/")) &&
+      other.url.length > sub.url.length
+    );
+    if (hasMoreSpecificSibling) return false;
+
+    return pathname.startsWith(sub.url + "/");
+  };
 
   const isChildActive = hasSubItems && item.items.some(isSubActive)
   const isSelfActive = Boolean(

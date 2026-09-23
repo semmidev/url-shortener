@@ -38,7 +38,7 @@ import (
 )
 
 // BuildRouter constructs and mounts all middlewares, handlers, and routes for the application.
-func BuildRouter(cfg config.Config, pool *pgxpool.Pool, appLogger *logger.Logger) (chi.Router, error) {
+func BuildRouter(ctx context.Context, cfg config.Config, pool *pgxpool.Pool, appLogger *logger.Logger) (chi.Router, error) {
 	store := db.NewStore(pool)
 
 	tokenMaker, err := token.NewJWTMaker(cfg.JWTSecret)
@@ -116,7 +116,7 @@ func BuildRouter(cfg config.Config, pool *pgxpool.Pool, appLogger *logger.Logger
 
 	urlSvc := url.NewService(store, cfg, rc, authorizer, taskDistributor)
 	urlSvc.SetMetricsRecorder(appMetrics)
-	urlSvc.StartExpirationCleanupWorker(context.Background(), 1*time.Minute)
+	urlSvc.StartExpirationCleanupWorker(ctx, 1*time.Minute)
 
 	analyticsSvc := analytics.NewService(store, authorizer)
 	_ = audit.NewLogger(store, taskDistributor)
@@ -124,7 +124,7 @@ func BuildRouter(cfg config.Config, pool *pgxpool.Pool, appLogger *logger.Logger
 	// Initialize Embedded SPA Handler
 	spaHandler, err := spaweb.NewSPAHandler()
 	if err != nil {
-		appLogger.Warn(context.Background(), "failed to initialize embedded SPA handler", "error", err)
+		appLogger.Warn(ctx, "failed to initialize embedded SPA handler", "error", err)
 	}
 
 	// Initialize Handlers
@@ -144,7 +144,7 @@ func BuildRouter(cfg config.Config, pool *pgxpool.Pool, appLogger *logger.Logger
 	// Start Outbox Worker for async background event streaming
 	outboxWorker := outbox.NewOutboxWorker(store, eventPub, analyticsH)
 	outboxWorker.SetLockAcquirer(rc)
-	outboxWorker.Start(context.Background())
+	outboxWorker.Start(ctx)
 
 	// Setup Router & Middleware
 	r := chi.NewRouter()
@@ -174,9 +174,9 @@ func BuildRouter(cfg config.Config, pool *pgxpool.Pool, appLogger *logger.Logger
 			IdleTimeout:  30 * time.Second,
 		}
 		go func() {
-			appLogger.Info(context.Background(), "starting internal management server", "address", cfg.ManagementAddress)
+			appLogger.Info(ctx, "starting internal management server", "address", cfg.ManagementAddress)
 			if err := mgmtServer.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-				appLogger.Warn(context.Background(), "internal management server stopped", "error", err)
+				appLogger.Warn(ctx, "internal management server stopped", "error", err)
 			}
 		}()
 	}

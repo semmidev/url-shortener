@@ -101,6 +101,7 @@ type Tenant struct {
 	JoinCode  string    `json:"join_code"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
+	IsDefault bool      `json:"is_default"`
 }
 
 type TenantMembership struct {

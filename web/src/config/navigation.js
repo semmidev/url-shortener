@@ -118,7 +118,7 @@ export const NAVIGATION_GROUPS = [
   },
   {
     id: "settings",
-    title_id: "Pengaturan Akun",
+    title_id: "Pengaturan Akun dan Workspace",
     title_en: "Account Settings",
     is_group: true,
     children: [
@@ -134,6 +134,14 @@ export const NAVIGATION_GROUPS = [
             title_en: "Account Profile",
             path: "/dashboard/account",
             icon: "UserCog",
+            requiredPermission: null,
+          },
+          {
+            id: "my-workspaces",
+            title_id: "Workspace Saya",
+            title_en: "My Workspaces",
+            path: "/dashboard/account/workspaces",
+            icon: "Building2",
             requiredPermission: null,
           },
         ],

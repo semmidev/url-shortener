@@ -13,6 +13,7 @@ import Login from '@/features/auth/pages/Login';
 import Register from '@/features/auth/pages/Register';
 import GoogleCallback from '@/features/auth/pages/GoogleCallback';
 import InvalidURLPage from '@/features/urls/pages/InvalidURLPage';
+import ForbiddenPage from '@/features/auth/pages/ForbiddenPage';
 
 import DashboardLayout from '@/features/dashboard/pages/DashboardLayout';
 import Overview from '@/features/dashboard/pages/OverviewPage';
@@ -24,6 +25,8 @@ import WorkspaceMembersPage from '@/features/tenant/pages/WorkspaceMembersPage';
 import WorkspaceRolesPage from '@/features/tenant/pages/WorkspaceRolesPage';
 import WorkspaceSettingsPage from '@/features/tenant/pages/WorkspaceSettingsPage';
 import WorkspaceLinksPage from '@/features/tenant/pages/WorkspaceLinksPage';
+import MyWorkspacesPage from '@/features/tenant/pages/MyWorkspacesPage';
+import WorkspaceDetailPage from '@/features/tenant/pages/WorkspaceDetailPage';
 
 import Account from '@/features/account/pages/AccountPage';
 import NotificationsPage from '@/features/notifications/pages/NotificationsPage';
@@ -109,6 +112,8 @@ export default function App() {
             />
             <Route path="/auth/google/callback" element={<GoogleCallback />} />
             <Route path="/invalid-url" element={<InvalidURLPage />} />
+            <Route path="/forbidden" element={<ForbiddenPage />} />
+            <Route path="/403" element={<ForbiddenPage />} />
 
             {/* Protected Dashboard Layout & Subroutes */}
             <Route
@@ -128,6 +133,8 @@ export default function App() {
               <Route path="workspace/roles" element={<DirectionalTransition><WorkspaceRolesPage /></DirectionalTransition>} />
               <Route path="workspace/settings" element={<DirectionalTransition><WorkspaceSettingsPage /></DirectionalTransition>} />
               <Route path="account" element={<DirectionalTransition><Account /></DirectionalTransition>} />
+              <Route path="account/workspaces" element={<DirectionalTransition><MyWorkspacesPage /></DirectionalTransition>} />
+              <Route path="account/workspaces/:id" element={<DirectionalTransition><WorkspaceDetailPage /></DirectionalTransition>} />
               <Route path="notifications" element={<DirectionalTransition><NotificationsPage /></DirectionalTransition>} />
             </Route>
 
