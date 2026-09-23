@@ -1,34 +1,35 @@
 -- name: ListRoles :many
 SELECT id, tenant_id, name, display_name, description, is_system, created_at, updated_at
 FROM roles
+WHERE deleted_at IS NULL
 ORDER BY is_system DESC, name ASC;
 
 -- name: ListSystemRoles :many
 SELECT id, tenant_id, name, display_name, description, is_system, created_at, updated_at
 FROM roles
-WHERE tenant_id IS NULL
+WHERE tenant_id IS NULL AND deleted_at IS NULL
 ORDER BY is_system DESC, name ASC;
 
 -- name: ListTenantRoles :many
 SELECT id, tenant_id, name, display_name, description, is_system, created_at, updated_at
 FROM roles
-WHERE tenant_id = $1 OR tenant_id IS NULL
+WHERE (tenant_id = $1 OR tenant_id IS NULL) AND deleted_at IS NULL
 ORDER BY is_system DESC, name ASC;
 
 -- name: GetRoleByID :one
 SELECT id, tenant_id, name, display_name, description, is_system, created_at, updated_at
 FROM roles
-WHERE id = $1;
+WHERE id = $1 AND deleted_at IS NULL;
 
 -- name: GetRoleByName :one
 SELECT id, tenant_id, name, display_name, description, is_system, created_at, updated_at
 FROM roles
-WHERE name = $1 LIMIT 1;
+WHERE name = $1 AND deleted_at IS NULL LIMIT 1;
 
 -- name: GetTenantRoleByName :one
 SELECT id, tenant_id, name, display_name, description, is_system, created_at, updated_at
 FROM roles
-WHERE name = $1 AND (tenant_id = $2 OR tenant_id IS NULL)
+WHERE name = $1 AND (tenant_id = $2 OR tenant_id IS NULL) AND deleted_at IS NULL
 ORDER BY tenant_id DESC LIMIT 1;
 
 -- name: CreateRole :one
@@ -39,12 +40,13 @@ RETURNING id, tenant_id, name, display_name, description, is_system, created_at,
 -- name: UpdateRole :one
 UPDATE roles
 SET display_name = $2, description = $3, updated_at = NOW()
-WHERE id = $1 AND is_system = false
+WHERE id = $1 AND is_system = false AND deleted_at IS NULL
 RETURNING id, tenant_id, name, display_name, description, is_system, created_at, updated_at;
 
 -- name: DeleteRole :exec
-DELETE FROM roles
-WHERE id = $1 AND is_system = false;
+UPDATE roles
+SET deleted_at = NOW(), updated_at = NOW()
+WHERE id = $1 AND is_system = false AND deleted_at IS NULL;
 
 -- name: GetRolePermissions :many
 SELECT permission_code
@@ -66,4 +68,4 @@ SELECT DISTINCT rp.permission_code
 FROM role_permissions rp
 JOIN roles r ON r.id = rp.role_id
 JOIN tenant_memberships tm ON tm.role = r.name
-WHERE tm.user_id = $1 AND tm.tenant_id = $2;
+WHERE tm.user_id = $1 AND tm.tenant_id = $2 AND r.deleted_at IS NULL;

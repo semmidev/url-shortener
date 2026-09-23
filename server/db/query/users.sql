@@ -10,15 +10,15 @@ RETURNING *;
 
 -- name: GetUserByEmail :one
 SELECT * FROM users
-WHERE email = $1 LIMIT 1;
+WHERE email = $1 AND deleted_at IS NULL LIMIT 1;
 
 -- name: GetUserByID :one
 SELECT * FROM users
-WHERE id = $1 LIMIT 1;
+WHERE id = $1 AND deleted_at IS NULL LIMIT 1;
 
 -- name: GetUserByGoogleID :one
 SELECT * FROM users
-WHERE google_id = $1 LIMIT 1;
+WHERE google_id = $1 AND deleted_at IS NULL LIMIT 1;
 
 -- name: UpsertGoogleUser :one
 INSERT INTO users (
@@ -33,6 +33,7 @@ ON CONFLICT (email) DO UPDATE SET
     google_id = EXCLUDED.google_id,
     avatar_url = EXCLUDED.avatar_url,
     full_name = EXCLUDED.full_name,
+    deleted_at = NULL,
     updated_at = NOW()
 RETURNING *;
 
@@ -43,7 +44,7 @@ SET
     password_hash = COALESCE(sqlc.narg('password_hash'), password_hash),
     avatar_url = COALESCE(sqlc.narg('avatar_url'), avatar_url),
     updated_at = NOW()
-WHERE id = $1
+WHERE id = $1 AND deleted_at IS NULL
 RETURNING *;
 
 -- name: UnlinkGoogleUser :one
@@ -51,7 +52,7 @@ UPDATE users
 SET
     google_id = NULL,
     updated_at = NOW()
-WHERE id = $1
+WHERE id = $1 AND deleted_at IS NULL
 RETURNING *;
 
 -- name: ClearUserAvatar :one
@@ -59,5 +60,10 @@ UPDATE users
 SET
     avatar_url = '',
     updated_at = NOW()
-WHERE id = $1
+WHERE id = $1 AND deleted_at IS NULL
 RETURNING *;
+
+-- name: SoftDeleteUser :exec
+UPDATE users
+SET deleted_at = NOW(), updated_at = NOW()
+WHERE id = $1 AND deleted_at IS NULL;

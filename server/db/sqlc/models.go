@@ -54,6 +54,7 @@ type Role struct {
 	IsSystem    bool       `json:"is_system"`
 	CreatedAt   time.Time  `json:"created_at"`
 	UpdatedAt   time.Time  `json:"updated_at"`
+	DeletedAt   *time.Time `json:"deleted_at"`
 }
 
 type RolePermission struct {
@@ -95,13 +96,14 @@ type SystemConfig struct {
 }
 
 type Tenant struct {
-	ID        uuid.UUID `json:"id"`
-	Name      string    `json:"name"`
-	Slug      string    `json:"slug"`
-	JoinCode  string    `json:"join_code"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
-	IsDefault bool      `json:"is_default"`
+	ID        uuid.UUID  `json:"id"`
+	Name      string     `json:"name"`
+	Slug      string     `json:"slug"`
+	JoinCode  string     `json:"join_code"`
+	CreatedAt time.Time  `json:"created_at"`
+	UpdatedAt time.Time  `json:"updated_at"`
+	IsDefault bool       `json:"is_default"`
+	DeletedAt *time.Time `json:"deleted_at"`
 }
 
 type TenantMembership struct {
@@ -123,13 +125,14 @@ type UrlAnalytic struct {
 }
 
 type User struct {
-	ID           uuid.UUID `json:"id"`
-	Email        string    `json:"email"`
-	PasswordHash *string   `json:"password_hash"`
-	GoogleID     *string   `json:"google_id"`
-	AvatarUrl    string    `json:"avatar_url"`
-	FullName     string    `json:"full_name"`
-	IsSuspended  bool      `json:"is_suspended"`
-	CreatedAt    time.Time `json:"created_at"`
-	UpdatedAt    time.Time `json:"updated_at"`
+	ID           uuid.UUID  `json:"id"`
+	Email        string     `json:"email"`
+	PasswordHash *string    `json:"password_hash"`
+	GoogleID     *string    `json:"google_id"`
+	AvatarUrl    string     `json:"avatar_url"`
+	FullName     string     `json:"full_name"`
+	IsSuspended  bool       `json:"is_suspended"`
+	CreatedAt    time.Time  `json:"created_at"`
+	UpdatedAt    time.Time  `json:"updated_at"`
+	DeletedAt    *time.Time `json:"deleted_at"`
 }

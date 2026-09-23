@@ -16,8 +16,8 @@ UPDATE users
 SET
     avatar_url = '',
     updated_at = NOW()
-WHERE id = $1
-RETURNING id, email, password_hash, google_id, avatar_url, full_name, is_suspended, created_at, updated_at
+WHERE id = $1 AND deleted_at IS NULL
+RETURNING id, email, password_hash, google_id, avatar_url, full_name, is_suspended, created_at, updated_at, deleted_at
 `
 
 func (q *Queries) ClearUserAvatar(ctx context.Context, id uuid.UUID) (User, error) {
@@ -33,6 +33,7 @@ func (q *Queries) ClearUserAvatar(ctx context.Context, id uuid.UUID) (User, erro
 		&i.IsSuspended,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.DeletedAt,
 	)
 	return i, err
 }
@@ -45,7 +46,7 @@ INSERT INTO users (
 ) VALUES (
     $1, $2, $3
 )
-RETURNING id, email, password_hash, google_id, avatar_url, full_name, is_suspended, created_at, updated_at
+RETURNING id, email, password_hash, google_id, avatar_url, full_name, is_suspended, created_at, updated_at, deleted_at
 `
 
 type CreateUserParams struct {
@@ -67,13 +68,14 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 		&i.IsSuspended,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.DeletedAt,
 	)
 	return i, err
 }
 
 const getUserByEmail = `-- name: GetUserByEmail :one
-SELECT id, email, password_hash, google_id, avatar_url, full_name, is_suspended, created_at, updated_at FROM users
-WHERE email = $1 LIMIT 1
+SELECT id, email, password_hash, google_id, avatar_url, full_name, is_suspended, created_at, updated_at, deleted_at FROM users
+WHERE email = $1 AND deleted_at IS NULL LIMIT 1
 `
 
 func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error) {
@@ -89,13 +91,14 @@ func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error
 		&i.IsSuspended,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.DeletedAt,
 	)
 	return i, err
 }
 
 const getUserByGoogleID = `-- name: GetUserByGoogleID :one
-SELECT id, email, password_hash, google_id, avatar_url, full_name, is_suspended, created_at, updated_at FROM users
-WHERE google_id = $1 LIMIT 1
+SELECT id, email, password_hash, google_id, avatar_url, full_name, is_suspended, created_at, updated_at, deleted_at FROM users
+WHERE google_id = $1 AND deleted_at IS NULL LIMIT 1
 `
 
 func (q *Queries) GetUserByGoogleID(ctx context.Context, googleID *string) (User, error) {
@@ -111,13 +114,14 @@ func (q *Queries) GetUserByGoogleID(ctx context.Context, googleID *string) (User
 		&i.IsSuspended,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.DeletedAt,
 	)
 	return i, err
 }
 
 const getUserByID = `-- name: GetUserByID :one
-SELECT id, email, password_hash, google_id, avatar_url, full_name, is_suspended, created_at, updated_at FROM users
-WHERE id = $1 LIMIT 1
+SELECT id, email, password_hash, google_id, avatar_url, full_name, is_suspended, created_at, updated_at, deleted_at FROM users
+WHERE id = $1 AND deleted_at IS NULL LIMIT 1
 `
 
 func (q *Queries) GetUserByID(ctx context.Context, id uuid.UUID) (User, error) {
@@ -133,8 +137,20 @@ func (q *Queries) GetUserByID(ctx context.Context, id uuid.UUID) (User, error) {
 		&i.IsSuspended,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.DeletedAt,
 	)
 	return i, err
+}
+
+const softDeleteUser = `-- name: SoftDeleteUser :exec
+UPDATE users
+SET deleted_at = NOW(), updated_at = NOW()
+WHERE id = $1 AND deleted_at IS NULL
+`
+
+func (q *Queries) SoftDeleteUser(ctx context.Context, id uuid.UUID) error {
+	_, err := q.db.Exec(ctx, softDeleteUser, id)
+	return err
 }
 
 const unlinkGoogleUser = `-- name: UnlinkGoogleUser :one
@@ -142,8 +158,8 @@ UPDATE users
 SET
     google_id = NULL,
     updated_at = NOW()
-WHERE id = $1
-RETURNING id, email, password_hash, google_id, avatar_url, full_name, is_suspended, created_at, updated_at
+WHERE id = $1 AND deleted_at IS NULL
+RETURNING id, email, password_hash, google_id, avatar_url, full_name, is_suspended, created_at, updated_at, deleted_at
 `
 
 func (q *Queries) UnlinkGoogleUser(ctx context.Context, id uuid.UUID) (User, error) {
@@ -159,6 +175,7 @@ func (q *Queries) UnlinkGoogleUser(ctx context.Context, id uuid.UUID) (User, err
 		&i.IsSuspended,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.DeletedAt,
 	)
 	return i, err
 }
@@ -170,8 +187,8 @@ SET
     password_hash = COALESCE($3, password_hash),
     avatar_url = COALESCE($4, avatar_url),
     updated_at = NOW()
-WHERE id = $1
-RETURNING id, email, password_hash, google_id, avatar_url, full_name, is_suspended, created_at, updated_at
+WHERE id = $1 AND deleted_at IS NULL
+RETURNING id, email, password_hash, google_id, avatar_url, full_name, is_suspended, created_at, updated_at, deleted_at
 `
 
 type UpdateUserParams struct {
@@ -199,6 +216,7 @@ func (q *Queries) UpdateUser(ctx context.Context, arg UpdateUserParams) (User, e
 		&i.IsSuspended,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.DeletedAt,
 	)
 	return i, err
 }
@@ -216,8 +234,9 @@ ON CONFLICT (email) DO UPDATE SET
     google_id = EXCLUDED.google_id,
     avatar_url = EXCLUDED.avatar_url,
     full_name = EXCLUDED.full_name,
+    deleted_at = NULL,
     updated_at = NOW()
-RETURNING id, email, password_hash, google_id, avatar_url, full_name, is_suspended, created_at, updated_at
+RETURNING id, email, password_hash, google_id, avatar_url, full_name, is_suspended, created_at, updated_at, deleted_at
 `
 
 type UpsertGoogleUserParams struct {
@@ -245,6 +264,7 @@ func (q *Queries) UpsertGoogleUser(ctx context.Context, arg UpsertGoogleUserPara
 		&i.IsSuspended,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.DeletedAt,
 	)
 	return i, err
 }

@@ -720,6 +720,8 @@ func (s *Service) DeleteTenant(ctx context.Context, tenantID uuid.UUID) error {
 		}
 	}
 
+	_ = s.q.SoftDeleteTenantShortURLs(ctx, &tenantID)
+
 	if err := s.q.DeleteTenantAdmin(ctx, tenantID); err != nil {
 		return apperr.Internal("gagal menghapus workspace", err)
 	}

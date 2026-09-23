@@ -7,6 +7,7 @@ package db
 
 import (
 	"context"
+	"time"
 
 	"uuid"
 )
@@ -51,7 +52,18 @@ type CreateRoleParams struct {
 	IsSystem    bool       `json:"is_system"`
 }
 
-func (q *Queries) CreateRole(ctx context.Context, arg CreateRoleParams) (Role, error) {
+type CreateRoleRow struct {
+	ID          uuid.UUID  `json:"id"`
+	TenantID    *uuid.UUID `json:"tenant_id"`
+	Name        string     `json:"name"`
+	DisplayName string     `json:"display_name"`
+	Description string     `json:"description"`
+	IsSystem    bool       `json:"is_system"`
+	CreatedAt   time.Time  `json:"created_at"`
+	UpdatedAt   time.Time  `json:"updated_at"`
+}
+
+func (q *Queries) CreateRole(ctx context.Context, arg CreateRoleParams) (CreateRoleRow, error) {
 	row := q.db.QueryRow(ctx, createRole,
 		arg.TenantID,
 		arg.Name,
@@ -59,7 +71,7 @@ func (q *Queries) CreateRole(ctx context.Context, arg CreateRoleParams) (Role, e
 		arg.Description,
 		arg.IsSystem,
 	)
-	var i Role
+	var i CreateRoleRow
 	err := row.Scan(
 		&i.ID,
 		&i.TenantID,
@@ -74,8 +86,9 @@ func (q *Queries) CreateRole(ctx context.Context, arg CreateRoleParams) (Role, e
 }
 
 const deleteRole = `-- name: DeleteRole :exec
-DELETE FROM roles
-WHERE id = $1 AND is_system = false
+UPDATE roles
+SET deleted_at = NOW(), updated_at = NOW()
+WHERE id = $1 AND is_system = false AND deleted_at IS NULL
 `
 
 func (q *Queries) DeleteRole(ctx context.Context, id uuid.UUID) error {
@@ -86,12 +99,23 @@ func (q *Queries) DeleteRole(ctx context.Context, id uuid.UUID) error {
 const getRoleByID = `-- name: GetRoleByID :one
 SELECT id, tenant_id, name, display_name, description, is_system, created_at, updated_at
 FROM roles
-WHERE id = $1
+WHERE id = $1 AND deleted_at IS NULL
 `
 
-func (q *Queries) GetRoleByID(ctx context.Context, id uuid.UUID) (Role, error) {
+type GetRoleByIDRow struct {
+	ID          uuid.UUID  `json:"id"`
+	TenantID    *uuid.UUID `json:"tenant_id"`
+	Name        string     `json:"name"`
+	DisplayName string     `json:"display_name"`
+	Description string     `json:"description"`
+	IsSystem    bool       `json:"is_system"`
+	CreatedAt   time.Time  `json:"created_at"`
+	UpdatedAt   time.Time  `json:"updated_at"`
+}
+
+func (q *Queries) GetRoleByID(ctx context.Context, id uuid.UUID) (GetRoleByIDRow, error) {
 	row := q.db.QueryRow(ctx, getRoleByID, id)
-	var i Role
+	var i GetRoleByIDRow
 	err := row.Scan(
 		&i.ID,
 		&i.TenantID,
@@ -108,12 +132,23 @@ func (q *Queries) GetRoleByID(ctx context.Context, id uuid.UUID) (Role, error) {
 const getRoleByName = `-- name: GetRoleByName :one
 SELECT id, tenant_id, name, display_name, description, is_system, created_at, updated_at
 FROM roles
-WHERE name = $1 LIMIT 1
+WHERE name = $1 AND deleted_at IS NULL LIMIT 1
 `
 
-func (q *Queries) GetRoleByName(ctx context.Context, name string) (Role, error) {
+type GetRoleByNameRow struct {
+	ID          uuid.UUID  `json:"id"`
+	TenantID    *uuid.UUID `json:"tenant_id"`
+	Name        string     `json:"name"`
+	DisplayName string     `json:"display_name"`
+	Description string     `json:"description"`
+	IsSystem    bool       `json:"is_system"`
+	CreatedAt   time.Time  `json:"created_at"`
+	UpdatedAt   time.Time  `json:"updated_at"`
+}
+
+func (q *Queries) GetRoleByName(ctx context.Context, name string) (GetRoleByNameRow, error) {
 	row := q.db.QueryRow(ctx, getRoleByName, name)
-	var i Role
+	var i GetRoleByNameRow
 	err := row.Scan(
 		&i.ID,
 		&i.TenantID,
@@ -157,7 +192,7 @@ func (q *Queries) GetRolePermissions(ctx context.Context, roleID uuid.UUID) ([]s
 const getTenantRoleByName = `-- name: GetTenantRoleByName :one
 SELECT id, tenant_id, name, display_name, description, is_system, created_at, updated_at
 FROM roles
-WHERE name = $1 AND (tenant_id = $2 OR tenant_id IS NULL)
+WHERE name = $1 AND (tenant_id = $2 OR tenant_id IS NULL) AND deleted_at IS NULL
 ORDER BY tenant_id DESC LIMIT 1
 `
 
@@ -166,9 +201,20 @@ type GetTenantRoleByNameParams struct {
 	TenantID *uuid.UUID `json:"tenant_id"`
 }
 
-func (q *Queries) GetTenantRoleByName(ctx context.Context, arg GetTenantRoleByNameParams) (Role, error) {
+type GetTenantRoleByNameRow struct {
+	ID          uuid.UUID  `json:"id"`
+	TenantID    *uuid.UUID `json:"tenant_id"`
+	Name        string     `json:"name"`
+	DisplayName string     `json:"display_name"`
+	Description string     `json:"description"`
+	IsSystem    bool       `json:"is_system"`
+	CreatedAt   time.Time  `json:"created_at"`
+	UpdatedAt   time.Time  `json:"updated_at"`
+}
+
+func (q *Queries) GetTenantRoleByName(ctx context.Context, arg GetTenantRoleByNameParams) (GetTenantRoleByNameRow, error) {
 	row := q.db.QueryRow(ctx, getTenantRoleByName, arg.Name, arg.TenantID)
-	var i Role
+	var i GetTenantRoleByNameRow
 	err := row.Scan(
 		&i.ID,
 		&i.TenantID,
@@ -187,7 +233,7 @@ SELECT DISTINCT rp.permission_code
 FROM role_permissions rp
 JOIN roles r ON r.id = rp.role_id
 JOIN tenant_memberships tm ON tm.role = r.name
-WHERE tm.user_id = $1 AND tm.tenant_id = $2
+WHERE tm.user_id = $1 AND tm.tenant_id = $2 AND r.deleted_at IS NULL
 `
 
 type GetUserTenantPermissionsParams struct {
@@ -218,18 +264,30 @@ func (q *Queries) GetUserTenantPermissions(ctx context.Context, arg GetUserTenan
 const listRoles = `-- name: ListRoles :many
 SELECT id, tenant_id, name, display_name, description, is_system, created_at, updated_at
 FROM roles
+WHERE deleted_at IS NULL
 ORDER BY is_system DESC, name ASC
 `
 
-func (q *Queries) ListRoles(ctx context.Context) ([]Role, error) {
+type ListRolesRow struct {
+	ID          uuid.UUID  `json:"id"`
+	TenantID    *uuid.UUID `json:"tenant_id"`
+	Name        string     `json:"name"`
+	DisplayName string     `json:"display_name"`
+	Description string     `json:"description"`
+	IsSystem    bool       `json:"is_system"`
+	CreatedAt   time.Time  `json:"created_at"`
+	UpdatedAt   time.Time  `json:"updated_at"`
+}
+
+func (q *Queries) ListRoles(ctx context.Context) ([]ListRolesRow, error) {
 	rows, err := q.db.Query(ctx, listRoles)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []Role{}
+	items := []ListRolesRow{}
 	for rows.Next() {
-		var i Role
+		var i ListRolesRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.TenantID,
@@ -253,19 +311,30 @@ func (q *Queries) ListRoles(ctx context.Context) ([]Role, error) {
 const listSystemRoles = `-- name: ListSystemRoles :many
 SELECT id, tenant_id, name, display_name, description, is_system, created_at, updated_at
 FROM roles
-WHERE tenant_id IS NULL
+WHERE tenant_id IS NULL AND deleted_at IS NULL
 ORDER BY is_system DESC, name ASC
 `
 
-func (q *Queries) ListSystemRoles(ctx context.Context) ([]Role, error) {
+type ListSystemRolesRow struct {
+	ID          uuid.UUID  `json:"id"`
+	TenantID    *uuid.UUID `json:"tenant_id"`
+	Name        string     `json:"name"`
+	DisplayName string     `json:"display_name"`
+	Description string     `json:"description"`
+	IsSystem    bool       `json:"is_system"`
+	CreatedAt   time.Time  `json:"created_at"`
+	UpdatedAt   time.Time  `json:"updated_at"`
+}
+
+func (q *Queries) ListSystemRoles(ctx context.Context) ([]ListSystemRolesRow, error) {
 	rows, err := q.db.Query(ctx, listSystemRoles)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []Role{}
+	items := []ListSystemRolesRow{}
 	for rows.Next() {
-		var i Role
+		var i ListSystemRolesRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.TenantID,
@@ -289,19 +358,30 @@ func (q *Queries) ListSystemRoles(ctx context.Context) ([]Role, error) {
 const listTenantRoles = `-- name: ListTenantRoles :many
 SELECT id, tenant_id, name, display_name, description, is_system, created_at, updated_at
 FROM roles
-WHERE tenant_id = $1 OR tenant_id IS NULL
+WHERE (tenant_id = $1 OR tenant_id IS NULL) AND deleted_at IS NULL
 ORDER BY is_system DESC, name ASC
 `
 
-func (q *Queries) ListTenantRoles(ctx context.Context, tenantID *uuid.UUID) ([]Role, error) {
+type ListTenantRolesRow struct {
+	ID          uuid.UUID  `json:"id"`
+	TenantID    *uuid.UUID `json:"tenant_id"`
+	Name        string     `json:"name"`
+	DisplayName string     `json:"display_name"`
+	Description string     `json:"description"`
+	IsSystem    bool       `json:"is_system"`
+	CreatedAt   time.Time  `json:"created_at"`
+	UpdatedAt   time.Time  `json:"updated_at"`
+}
+
+func (q *Queries) ListTenantRoles(ctx context.Context, tenantID *uuid.UUID) ([]ListTenantRolesRow, error) {
 	rows, err := q.db.Query(ctx, listTenantRoles, tenantID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []Role{}
+	items := []ListTenantRolesRow{}
 	for rows.Next() {
-		var i Role
+		var i ListTenantRolesRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.TenantID,
@@ -325,7 +405,7 @@ func (q *Queries) ListTenantRoles(ctx context.Context, tenantID *uuid.UUID) ([]R
 const updateRole = `-- name: UpdateRole :one
 UPDATE roles
 SET display_name = $2, description = $3, updated_at = NOW()
-WHERE id = $1 AND is_system = false
+WHERE id = $1 AND is_system = false AND deleted_at IS NULL
 RETURNING id, tenant_id, name, display_name, description, is_system, created_at, updated_at
 `
 
@@ -335,9 +415,20 @@ type UpdateRoleParams struct {
 	Description string    `json:"description"`
 }
 
-func (q *Queries) UpdateRole(ctx context.Context, arg UpdateRoleParams) (Role, error) {
+type UpdateRoleRow struct {
+	ID          uuid.UUID  `json:"id"`
+	TenantID    *uuid.UUID `json:"tenant_id"`
+	Name        string     `json:"name"`
+	DisplayName string     `json:"display_name"`
+	Description string     `json:"description"`
+	IsSystem    bool       `json:"is_system"`
+	CreatedAt   time.Time  `json:"created_at"`
+	UpdatedAt   time.Time  `json:"updated_at"`
+}
+
+func (q *Queries) UpdateRole(ctx context.Context, arg UpdateRoleParams) (UpdateRoleRow, error) {
 	row := q.db.QueryRow(ctx, updateRole, arg.ID, arg.DisplayName, arg.Description)
-	var i Role
+	var i UpdateRoleRow
 	err := row.Scan(
 		&i.ID,
 		&i.TenantID,

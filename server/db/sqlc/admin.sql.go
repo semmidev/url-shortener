@@ -14,7 +14,7 @@ import (
 
 const countAllUsers = `-- name: CountAllUsers :one
 SELECT COUNT(*) FROM users
-WHERE ($1::text IS NULL OR (
+WHERE deleted_at IS NULL AND ($1::text IS NULL OR (
     email ILIKE '%' || $1::text || '%' OR
     full_name ILIKE '%' || $1::text || '%'
 ))
@@ -48,10 +48,10 @@ func (q *Queries) CountGlobalLinks(ctx context.Context, search *string) (int64, 
 
 const getSystemStats = `-- name: GetSystemStats :one
 SELECT
-    (SELECT COUNT(*) FROM users) AS total_users,
+    (SELECT COUNT(*) FROM users WHERE deleted_at IS NULL) AS total_users,
     (SELECT COUNT(*) FROM short_urls WHERE deleted_at IS NULL) AS total_urls,
     (SELECT COUNT(*) FROM short_urls WHERE deleted_at IS NULL AND is_active = TRUE) AS total_active_urls,
-    (SELECT COALESCE(SUM(click_count), 0)::bigint FROM short_urls) AS total_clicks
+    (SELECT COALESCE(SUM(click_count), 0)::bigint FROM short_urls WHERE deleted_at IS NULL) AS total_clicks
 `
 
 type GetSystemStatsRow struct {
@@ -76,7 +76,7 @@ func (q *Queries) GetSystemStats(ctx context.Context) (GetSystemStatsRow, error)
 const listAllUsers = `-- name: ListAllUsers :many
 SELECT id, email, full_name, is_suspended, created_at, updated_at
 FROM users
-WHERE ($1::text IS NULL OR (
+WHERE deleted_at IS NULL AND ($1::text IS NULL OR (
     email ILIKE '%' || $1::text || '%' OR
     full_name ILIKE '%' || $1::text || '%'
 ))
@@ -228,7 +228,7 @@ func (q *Queries) SetURLActiveStatus(ctx context.Context, arg SetURLActiveStatus
 const setUserSuspended = `-- name: SetUserSuspended :one
 UPDATE users
 SET is_suspended = $2, updated_at = NOW()
-WHERE id = $1
+WHERE id = $1 AND deleted_at IS NULL
 RETURNING id, email, full_name, is_suspended, created_at, updated_at
 `
 

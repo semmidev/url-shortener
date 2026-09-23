@@ -46,7 +46,7 @@ func (q *Queries) AddTenantMember(ctx context.Context, arg AddTenantMemberParams
 
 const countAllTenantsAdmin = `-- name: CountAllTenantsAdmin :one
 SELECT COUNT(*) FROM tenants t
-WHERE ($1::text IS NULL OR (
+WHERE t.deleted_at IS NULL AND ($1::text IS NULL OR (
     t.name ILIKE '%' || $1::text || '%' OR
     t.slug ILIKE '%' || $1::text || '%' OR
     t.join_code ILIKE '%' || $1::text || '%'
@@ -64,6 +64,7 @@ const countUserTenantsPaginated = `-- name: CountUserTenantsPaginated :one
 SELECT COUNT(*) FROM tenants t
 JOIN tenant_memberships tm ON t.id = tm.tenant_id
 WHERE tm.user_id = $1
+  AND t.deleted_at IS NULL
   AND ($2::text IS NULL OR (
       t.name ILIKE '%' || $2::text || '%' OR
       t.slug ILIKE '%' || $2::text || '%' OR
@@ -135,7 +136,9 @@ func (q *Queries) CreateTenant(ctx context.Context, arg CreateTenantParams) (Cre
 }
 
 const deleteTenantAdmin = `-- name: DeleteTenantAdmin :exec
-DELETE FROM tenants WHERE id = $1
+UPDATE tenants
+SET deleted_at = NOW(), updated_at = NOW()
+WHERE id = $1 AND deleted_at IS NULL
 `
 
 func (q *Queries) DeleteTenantAdmin(ctx context.Context, id uuid.UUID) error {
@@ -146,7 +149,7 @@ func (q *Queries) DeleteTenantAdmin(ctx context.Context, id uuid.UUID) error {
 const getTenantByID = `-- name: GetTenantByID :one
 SELECT id, name, slug, join_code, is_default, created_at, updated_at
 FROM tenants
-WHERE id = $1 LIMIT 1
+WHERE id = $1 AND deleted_at IS NULL LIMIT 1
 `
 
 type GetTenantByIDRow struct {
@@ -177,7 +180,7 @@ func (q *Queries) GetTenantByID(ctx context.Context, id uuid.UUID) (GetTenantByI
 const getTenantByJoinCode = `-- name: GetTenantByJoinCode :one
 SELECT id, name, slug, join_code, is_default, created_at, updated_at
 FROM tenants
-WHERE join_code = $1 LIMIT 1
+WHERE join_code = $1 AND deleted_at IS NULL LIMIT 1
 `
 
 type GetTenantByJoinCodeRow struct {
@@ -208,7 +211,7 @@ func (q *Queries) GetTenantByJoinCode(ctx context.Context, joinCode string) (Get
 const getTenantBySlug = `-- name: GetTenantBySlug :one
 SELECT id, name, slug, join_code, is_default, created_at, updated_at
 FROM tenants
-WHERE slug = $1 LIMIT 1
+WHERE slug = $1 AND deleted_at IS NULL LIMIT 1
 `
 
 type GetTenantBySlugRow struct {
@@ -294,7 +297,7 @@ SELECT t.id, t.name, t.slug, t.join_code, t.created_at, t.updated_at,
        COUNT(tm.user_id)::bigint AS member_count
 FROM tenants t
 LEFT JOIN tenant_memberships tm ON t.id = tm.tenant_id
-WHERE ($1::text IS NULL OR (
+WHERE t.deleted_at IS NULL AND ($1::text IS NULL OR (
     t.name ILIKE '%' || $1::text || '%' OR
     t.slug ILIKE '%' || $1::text || '%' OR
     t.join_code ILIKE '%' || $1::text || '%'
@@ -352,7 +355,7 @@ const listTenantMembers = `-- name: ListTenantMembers :many
 SELECT u.id as user_id, u.email, u.full_name, u.avatar_url, tm.role, tm.created_at
 FROM tenant_memberships tm
 JOIN users u ON u.id = tm.user_id
-WHERE tm.tenant_id = $1
+WHERE tm.tenant_id = $1 AND u.deleted_at IS NULL
 ORDER BY tm.created_at ASC
 `
 
@@ -396,7 +399,7 @@ const listUserTenants = `-- name: ListUserTenants :many
 SELECT t.id, t.name, t.slug, t.join_code, t.is_default, tm.role, t.created_at, t.updated_at
 FROM tenants t
 JOIN tenant_memberships tm ON t.id = tm.tenant_id
-WHERE tm.user_id = $1
+WHERE tm.user_id = $1 AND t.deleted_at IS NULL
 ORDER BY t.created_at ASC
 `
 
@@ -445,6 +448,7 @@ SELECT t.id, t.name, t.slug, t.join_code, t.is_default, tm.role, t.created_at, t
 FROM tenants t
 JOIN tenant_memberships tm ON t.id = tm.tenant_id
 WHERE tm.user_id = $1
+  AND t.deleted_at IS NULL
   AND ($2::text IS NULL OR (
       t.name ILIKE '%' || $2::text || '%' OR
       t.slug ILIKE '%' || $2::text || '%' OR
@@ -521,7 +525,7 @@ const regenerateTenantJoinCode = `-- name: RegenerateTenantJoinCode :one
 UPDATE tenants
 SET join_code = $2,
     updated_at = NOW()
-WHERE id = $1
+WHERE id = $1 AND deleted_at IS NULL
 RETURNING id, name, slug, join_code, is_default, created_at, updated_at
 `
 
@@ -570,12 +574,23 @@ func (q *Queries) RemoveTenantMember(ctx context.Context, arg RemoveTenantMember
 	return err
 }
 
+const softDeleteTenantShortURLs = `-- name: SoftDeleteTenantShortURLs :exec
+UPDATE short_urls
+SET deleted_at = NOW(), is_active = FALSE, updated_at = NOW()
+WHERE tenant_id = $1 AND deleted_at IS NULL
+`
+
+func (q *Queries) SoftDeleteTenantShortURLs(ctx context.Context, tenantID *uuid.UUID) error {
+	_, err := q.db.Exec(ctx, softDeleteTenantShortURLs, tenantID)
+	return err
+}
+
 const updateTenant = `-- name: UpdateTenant :one
 UPDATE tenants
 SET name = COALESCE($2::text, name),
     slug = COALESCE($3::text, slug),
     updated_at = NOW()
-WHERE id = $1
+WHERE id = $1 AND deleted_at IS NULL
 RETURNING id, name, slug, join_code, is_default, created_at, updated_at
 `
 
