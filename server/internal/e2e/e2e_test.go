@@ -279,7 +279,6 @@ func TestE2E_FullApplicationFlow(t *testing.T) {
 			expectedStatus: http.StatusTemporaryRedirect,
 			verify: func(t *testing.T, resp *http.Response, apiResp APIResponse) {
 				assert.Equal(t, "https://example.com/updated-page", resp.Header.Get("Location"))
-				time.Sleep(500 * time.Millisecond) // wait for async click logging worker/fallback worker
 			},
 		},
 		{
@@ -291,9 +290,17 @@ func TestE2E_FullApplicationFlow(t *testing.T) {
 			body:           func() any { return nil },
 			expectedStatus: http.StatusOK,
 			verify: func(t *testing.T, resp *http.Response, apiResp APIResponse) {
-				var summary analytics.AnalyticsSummaryResponse
-				_ = json.Unmarshal(apiResp.Data, &summary)
-				assert.GreaterOrEqual(t, summary.TotalClicks, int64(1))
+				require.Eventually(t, func() bool {
+					respEv, apiRespEv := executeRequestWithTenant(t, http.MethodGet, fmt.Sprintf("%s/api/v1/urls/%s/analytics", ts.URL, createdURLID), accessToken, tenantID, nil)
+					if respEv.StatusCode != http.StatusOK {
+						return false
+					}
+					var summary analytics.AnalyticsSummaryResponse
+					if err := json.Unmarshal(apiRespEv.Data, &summary); err != nil {
+						return false
+					}
+					return summary.TotalClicks >= 1
+				}, 5*time.Second, 50*time.Millisecond, "expected click count to be recorded by async worker in CI")
 			},
 		},
 		{

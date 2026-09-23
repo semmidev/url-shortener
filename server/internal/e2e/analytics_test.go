@@ -66,15 +66,16 @@ func TestAnalyticsFlow(t *testing.T) {
 	resp, _ = executeRequest(t, http.MethodGet, ts.URL+"/"+customCode, "", nil)
 	assert.Equal(t, http.StatusTemporaryRedirect, resp.StatusCode)
 
-	// Sleep briefly for async click logging worker/fallback worker
-	time.Sleep(500 * time.Millisecond)
-
-	// 5. Fetch Analytics Summary within Tenant Context
-	resp, apiResp = executeRequestWithTenant(t, http.MethodGet, fmt.Sprintf("%s/api/v1/urls/%s/analytics", ts.URL, urlID), token, tenantID, nil)
-	assert.Equal(t, http.StatusOK, resp.StatusCode)
-
+	// 5. Fetch Analytics Summary within Tenant Context (Eventually polling for async worker execution)
 	var summary analytics.AnalyticsSummaryResponse
-	err = json.Unmarshal(apiResp.Data, &summary)
-	require.NoError(t, err)
-	assert.GreaterOrEqual(t, summary.TotalClicks, int64(1))
+	require.Eventually(t, func() bool {
+		resp, apiResp = executeRequestWithTenant(t, http.MethodGet, fmt.Sprintf("%s/api/v1/urls/%s/analytics", ts.URL, urlID), token, tenantID, nil)
+		if resp.StatusCode != http.StatusOK {
+			return false
+		}
+		if err := json.Unmarshal(apiResp.Data, &summary); err != nil {
+			return false
+		}
+		return summary.TotalClicks >= 1
+	}, 5*time.Second, 50*time.Millisecond, "expected click count to be recorded by async worker")
 }
